@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
@@ -91,24 +91,24 @@ namespace Codist.SyntaxHighlight
 		internal bool HasLine => Underline == true || Strikethrough == true || OverLine == true;
 		internal bool HasLineColor => HasLine && _LineColor.A != 0;
 
-		/// <summary>The category used in option pages to group style items</summary>
-		internal abstract string Category { get; }
+    /// <summary>The category used in option pages to group style items</summary>
+    internal abstract string Category { get; }
 
-		/// <summary>Returns whether any option in this style is set.</summary>
-		internal bool IsSet => ForeColor.A != 0
-			|| BackColor.A != 0
-			|| Bold.HasValue
-			|| Italic.HasValue
-			|| Underline.HasValue
-			|| FontSize != 0
-			|| ForegroundOpacity != 0
-			|| BackgroundOpacity != 0
-			|| OverLine.HasValue
-			|| Strikethrough.HasValue
-			|| String.IsNullOrEmpty(Font) == false;
+    /// <summary>Returns whether any option in this style is set.</summary>
+    internal bool IsSet => ForeColor.A != 0
+      || BackColor.A != 0
+      || Bold.HasValue
+      || Italic.HasValue
+      || Underline.HasValue
+      || FontSize != 0
+      || ForegroundOpacity != 0
+      || BackgroundOpacity != 0
+      || OverLine.HasValue
+      || Strikethrough.HasValue
+      || String.IsNullOrEmpty(Font) == false;
 
-		internal abstract string ClassificationType { get; }
-		internal abstract string Description { get; }
+    internal abstract string ClassificationType { get; }
+    internal abstract string Description { get; }
 
 		internal SolidColorBrush MakeBrush(bool invertBrightness) {
 			return ForeColor.A != 0 ? new SolidColorBrush(invertBrightness ? ForeColor.InvertBrightness() : ForeColor) : null;
@@ -245,77 +245,76 @@ namespace Codist.SyntaxHighlight
 			return d;
 		}
 
-		internal StyleBase Clone() {
-			return (StyleBase)MemberwiseClone();
-		}
-		internal void CopyTo(StyleBase target) {
-			target.Bold = Bold;
-			target.Italic = Italic;
-			target.OverLine = OverLine;
-			target.Underline = Underline;
-			target.Strikethrough = Strikethrough;
-			target.FontSize = FontSize;
-			target.FontVariant = FontVariant;
-			target.BackgroundEffect = BackgroundEffect;
-			target.Font = Font;
-			target.ForeColor = ForeColor;
-			target.BackColor = BackColor;
-			target.ForegroundOpacity = ForegroundOpacity;
-			target.BackgroundOpacity = BackgroundOpacity;
-			target.LineColor = LineColor;
-			target.LineOpacity = LineOpacity;
-			target.LineThickness = LineThickness;
-			target.LineOffset = LineOffset;
-			target.LineStyle = LineStyle;
-		}
-		internal void CopyTo(StyleBase target, StyleFilters filters) {
-			if (filters.MatchFlags(StyleFilters.Color)) {
-				target.ForeColor = ForeColor;
-				target.BackColor = BackColor;
-				target.ForegroundOpacity = ForegroundOpacity;
-				target.BackgroundOpacity = BackgroundOpacity;
-				target.LineColor = LineColor;
-				target.LineOpacity = LineOpacity;
-				target.BackgroundEffect = BackgroundEffect;
-			}
-			if (filters.MatchFlags(StyleFilters.FontFamily)) {
-				target.Font = Font;
-				target.FontVariant = FontVariant;
-			}
-			if (filters.MatchFlags(StyleFilters.FontSize)) {
-				target.FontSize = FontSize;
-			}
-			if (filters.MatchFlags(StyleFilters.FontStyle)) {
-				target.Bold = Bold;
-				target.Italic = Italic;
-				target.OverLine = OverLine;
-				target.Underline = Underline;
-				target.Strikethrough = Strikethrough;
-			}
-			if (filters.MatchFlags(StyleFilters.LineStyle)) {
-				target.LineStyle = LineStyle;
-				target.LineOffset = LineOffset;
-				target.LineThickness = LineThickness;
-			}
-		}
-		internal void Reset() {
-			Bold = Italic = OverLine = Underline = Strikethrough = null;
-			Font = null;
-			FontSize = 0;
-			FontVariant = null;
-			ForeColor = BackColor = LineColor = default;
-			ForegroundOpacity = BackgroundOpacity = LineOpacity = LineThickness = LineOffset = 0;
-			LineStyle = LineStyle.Solid;
-			BackgroundEffect = BrushEffect.Solid;
-		}
-	}
-	sealed class SyntaxStyle : StyleBase
-	{
-		internal override string Category { get; }
-		public string Key { get; set; }
-		internal override int Id { get; }
-		internal override string ClassificationType => Key;
-		internal override string Description { get; }
+    internal StyleBase Clone() {
+      return (StyleBase)MemberwiseClone();
+    }
+    internal void CopyTo(StyleBase target) {
+      target.Bold = Bold;
+      target.Italic = Italic;
+      target.OverLine = OverLine;
+      target.Underline = Underline;
+      target.Strikethrough = Strikethrough;
+      target.FontSize = FontSize;
+      target.FontVariant = FontVariant;
+      target.BackgroundEffect = BackgroundEffect;
+      target.Font = Font;
+      target.ForeColor = ForeColor;
+      target.BackColor = BackColor;
+      target.ForegroundOpacity = ForegroundOpacity;
+      target.BackgroundOpacity = BackgroundOpacity;
+      target.LineColor = LineColor;
+      target.LineOpacity = LineOpacity;
+      target.LineThickness = LineThickness;
+      target.LineOffset = LineOffset;
+      target.LineStyle = LineStyle;
+    }
+    internal void CopyTo(StyleBase target, StyleFilters filters) {
+      if(filters.MatchFlags(StyleFilters.Color)) {
+        target.ForeColor = ForeColor;
+        target.BackColor = BackColor;
+        target.ForegroundOpacity = ForegroundOpacity;
+        target.BackgroundOpacity = BackgroundOpacity;
+        target.LineColor = LineColor;
+        target.LineOpacity = LineOpacity;
+        target.BackgroundEffect = BackgroundEffect;
+      }
+      if(filters.MatchFlags(StyleFilters.FontFamily)) {
+        target.Font = Font;
+        target.FontVariant = FontVariant;
+      }
+      if(filters.MatchFlags(StyleFilters.FontSize)) {
+        target.FontSize = FontSize;
+      }
+      if(filters.MatchFlags(StyleFilters.FontStyle)) {
+        target.Bold = Bold;
+        target.Italic = Italic;
+        target.OverLine = OverLine;
+        target.Underline = Underline;
+        target.Strikethrough = Strikethrough;
+      }
+      if(filters.MatchFlags(StyleFilters.LineStyle)) {
+        target.LineStyle = LineStyle;
+        target.LineOffset = LineOffset;
+        target.LineThickness = LineThickness;
+      }
+    }
+    internal void Reset() {
+      Bold = Italic = OverLine = Underline = Strikethrough = null;
+      Font = null;
+      FontSize = 0;
+      FontVariant = null;
+      ForeColor = BackColor = LineColor = default;
+      ForegroundOpacity = BackgroundOpacity = LineOpacity = LineThickness = LineOffset = 0;
+      LineStyle = LineStyle.Solid;
+      BackgroundEffect = BrushEffect.Solid;
+    }
+  }
+  sealed class SyntaxStyle : StyleBase {
+    internal override string Category { get; }
+    public string Key { get; set; }
+    internal override int Id { get; }
+    internal override string ClassificationType => Key;
+    internal override string Description { get; }
 
 		public SyntaxStyle(string classificationType) {
 			Key = classificationType;
@@ -326,32 +325,31 @@ namespace Codist.SyntaxHighlight
 		}
 	}
 
-	abstract class StyleBase<TStyle> : StyleBase where TStyle : Enum
-	{
-		string _ClassificationType, _Description;
+  abstract class StyleBase<TStyle> : StyleBase where TStyle : Enum {
+    string _ClassificationType, _Description;
 
-		public abstract TStyle StyleID { get; set; }
+    public abstract TStyle StyleID { get; set; }
 
-		internal override string ClassificationType => _ClassificationType ?? (_ClassificationType = GetClassificationType());
-		internal override string Description => _Description ?? (_Description = GetDescription());
+    internal override string ClassificationType => _ClassificationType ?? (_ClassificationType = GetClassificationType());
+    internal override string Description => _Description ?? (_Description = GetDescription());
 
-		protected string GetCategory() {
-			return typeof(TStyle).GetField(StyleID.ToString())
-				?.GetCustomAttribute<CategoryAttribute>(false)
-				?.Category ?? String.Empty;
-		}
+    protected string GetCategory() {
+      return typeof(TStyle).GetField(StyleID.ToString())
+        ?.GetCustomAttribute<CategoryAttribute>(false)
+        ?.Category ?? String.Empty;
+    }
 
-		string GetDescription() {
-			return typeof(TStyle).GetField(StyleID.ToString())
-				?.GetCustomAttributes<DescriptionAttribute>(false)
-				?.FirstOrDefault()
-				?.Description;
-		}
-		string GetClassificationType() {
-			return typeof(TStyle).GetField(StyleID.ToString())
-				?.GetCustomAttributes<ClassificationTypeAttribute>(false)
-				?.FirstOrDefault()
-				?.ClassificationTypeNames;
-		}
-	}
+    string GetDescription() {
+      return typeof(TStyle).GetField(StyleID.ToString())
+        ?.GetCustomAttributes<DescriptionAttribute>(false)
+        ?.FirstOrDefault()
+        ?.Description;
+    }
+    string GetClassificationType() {
+      return typeof(TStyle).GetField(StyleID.ToString())
+        ?.GetCustomAttributes<ClassificationTypeAttribute>(false)
+        ?.FirstOrDefault()
+        ?.ClassificationTypeNames;
+    }
+  }
 }

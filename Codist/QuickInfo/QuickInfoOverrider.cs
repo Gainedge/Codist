@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,7 +27,6 @@ namespace Codist.QuickInfo
 		bool OverrideBuiltInXmlDoc { get; set; }
 		UIElement CreateControl(IAsyncQuickInfoSession session);
 		void ApplyClickAndGo(ISymbol symbol);
-    void ApplySession(IAsyncQuickInfoSession session);
     void OverrideDocumentation(UIElement docElement);
 		void OverrideException(UIElement exceptionDoc);
 		void OverrideAnonymousTypeInfo(UIElement anonymousTypeInfo);
