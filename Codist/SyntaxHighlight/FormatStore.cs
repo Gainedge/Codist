@@ -740,7 +740,7 @@ namespace Codist.SyntaxHighlight
 				void ChangeTextDecorations(ResourceDictionary current, StyleBase style) {
 					TextDecorationCollection td;
 					if (style != null
-						&& (style.Underline != null || style.Strikethrough != null || style.OverLine != null)) {
+						&& (style.Underline != null || style.Strikethrough != null || style.OverLine != null || style.LineColor.A > 0)) {
 						var t = style.MakeTextDecorations();
 						if (t != (td = current.GetTextDecorations())
 							&& (td == null || t?.SequenceEqual(td) != true)) {

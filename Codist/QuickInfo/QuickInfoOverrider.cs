@@ -27,7 +27,8 @@ namespace Codist.QuickInfo
 		bool OverrideBuiltInXmlDoc { get; set; }
 		UIElement CreateControl(IAsyncQuickInfoSession session);
 		void ApplyClickAndGo(ISymbol symbol);
-		void OverrideDocumentation(UIElement docElement);
+    void ApplySession(IAsyncQuickInfoSession session);
+    void OverrideDocumentation(UIElement docElement);
 		void OverrideException(UIElement exceptionDoc);
 		void OverrideAnonymousTypeInfo(UIElement anonymousTypeInfo);
 	}
@@ -344,7 +345,7 @@ namespace Codist.QuickInfo
 				if (tt == null) {
 					tt = (f as Run)?.Text;
 					if (tt == "SPELL") {
-						return ThemeHelper.GetImage(IconIds.Suggestion);
+						return ThemeHelper.GetImage(IconIds.StatusSpell);
 					}
 				}
 				var errorTagger = GetErrorTagger();
@@ -368,7 +369,11 @@ namespace Codist.QuickInfo
 				}
 			}
 
-			internal sealed class UIOverrider : TextBlock, IInteractiveQuickInfoContent, IQuickInfoHolder
+      public void ApplySession(IAsyncQuickInfoSession session) {
+        this._Session = session;
+      }
+
+      internal sealed class UIOverrider : TextBlock, IInteractiveQuickInfoContent, IQuickInfoHolder
 			{
 				static readonly Thickness __TitlePanelMargin = new Thickness(0, 0, 30, 6);
 
@@ -419,11 +424,12 @@ namespace Codist.QuickInfo
 
 				void MakeTextualContentSelectableWithIcon(Panel p) {
 					var items = GetItems(p);
-					for (int i = _Overrider._ClickAndGoSymbol != null ? 1 : 0; i < items.Count; i++) {
+					for (int i = 0; i < items.Count; i++) {
 						if (items[i] is DependencyObject qi) {
 							if ((qi as FrameworkElement).IsCodistQuickInfoItem()) {
 								continue;
 							}
+
 							foreach (var tb in qi.GetDescendantChildren<TextBlock>()) {
 								OverrideTextBlock(tb);
 							}
@@ -781,7 +787,7 @@ namespace Codist.QuickInfo
 			static int GetIconIdForErrorType(string error) {
 				switch (error) {
 					case PredefinedErrorTypeNames.Suggestion: return IconIds.HiddenInfo;
-					case PredefinedErrorTypeNames.HintedSuggestion: return IconIds.Info;
+					case PredefinedErrorTypeNames.HintedSuggestion: return IconIds.Suggestion;
 					case PredefinedErrorTypeNames.Warning: return IconIds.Warning;
 					case PredefinedErrorTypeNames.SyntaxError: return IconIds.SyntaxError;
 					case PredefinedErrorTypeNames.CompilerError: return IconIds.Stop;

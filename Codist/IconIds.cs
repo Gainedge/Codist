@@ -101,7 +101,7 @@ namespace Codist
 		public const int Heading4 = KnownImageIds.Flag;
 		public const int Heading5 = KnownImageIds.FlagOutline;
 		public const int ReferencedXmlDoc = KnownImageIds.GoToNextComment;
-		public const int ExceptionXmlDoc = KnownImageIds.StatusInvalidOutline;
+		public const int ExceptionXmlDoc = KnownImageIds.ExceptionPublic;
 		public const int RemarksXmlDoc = KnownImageIds.CommentGroup;
 		public const int ExampleXmlDoc = KnownImageIds.EnableCode;
 		public const int SeeAlsoXmlDoc = KnownImageIds.Next;
@@ -241,15 +241,16 @@ namespace Codist
 		public const int Question = KnownImageIds.StatusHelp;
 		public const int HiddenInfo = KnownImageIds.StatusHidden;
 		public const int Info = KnownImageIds.StatusInformation;
-		public const int Suggestion = KnownImageIds.StatusAlert;
-		public const int SyntaxError = KnownImageIds.StatusError;
-		public const int SevereWarning = KnownImageIds.StatusWarning;
+		public const int Suggestion = KnownImageIds.StatusInformationOutline;
+		public const int SyntaxError = KnownImageIds.StatusErrorOutline;
+		public const int SevereWarning = KnownImageIds.StatusInvalidOutline;
 		public const int Warning = KnownImageIds.StatusWarningOutline;
-		public const int Error = KnownImageIds.StatusInvalid;
+		public const int Error = KnownImageIds.StatusError;
 		public const int Stop = KnownImageIds.StatusNo;
-		#endregion
-		#region symbol usage icons
-		public const int UseToWrite = KnownImageIds.Writeable;
+    public const int StatusSpell = KnownImageIds.SpellCheck;
+    #endregion
+    #region symbol usage icons
+    public const int UseToWrite = KnownImageIds.Writeable;
 		public const int UseToWriteNull = KnownImageIds.EmptyContainer;
 		public const int UseAsTypeParameter = KnownImageIds.CPPMarkupXML;
 		public const int UseToCast = KnownImageIds.ReportingAction;

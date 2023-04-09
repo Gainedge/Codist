@@ -76,6 +76,7 @@ namespace Codist.QuickInfo
 				_SpecialProject = new SpecialProjectInfo(semanticModel);
 			}
 			if (overrider != null) {
+				overrider.ApplySession(session);
 				overrider.OverrideBuiltInXmlDoc = Config.Instance.QuickInfoOptions.HasAnyFlag(QuickInfoOptions.DocumentationOverride);
 			}
 			var unitCompilation = semanticModel.SyntaxTree.GetCompilationUnitRoot(cancellationToken);
