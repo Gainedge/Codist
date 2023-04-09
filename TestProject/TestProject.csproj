@@ -94,6 +94,9 @@
     <Content Include="CommentTaggers\Test.xml" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\.editorconfig">
+      <Link>.editorconfig</Link>
+    </None>
     <None Include="app.config" />
     <None Include="packages.config" />
     <None Include="CommentTaggers\Test.json" />

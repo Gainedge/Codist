@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.VisualStudio.Imaging;
 
 namespace Codist
@@ -128,7 +128,7 @@ namespace Codist
 		public const int UnorderedList = KnownImageIds.BulletList;
 		public const int OrderedList = KnownImageIds.OrderedList;
 		public const int ReferencedXmlDoc = KnownImageIds.GoToNextComment;
-		public const int ExceptionXmlDoc = KnownImageIds.StatusInvalidOutline;
+		public const int ExceptionXmlDoc = KnownImageIds.ExceptionPublic;
 		public const int RemarksXmlDoc = KnownImageIds.CommentGroup;
 		public const int ExampleXmlDoc = KnownImageIds.EnableCode;
 		public const int SeeAlsoXmlDoc = KnownImageIds.Next;
@@ -303,13 +303,14 @@ namespace Codist
 		public const int Question = KnownImageIds.StatusHelp;
 		public const int HiddenInfo = KnownImageIds.StatusHidden;
 		public const int Info = KnownImageIds.StatusInformation;
-		public const int Suggestion = KnownImageIds.StatusAlert;
-		public const int SyntaxError = KnownImageIds.StatusError;
-		public const int SevereWarning = KnownImageIds.StatusWarning;
+		public const int Suggestion = KnownImageIds.StatusInformationOutline;
+		public const int SyntaxError = KnownImageIds.StatusErrorOutline;
+		public const int SevereWarning = KnownImageIds.StatusInvalidOutline;
 		public const int Warning = KnownImageIds.StatusWarningOutline;
-		public const int Error = KnownImageIds.StatusInvalid;
+		public const int Error = KnownImageIds.StatusError;
 		public const int Stop = KnownImageIds.StatusNo;
 		public const int AddFolder = KnownImageIds.AddFolder;
+        public const int StatusSpell = KnownImageIds.SpellCheck;
 		#endregion
 		#region symbol usage icons
 		public const int UseToWrite = KnownImageIds.Writeable;
