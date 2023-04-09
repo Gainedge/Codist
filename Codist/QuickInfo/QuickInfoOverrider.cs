@@ -26,7 +26,6 @@ namespace Codist.QuickInfo
 		bool OverrideBuiltInXmlDoc { get; set; }
 		UIElement CreateControl(IAsyncQuickInfoSession session);
 		void ApplyClickAndGo(ISymbol symbol);
-    void ApplySession(IAsyncQuickInfoSession session);
     void OverrideDocumentation(UIElement docElement);
 		void OverrideException(UIElement exceptionDoc);
 	}
@@ -362,7 +361,8 @@ namespace Codist.QuickInfo
 					_ErrorTagger = null;
 				}
 			}
-		}
+
+    }
 
 		sealed class UIOverrider : TextBlock, IInteractiveQuickInfoContent
 		{
