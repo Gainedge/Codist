@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -584,7 +584,7 @@ namespace Codist.SyntaxHighlight
 				#region ResourceDictionary alteration methods
 				void ChangeBold(ResourceDictionary current, StyleBase style) {
 					bool? s;
-					if (style != null && style.Bold != null) {
+					if (style?.Bold != null) {
 						if ((s = style.Bold) != current.GetBold()) {
 							_FormatChanges |= FormatChanges.Bold;
 							Changes.SetBold(s);
@@ -603,7 +603,7 @@ namespace Codist.SyntaxHighlight
 
 				void ChangeItalic(ResourceDictionary current, StyleBase style) {
 					bool? s;
-					if (style != null && style.Italic != null) {
+					if (style?.Italic != null) {
 						if ((s = style.Italic) != current.GetItalic()) {
 							_FormatChanges |= FormatChanges.Italic;
 							Changes.SetItalic(s);
@@ -739,8 +739,7 @@ namespace Codist.SyntaxHighlight
 
 				void ChangeTextDecorations(ResourceDictionary current, StyleBase style) {
 					TextDecorationCollection td;
-					if (style != null
-						&& (style.Underline != null || style.Strikethrough != null || style.OverLine != null || style.LineColor.A > 0)) {
+					if (style?.HasLine == true) {
 						var t = style.MakeTextDecorations();
 						if (t != (td = current.GetTextDecorations())
 							&& (td == null || t?.SequenceEqual(td) != true)) {
