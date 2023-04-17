@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -148,10 +149,10 @@ namespace Codist
 					sb.Append('#').Append(format.FontRenderingEmSize);
 				}
 				if (format.BoldEmpty == false) {
-					sb.Append(format.Bold == true ? "+B" : "-B");
+					sb.Append(format.Bold ? "+B" : "-B");
 				}
 				if (format.ItalicEmpty == false) {
-					sb.Append(format.Italic == true ? "+I" : "-I");
+					sb.Append(format.Italic ? "+I" : "-I");
 				}
 				if (format.ForegroundBrushEmpty == false) {
 					sb.Append(format.ForegroundBrush.ToString()).Append("@f");
@@ -211,12 +212,12 @@ namespace Codist
 		}
 		public static WpfColor GetColor(this IEditorFormatMap map, string formatName, string resourceId = EditorFormatDefinition.ForegroundColorId) {
 			var p = map.GetProperties(formatName);
-			return p != null && p.Contains(resourceId) && (p[resourceId] is WpfColor color)
+			return p?.Contains(resourceId) == true && (p[resourceId] is WpfColor color)
 				? color
 				: default;
 		}
 		public static WpfColor GetColor(this ResourceDictionary resource, string resourceId = EditorFormatDefinition.ForegroundColorId) {
-			return resource != null && resource.Contains(resourceId) && (resource[resourceId] is WpfColor color)
+			return resource?.Contains(resourceId) == true && (resource[resourceId] is WpfColor color)
 				? color
 				: default;
 		}
@@ -418,7 +419,7 @@ namespace Codist
 					break;
 				case 36:
 				case 38:
-					if (Guid.TryParse(s, out var result)) {
+					if (Guid.TryParse(s, out _)) {
 						return TokenType.Guid;
 					}
 					break;
@@ -471,9 +472,8 @@ namespace Codist
 			if (node == null) {
 				return;
 			}
-			OpenFile(node.GetLocation().SourceTree.FilePath, view => {
-				view.SelectSpan(includeTrivia ? node.GetSematicSpan(true) : node.Span.ToSpan());
-			});
+			OpenFile(node.GetLocation().SourceTree.FilePath,
+				view => view.SelectSpan(includeTrivia ? node.GetSematicSpan(true) : node.Span.ToSpan()));
 		}
 
 		public static void SelectNode(this ITextView view, SyntaxNode node, bool includeTrivia) {
@@ -695,7 +695,6 @@ namespace Codist
 			return Enumerable.Empty<SnapshotSpan>();
 		}
 
-
 		public static void CopyOrMoveSyntaxNode(this IWpfTextView view, SyntaxNode sourceNode, SyntaxNode targetNode, bool copy, bool before) {
 			ThreadHelper.ThrowIfNotOnUIThread();
 			var tSpan = (targetNode.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.VariableDeclarator) ? targetNode.Parent.Parent : targetNode).GetSematicSpan(false);
@@ -807,7 +806,7 @@ namespace Codist
 			__ActiveViewPosition = -1;
 		}
 		public static void OpenFile(string file) {
-			OpenFile(file, (VsTextView v)=> { });
+			OpenFile(file, (VsTextView _) => { });
 		}
 		public static void OpenFile(string file, Action<VsTextView> action) {
 			ThreadHelper.ThrowIfNotOnUIThread();
@@ -825,7 +824,7 @@ namespace Codist
 			InternalOpenFile(file, action);
 		}
 
-		[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "VSTHRD010:Invoke single-threaded types on Main thread", Justification = "UIThread checked in caller")]
+		[SuppressMessage("Usage", Suppression.VSTHRD010, Justification = Suppression.CheckedInCaller)]
 		static void InternalOpenFile(string file, Action<VsTextView> action) {
 			try {
 				using (new NewDocumentStateScope(Keyboard.Modifiers == ModifierKeys.Shift ? __VSNEWDOCUMENTSTATE.NDS_Unspecified : __VSNEWDOCUMENTSTATE.NDS_Provisional, Microsoft.VisualStudio.VSConstants.NewDocumentStateReason.Navigation)) {
@@ -1145,7 +1144,7 @@ namespace Codist
 		}
 
 		static VsTextView GetIVsTextView(IServiceProvider service, string filePath) {
-			return VsShellUtilities.IsDocumentOpen(service, filePath, Guid.Empty, out var uiHierarchy, out uint itemID, out IVsWindowFrame windowFrame)
+			return VsShellUtilities.IsDocumentOpen(service, filePath, Guid.Empty, out _, out _, out IVsWindowFrame windowFrame)
 				? VsShellUtilities.GetTextView(windowFrame)
 				: null;
 		}
@@ -1265,12 +1264,12 @@ namespace Codist
 		// taken from Microsoft.VisualStudio.Shell.NewDocumentStateScope
 		sealed class NewDocumentStateScope : DisposableObject
 		{
-			readonly IVsNewDocumentStateContext _context;
+			readonly IVsNewDocumentStateContext _Context;
 
 			private NewDocumentStateScope(uint state, Guid reason) {
 				ThreadHelper.ThrowIfNotOnUIThread();
 				if (Package.GetGlobalService(typeof(IVsUIShellOpenDocument)) is IVsUIShellOpenDocument3 doc) {
-					_context = doc.SetNewDocumentState(state, ref reason);
+					_Context = doc.SetNewDocumentState(state, ref reason);
 				}
 			}
 
@@ -1284,10 +1283,9 @@ namespace Codist
 
 			protected override void DisposeNativeResources() {
 				ThreadHelper.ThrowIfNotOnUIThread();
-				_context?.Restore();
+				_Context?.Restore();
 				base.DisposeNativeResources();
 			}
 		}
-
 	}
 }

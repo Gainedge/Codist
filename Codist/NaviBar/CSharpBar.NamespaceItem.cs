@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Linq;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
@@ -34,14 +34,14 @@ namespace Codist.NaviBar
 			public bool IsSymbolNode { get; }
 			public ISymbol Symbol => _Node.GetSymbol(Bar._SemanticContext);
 
-			[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void HandleClick(object sender, RoutedEventArgs e) {
-				SyncHelper.CancelAndDispose(ref Bar._cancellationSource, true);
+				SyncHelper.CancelAndDispose(ref Bar._CancellationSource, true);
 				if (_Menu != null && Bar._SymbolList == _Menu && _Menu.IsVisible) {
 					Bar.HideMenu();
 					return;
 				}
-				var ct = Bar._cancellationSource.GetToken();
+				var ct = Bar._CancellationSource.GetToken();
 				try {
 					await CreateMenuForNamespaceNodeAsync(ct);
 					await TH.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
@@ -79,7 +79,7 @@ namespace Codist.NaviBar
 				await Bar._SemanticContext.UpdateAsync(cancellationToken).ConfigureAwait(false);
 				var items = await Bar._SemanticContext.GetNamespacesAndTypesAsync(Symbol as INamespaceSymbol, cancellationToken).ConfigureAwait(false);
 				await TH.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
-				_Menu.AddNamespaceItems(items, Bar.GetChildSymbolOnNaviBar(this, cancellationToken));
+				_Menu.AddNamespaceItems(items, Bar.GetChildSymbolOnNaviBar(this));
 			}
 
 			void FilterChanged(object sender, SymbolFilterBox.FilterEventArgs e) {
@@ -96,7 +96,7 @@ namespace Codist.NaviBar
 					_Menu.ClearSymbols();
 					var items = await ctx.GetNamespacesAndTypesAsync(Symbol as INamespaceSymbol, cancellationToken).ConfigureAwait(false);
 					await TH.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
-					_Menu.AddNamespaceItems(items, Bar.GetChildSymbolOnNaviBar(this, cancellationToken));
+					_Menu.AddNamespaceItems(items, Bar.GetChildSymbolOnNaviBar(this));
 					_Menu.RefreshItemsSource(true);
 				}
 				else {
@@ -105,17 +105,23 @@ namespace Codist.NaviBar
 			}
 
 			void SelectChild(CancellationToken cancellationToken) {
-				var child = Bar.GetChildSymbolOnNaviBar(this, cancellationToken);
+				var child = Bar.GetChildSymbolOnNaviBar(this);
 				if (child != null && _Menu.HasItems) {
 					var c = CodeAnalysisHelper.GetSpecificSymbolComparer(child);
-					_Menu.SelectedItem = _Menu.Symbols.FirstOrDefault(s => c(s.Symbol));
+					foreach (var item in _Menu.Symbols) {
+						var s = item.Symbol;
+						if (c(s)) {
+							_Menu.SelectedItem = s;
+							break;
+						}
+					}
 				}
 			}
 
 			void IContextMenuHost.ShowContextMenu(RoutedEventArgs args) {
 				if (ContextMenu == null) {
-					var m = new CSharpSymbolContextMenu(Symbol, null, Bar._SemanticContext);
 					var s = Symbol;
+					var m = new CSharpSymbolContextMenu(s, null, Bar._SemanticContext);
 					if (s != null) {
 						m.AddAnalysisCommands();
 						m.AddCopyAndSearchSymbolCommands();
@@ -143,6 +149,7 @@ namespace Codist.NaviBar
 						ContextMenu = null;
 					}
 					DataContext = null;
+					_Node = null;
 					_Disposed = true;
 				}
 			}

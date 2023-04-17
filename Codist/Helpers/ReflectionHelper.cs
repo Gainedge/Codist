@@ -24,7 +24,7 @@ namespace Codist
 				il.Emit(OpCodes.Ret);
 				return m.CreateDelegate<Func<TInstance, TField>>();
 			}
-			return (s) => null;
+			return (_) => null;
 		}
 		public static Func<TInstance, TProperty> CreateGetPropertyMethod<TInstance, TProperty>(string name, Type castType = null) where TInstance : class
 			{
@@ -48,7 +48,7 @@ namespace Codist
 				il.Emit(OpCodes.Ret);
 				return m.CreateDelegate<Func<TInstance, TProperty>>();
 			}
-			return (s) => default(TProperty);
+			return (_) => default;
 		}
 		public static Action<TInstance, TProperty> CreateSetPropertyMethod<TInstance, TProperty>(string name) where TInstance : class {
 			var type = typeof(TInstance);
@@ -122,8 +122,7 @@ namespace Codist
 			if (disp == null) {
 				return null;
 			}
-			int count;
-			int hResult = disp.GetTypeInfoCount(out count);
+			int hResult = disp.GetTypeInfoCount(out int count);
 			if (hResult < 0 || count < 1) { // failed or no type info
 				return null;
 			}
@@ -135,23 +134,15 @@ namespace Codist
 					return null;
 				}
 
-				var typeInfo = Marshal.GetTypedObjectForIUnknown(ptr, typeof(ComTypes.ITypeInfo)) as ComTypes.ITypeInfo;
-
-				if (typeInfo == null) {
-					return null;
+				if (Marshal.GetTypedObjectForIUnknown(ptr, typeof(ComTypes.ITypeInfo)) is ComTypes.ITypeInfo typeInfo) {
+					typeInfo.GetDocumentation(-1, out string strName, out _, out _, out _);
+					return strName;
 				}
-				string strName;
-				string strDocString;
-				int dwHelpContext;
-				string strHelpFile;
-
-				typeInfo.GetDocumentation(-1, out strName, out strDocString, out dwHelpContext, out strHelpFile);
-				return strName;
+				return null;
 			}
 			finally {
 				if (ptr != IntPtr.Zero) {
 					Marshal.Release(ptr);
-					ptr = IntPtr.Zero;
 				}
 			}
 		}

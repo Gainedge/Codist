@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Windows;
@@ -40,15 +41,15 @@ namespace Codist.NaviBar
 			public override BarItemType ItemType => BarItemType.Node;
 			public SyntaxNode Node { get; private set; }
 			public bool IsSymbolNode => false;
-			public ISymbol Symbol => _Symbol ?? (_Symbol = SyncHelper.RunSync(() => Bar._SemanticContext.GetSymbolAsync(Node, Bar._cancellationSource.GetToken())));
+			public ISymbol Symbol => _Symbol ?? (_Symbol = SyncHelper.RunSync(() => Bar._SemanticContext.GetSymbolAsync(Node, Bar._CancellationSource.GetToken())));
 			public bool HasReferencedSymbols => _ReferencedSymbols != null && _ReferencedSymbols.Count > 0;
 			public List<ISymbol> ReferencedSymbols => _ReferencedSymbols ?? (_ReferencedSymbols = new List<ISymbol>());
 
 			public void ShowContextMenu(RoutedEventArgs args) {
 				if (ContextMenu == null) {
-					var m = new CSharpSymbolContextMenu(Symbol, Node, Bar._SemanticContext);
-					m.AddNodeCommands();
 					var s = Symbol;
+					var m = new CSharpSymbolContextMenu(s, Node, Bar._SemanticContext);
+					m.AddNodeCommands();
 					if (s != null) {
 						m.AddUnitTestCommands();
 						m.Items.Add(new Separator());
@@ -61,10 +62,10 @@ namespace Codist.NaviBar
 				ContextMenu.IsOpen = true;
 			}
 
-			[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
-			[System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "U2U1009:Async or iterator methods should avoid state machine generation for early exits (throws or synchronous returns)", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
+			[SuppressMessage("Performance", "U2U1009:Async or iterator methods should avoid state machine generation for early exits (throws or synchronous returns)", Justification = Suppression.EventHandler)]
 			async void HandleClick(object sender, RoutedEventArgs e) {
-				SyncHelper.CancelAndDispose(ref Bar._cancellationSource, true);
+				SyncHelper.CancelAndDispose(ref Bar._CancellationSource, true);
 				if (_Menu != null && Bar._SymbolList == _Menu && _Menu.IsVisible) {
 					Bar.HideMenu();
 					return;
@@ -78,7 +79,7 @@ namespace Codist.NaviBar
 						return;
 					}
 					// displays member list for type declarations or regions outside of member declaration
-					var ct = Bar._cancellationSource.GetToken();
+					var ct = Bar._CancellationSource.GetToken();
 					try {
 						await CreateMenuForTypeSymbolNodeAsync(ct);
 						await TH.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
@@ -539,8 +540,9 @@ namespace Codist.NaviBar
 				if (this.HasDummyToolTip()) {
 					this.SetTipPlacementBottom();
 					// todo: handle updated syntax node for RootItem
-					if (Symbol != null) {
-						var tip = ToolTipHelper.CreateToolTip(Symbol, true, Bar._SemanticContext);
+					var s = Symbol;
+					if (s != null) {
+						var tip = ToolTipHelper.CreateToolTip(s, true, Bar._SemanticContext);
 						if (Config.Instance.NaviBarOptions.MatchFlags(NaviBarOptions.LineOfCode)) {
 							tip.AddTextBlock().Append(R.T_LineOfCode + (Node.GetLineSpan().Length + 1));
 						}

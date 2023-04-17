@@ -635,7 +635,7 @@ Shift：粘贴并选中下一项（整个单词）</value>
     <value>声明变量: </value>
   </data>
   <data name="T_ExplicitImplements" xml:space="preserve">
-    <value>显式实现接口:</value>
+    <value>显式实现接口: </value>
   </data>
   <data name="T_Member" xml:space="preserve">
     <value>成员:</value>
@@ -2426,5 +2426,11 @@ Right click: 显示“线程”窗口</value>
   </data>
   <data name="OT_UseCodeEditorFontForSeeTip" xml:space="preserve">
     <value>用代码编辑器窗口的字体显示 &lt;see/&gt;、&lt;paramref/&gt; 和&lt;typeparamref/&gt; 引用的代码名称</value>
+  </data>
+  <data name="T_Discard" xml:space="preserve">
+    <value>弃元</value>
+  </data>
+  <data name="T_ActiveWindowProperties" xml:space="preserve">
+    <value>当前窗口属性</value>
   </data>
 </root>

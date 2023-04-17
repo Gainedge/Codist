@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
@@ -10,13 +10,15 @@ using AppHelpers;
 using Microsoft.VisualStudio.Text.Classification;
 using Newtonsoft.Json;
 
-namespace Codist.SyntaxHighlight {
-  /// <summary>The base style for syntax highlight elements.</summary>
-  [DebuggerDisplay("{ClassificationType}: {ForeColor} {FontSize}")]
-  abstract class StyleBase {
-    static protected readonly Regex FriendlyNamePattern = new Regex(@"([a-z])([A-Z0-9])", RegexOptions.Singleline);
-    Color _ForeColor, _BackColor, _LineColor;
-    byte _ForeColorOpacity, _BackColorOpacity, _LineOpacity, _LineThickness, _LineOffset;
+namespace Codist.SyntaxHighlight
+{
+	/// <summary>The base style for syntax highlight elements.</summary>
+	[DebuggerDisplay("{ClassificationType}: {ForeColor} {FontSize}")]
+	abstract class StyleBase
+	{
+		static protected readonly Regex FriendlyNamePattern = new Regex("([a-z])([A-Z0-9])", RegexOptions.Singleline);
+		Color _ForeColor, _BackColor, _LineColor;
+		byte _ForeColorOpacity, _BackColorOpacity, _LineOpacity, _LineThickness, _LineOffset;
 
     internal abstract int Id { get; }
     /// <summary>Gets or sets whether the content rendered in bold.</summary>
@@ -106,9 +108,9 @@ namespace Codist.SyntaxHighlight {
     internal abstract string ClassificationType { get; }
     internal abstract string Description { get; }
 
-    internal Brush MakeBrush() {
-      return ForeColor.A != 0 ? new SolidColorBrush(ForeColor) : null;
-    }
+		internal SolidColorBrush MakeBrush() {
+			return ForeColor.A != 0 ? new SolidColorBrush(ForeColor) : null;
+		}
 
     internal Brush MakeBackgroundBrush(Color backColor) {
       backColor = backColor.Alpha(0);

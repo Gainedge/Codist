@@ -28,7 +28,7 @@ namespace Codist
 		public const int SealedEvent = KnownImageIds.EventSealed;
 		public const int SealedProperty = KnownImageIds.PropertySealed;
 		public const int RequiredMember = KnownImageIds.StatusRequired;
-		public const int Deconstructor = KnownImageIds.DeleteListItem;
+		public const int Destructor = KnownImageIds.DeleteListItem;
 		public const int PublicConstructor = KnownImageIds.TypePublic;
 		public const int ProtectedConstructor = KnownImageIds.TypeProtected;
 		public const int InternalConstructor = KnownImageIds.TypeInternal;
@@ -80,6 +80,9 @@ namespace Codist
 		public const int OverrideEvent = KnownImageIds.ModifyEvent;
 		public const int OverrideProperty = KnownImageIds.ModifyProperty;
 		public const int OverrideMethod = KnownImageIds.ModifyMethod;
+		public const int ExplicitInterfaceEvent = KnownImageIds.RenameEvent;
+		public const int ExplicitInterfaceProperty = KnownImageIds.RenameProperty;
+		public const int ExplicitInterfaceMethod = KnownImageIds.RenameMethod;
 		public const int Constant = KnownImageIds.Constant;
 		public const int FunctionPointer = KnownImageIds.CallReturnInstructionPointer;
 		#endregion
@@ -116,6 +119,7 @@ namespace Codist
 		public const int SymbolCandidate = KnownImageIds.CodeInformation;
 		public const int InterfaceImplementation = KnownImageIds.ImplementInterface;
 		public const int Disposable = KnownImageIds.ReferenceWarning;
+		public const int Discard = KnownImageIds.HiddenFile;
 		public const int BaseTypes = KnownImageIds.ParentChild;
 		public const int MethodOverloads = KnownImageIds.MethodSet;
 		public const int XmlDocComment = KnownImageIds.Comment;

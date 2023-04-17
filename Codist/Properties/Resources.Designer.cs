@@ -4788,6 +4788,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Active Window Properties.
+        /// </summary>
+        internal static string T_ActiveWindowProperties {
+            get {
+                return ResourceManager.GetString("T_ActiveWindowProperties", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to All languages.
         /// </summary>
         internal static string T_AllLanguages {
@@ -5383,6 +5392,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to discard.
+        /// </summary>
+        internal static string T_Discard {
+            get {
+                return ResourceManager.GetString("T_Discard", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Documentation from .
         /// </summary>
         internal static string T_DocumentationFrom {
@@ -5573,7 +5591,7 @@ namespace Codist.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Explicit implements:.
+        ///   Looks up a localized string similar to Explicit implements: .
         /// </summary>
         internal static string T_ExplicitImplements {
             get {

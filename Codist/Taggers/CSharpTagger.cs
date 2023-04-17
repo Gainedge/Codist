@@ -64,8 +64,8 @@ namespace Codist.Taggers
 			if (_TaggerProvider != null) {
 				if (_Taggers.Count > 0) {
 					// don't iterate _Taggers, since the Release method will change the collection
-					foreach (var item in _Taggers.ToList() /* hold taggers to be disposed */) {
-						item.Value.Release();
+					foreach (var tagger in _Taggers.Values.ToList() /* hold taggers to be disposed */) {
+						tagger.Release();
 					}
 					_Taggers.Clear();
 				}
@@ -146,12 +146,7 @@ namespace Codist.Taggers
 				var snapshot = spans[0].Snapshot;
 				var isNewSnapshot = _ParseResult?.Snapshot != snapshot;
 				if (isNewSnapshot == false) {
-					try {
-						return Tagger.GetTags(spans, _ParseResult, _TaskBreaker.GetToken());
-					}
-					catch (OperationCanceledException) {
-						goto NA;
-					}
+					return Tagger.GetTags(spans, _ParseResult, _TaskBreaker.GetToken());
 				}
 				if (snapshot.TextBuffer != _Buffer) {
 					goto NA;
@@ -170,12 +165,7 @@ namespace Codist.Taggers
 					EnqueueSpans(spans);
 				}
 				if (_ParseResult != null && _ParseResult.Snapshot.TextBuffer == snapshot.TextBuffer) {
-					try {
-						return UseOldResult(spans, snapshot, _ParseResult, _TaskBreaker.GetToken());
-					}
-					catch (OperationCanceledException) {
-						goto NA;
-					}
+					return UseOldResult(spans, snapshot, _ParseResult, _TaskBreaker.GetToken());
 				}
 			NA:
 				return Enumerable.Empty<ITagSpan<IClassificationTag>>();
@@ -208,9 +198,9 @@ namespace Codist.Taggers
 				}
 
 				// don't iterate _Taggers, since the Release method will change the collection
-				foreach (var item in c._Taggers.ToList()) {
-					if (item.Value._ParseResult?.Workspace.CurrentSolution.Id.Id != id) {
-						item.Value.Release();
+				foreach (var tagger in c._Taggers.Values.ToList()) {
+					if (tagger._ParseResult?.Workspace.CurrentSolution.Id.Id != id) {
+						tagger.Release();
 					}
 				}
 				c._LastSolutionId = result.Workspace.CurrentSolution.Id.Id;
@@ -464,7 +454,15 @@ namespace Codist.Taggers
 
 		static class Tagger
 		{
-			public static Chain<ITagSpan<IClassificationTag>> GetTags(IEnumerable<SnapshotSpan> spans, ParseResult result, CancellationToken cancellationToken) {
+			public static IEnumerable<ITagSpan<IClassificationTag>> GetTags(IEnumerable<SnapshotSpan> spans, ParseResult result, CancellationToken cancellationToken) {
+				try {
+					return GetTagsInternal(spans, result, cancellationToken);
+				}
+				catch (OperationCanceledException) {
+					return Enumerable.Empty<ITagSpan<IClassificationTag>>();
+				}
+			}
+			static Chain<ITagSpan<IClassificationTag>> GetTagsInternal(IEnumerable<SnapshotSpan> spans, ParseResult result, CancellationToken cancellationToken) {
 				var workspace = result.Workspace;
 				var semanticModel = result.Model;
 				var unitCompilation = semanticModel.SyntaxTree.GetCompilationUnitRoot(cancellationToken);

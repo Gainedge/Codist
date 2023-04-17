@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using AppHelpers;
@@ -154,7 +155,7 @@ namespace Codist.Margins
 			IVerticalScrollBar _ScrollBar;
 			CSharpMembersMargin _Element;
 
-			IEnumerable<IMappingTagSpan<ICodeMemberTag>> _Tags;
+			List<IMappingTagSpan<ICodeMemberTag>> _Tags;
 			List<DirectiveTriviaSyntax> _Regions;
 			ITagAggregator<ICodeMemberTag> _CodeMemberTagger;
 
@@ -199,7 +200,7 @@ namespace Codist.Margins
 				}
 			}
 
-			[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void OnTagsChanged(object sender, EventArgs e) {
 				try {
 					var ct = SyncHelper.CancelAndRetainToken(ref _Element._Cancellation);
@@ -390,7 +391,7 @@ namespace Codist.Margins
 			}
 
 			void DrawRegions(DrawingContext drawingContext, int labelSize, ITextSnapshot snapshot, List<DirectiveTriviaSyntax> regions) {
-				foreach (RegionDirectiveTriviaSyntax region in regions) {
+				foreach (var region in regions.OfType<RegionDirectiveTriviaSyntax>()) {
 					var s = region.GetDeclarationSignature();
 					if (s != null) {
 						var text = WpfHelper.ToFormattedText(s, labelSize, _Element._RegionForeground);
@@ -516,7 +517,7 @@ namespace Codist.Margins
 				}
 			}
 
-			[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void UpdateReferences(object sender, EventArgs e) {
 				try {
 					SyncHelper.CancelAndDispose(ref _Margin._Cancellation, true);

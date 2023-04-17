@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Windows;
@@ -140,9 +141,15 @@ namespace Codist
 
 			#region Member type
 			var rt = s.GetReturnType();
-			if (rt != null
-				&& (s.Kind != SymbolKind.Method || ((IMethodSymbol)s).IsTypeSpecialMethod() == false)) {
-				p.Add(new TextBlock { TextWrapping = TextWrapping.Wrap, Foreground = ThemeHelper.ToolTipTextBrush }
+			if (rt == null) {
+				if (s.Kind == SymbolKind.Discard) {
+					p.Add(new ThemedTipText()
+						.AddSymbol(((IDiscardSymbol)s).Type, false, this)
+						.Append($" ({R.T_Discard})"));
+				}
+			}
+			else if (s.Kind != SymbolKind.Method || ((IMethodSymbol)s).IsTypeSpecialMethod() == false) {
+				p.Add(new ThemedTipText()
 					.Append(ThemeHelper.GetImage(IconIds.Return).WrapMargin(WpfHelper.GlyphMargin))
 					.Append(GetRefType(s), Keyword)
 					.AddSymbol(rt, false, this)
@@ -687,6 +694,7 @@ namespace Codist
 					text.Add((symbol as ITypeSymbol).GetTypeName());
 					return;
 				case SymbolKind.Label: text.Add(symbol.Render(null, bold, null)); return;
+				case SymbolKind.Discard: text.Add("_".Render(Keyword)); return;
 				default: text.Add(symbol.Name); return;
 			}
 		}
@@ -967,7 +975,6 @@ namespace Codist
 			}
 		}
 
-
 		static Dictionary<string, Action<SymbolFormatter, IEditorFormatMap, Brush>> CreatePropertySetter() {
 			var r = new Dictionary<string, Action<SymbolFormatter, IEditorFormatMap, Brush>>(19, StringComparer.OrdinalIgnoreCase);
 			foreach (var item in typeof(SymbolFormatter).GetProperties()) {
@@ -1227,7 +1234,7 @@ namespace Codist
 				_Node = null;
 			}
 
-			[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void NodeLink_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) {
 				try {
 					(await TextEditorHelper.GetMouseOverDocumentView()?.TextBuffer.GetDocument().Project.GetCompilationAsync())

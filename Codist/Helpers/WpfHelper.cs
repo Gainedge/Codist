@@ -372,7 +372,7 @@ namespace Codist
 			if (obj == null) {
 				return null;
 			}
-			return obj is TObject o && (predicate == null || predicate(o)) ? o : obj.GetParent<TObject>(predicate);
+			return obj is TObject o && (predicate == null || predicate(o)) ? o : obj.GetParent(predicate);
 		}
 		public static TParent GetParent<TParent>(this DependencyObject obj, Predicate<TParent> predicate = null)
 			where TParent : DependencyObject {
@@ -500,6 +500,11 @@ namespace Codist
 
 		public static TElement HandleEvent<TElement>(this TElement control, RoutedEvent routedEvent, RoutedEventHandler handler) where TElement : UIElement {
 			control.AddHandler(routedEvent, handler);
+			return control;
+		}
+
+		public static TElement DetachEvent<TElement>(this TElement control, RoutedEvent routedEvent, RoutedEventHandler handler) where TElement : UIElement {
+			control.RemoveHandler(routedEvent, handler);
 			return control;
 		}
 

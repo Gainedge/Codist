@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Linq;
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using AppHelpers;
 using Codist.Controls;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using R = Codist.Properties.Resources;
-using System.Windows.Documents;
-using System.Windows;
 
 namespace Codist
 {
@@ -27,7 +27,7 @@ namespace Codist
 			}
 			tip.Title
 				.Append($"{symbol.GetAccessibility()}{symbol.GetAbstractionModifier()}{symbol.GetValueAccessModifier()}{symbol.GetSymbolKindName()} ")
-				.Append(symbol.Name, true)
+				.Append(symbol.GetOriginalName(), true)
 				.Append(symbol.GetParameterString(true));
 			var content = tip.Content;
 			var t = symbol.GetReturnType();
@@ -44,6 +44,13 @@ namespace Codist
 			}
 			else if (symbol.Kind == SymbolKind.TypeParameter) {
 				ShowTypeParameter(content, symbol);
+			}
+			foreach (var item in symbol.GetExplicitInterfaceImplementations()) {
+				content.AppendLineBreak()
+					.Append(R.T_ExplicitImplements)
+					.Append(item.ContainingType.GetTypeName())
+					.Append(".")
+					.Append(item.Name);
 			}
 			t = symbol.ContainingType;
 			if (t != null && t.TypeKind != TypeKind.Enum) {
@@ -181,7 +188,7 @@ namespace Codist
 		static void ShowXmlDocSummary(ISymbol symbol, Compilation compilation, ThemedToolTip tip) {
 			var doc = new XmlDoc(symbol, compilation);
 			var summary = doc.GetDescription(symbol)
-				?? (Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.DocumentationFromInheritDoc) ? doc.GetInheritedDescription(symbol, out doc) : null);
+				?? (Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.DocumentationFromInheritDoc) ? doc.GetInheritedDescription(symbol, out _) : null);
 			if (summary != null) {
 				var docContent = tip.AddTextBlock();
 				new XmlDocRenderer(compilation, SymbolFormatter.Instance).Render(summary, docContent);
@@ -379,6 +386,5 @@ namespace Codist
 			Negative,
 			Unsigned
 		}
-
 	}
 }

@@ -88,7 +88,7 @@ namespace Codist.Controls
 					break;
 			}
 			if (_Host.Context.SemanticModel != null) {
-				if (_Host.Node != null && _Host.Node.Kind().IsDeclaration()
+				if (_Host.Node?.Kind().IsDeclaration() == true
 					&& _Host.Node.SyntaxTree == _Host.Context.SemanticModel.SyntaxTree
 					&& _Host.Symbol.Kind != SymbolKind.Namespace) {
 					Items.Add(CreateItem(IconIds.FindReferencingSymbols, R.CMD_FindReferencedSymbols, _Host.FindReferencedSymbols));
@@ -134,7 +134,6 @@ namespace Codist.Controls
 						.HandleEvent(MenuItem.ClickEvent, _Host.RunUnitTest));
 				}
 			}
-
 		}
 
 		public void AddTitleItem(string name) {
@@ -426,17 +425,17 @@ namespace Codist.Controls
 				}
 			}
 
-			[SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			public async void FindSymbolMembers(object sender, RoutedEventArgs e) {
 				await _SemanticContext.FindMembersAsync(_Symbol);
 			}
 
-			[SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			public async void FindReturnTypeMembers(object sender, RoutedEventArgs e) {
 				await _SemanticContext.FindMembersAsync(_Symbol.GetReturnType().ResolveElementType());
 			}
 
-			[SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			public async void FindSpecialGenericReturnTypeMembers(object sender, RoutedEventArgs e) {
 				await _SemanticContext.FindMembersAsync(_Symbol.GetReturnType().ResolveElementType().ResolveSingleGenericTypeArgument());
 			}
@@ -450,7 +449,7 @@ namespace Codist.Controls
 						.OrderBy(i => i.Key.ContainingType == containerType ? null : (i.Key.ContainingType ?? i.Key).Name)
 						.ThenBy(i => i.Key.Name)
 						.Select(i => i.Key)) {
-					var sl = s.DeclaringSyntaxReferences.First();
+					var sl = s.DeclaringSyntaxReferences[0];
 					SymbolItem i;
 					if (sl.SyntaxTree.FilePath != loc) {
 						i = m.Add(sl.ToLocation());
@@ -472,32 +471,32 @@ namespace Codist.Controls
 				m.Show();
 			}
 
-			[SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			public async void FindReferrers(object sender, RoutedEventArgs e) {
 				await _SemanticContext.FindReferrersAsync(_Symbol);
 			}
 
-			[SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			public async void FindTypeReferrers(object sender, RoutedEventArgs e) {
 				await _SemanticContext.FindReferrersAsync(_Symbol, s => s.Kind == SymbolKind.NamedType, IsTypeReference);
 			}
 
-			[SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			public async void FindOverrides(object sender, RoutedEventArgs e) {
 				await _SemanticContext.FindOverridesAsync(_Symbol);
 			}
 
-			[SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			public async void FindDerivedClasses(object sender, RoutedEventArgs e) {
 				await _SemanticContext.FindDerivedClassesAsync(_Symbol);
 			}
 
-			[SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			public async void FindImplementations(object sender, RoutedEventArgs e) {
 				await _SemanticContext.FindImplementationsAsync(_Symbol);
 			}
 
-			[SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			public async void FindSubInterfaces(object sender, RoutedEventArgs e) {
 				await _SemanticContext.FindSubInterfacesAsync(_Symbol);
 			}
@@ -506,12 +505,12 @@ namespace Codist.Controls
 				_SemanticContext.FindMethodsBySignature(_Symbol);
 			}
 
-			[SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			public async void FindExtensionMethods(object sender, RoutedEventArgs e) {
 				await _SemanticContext.FindExtensionMethodsAsync(_Symbol);
 			}
 
-			[SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			public async void FindReturnTypeExtensionMethods(object sender, RoutedEventArgs e) {
 				await _SemanticContext.FindExtensionMethodsAsync(_Symbol.GetReturnType());
 			}
@@ -520,32 +519,32 @@ namespace Codist.Controls
 				_SemanticContext.FindSymbolWithName(_Symbol);
 			}
 
-			[SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			public async void FindConstructorReferrers(object sender, RoutedEventArgs e) {
 				await _SemanticContext.FindReferrersAsync(_SemanticContext.SemanticModel.GetSymbolOrFirstCandidate(_Node.GetObjectCreationNode()));
 			}
 
-			[SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			public async void FindObjectInitializers(object sender, RoutedEventArgs e) {
 				await _SemanticContext.FindReferrersAsync(_Symbol, s => s.Kind == SymbolKind.Method);
 			}
 
-			[SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			public async void FindInstanceProducers(object sender, RoutedEventArgs e) {
 				await _SemanticContext.FindInstanceProducerAsync(_Symbol);
 			}
 
-			[SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			public async void FindContainingTypeInstanceProducers(object sender, RoutedEventArgs e) {
 				await _SemanticContext.FindInstanceProducerAsync(_Symbol.ContainingType);
 			}
 
-			[SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			public async void FindInstanceConsumers(object sender, RoutedEventArgs e) {
 				await _SemanticContext.FindInstanceAsParameterAsync(_Symbol);
 			}
 
-			[SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "Event handler")]
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			public async void FindContainingTypeInstanceConsumers(object sender, RoutedEventArgs e) {
 				await _SemanticContext.FindInstanceAsParameterAsync(_Symbol.ContainingType);
 			}

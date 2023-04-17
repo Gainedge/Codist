@@ -652,7 +652,7 @@ Use space to separate keywords.</value>
     <value>Enum underlying type: </value>
   </data>
   <data name="T_ExplicitImplements" xml:space="preserve">
-    <value>Explicit implements:</value>
+    <value>Explicit implements: </value>
   </data>
   <data name="T_HashCode" xml:space="preserve">
     <value>Hash code</value>
@@ -2441,5 +2441,11 @@ Expression too long</value>
   </data>
   <data name="OT_UseCodeEditorFontForSeeTip" xml:space="preserve">
     <value>Render referenced names of &lt;see/&gt;, &lt;paramref/&gt;, &lt;typeparamref/&gt; with code editor font</value>
+  </data>
+  <data name="T_Discard" xml:space="preserve">
+    <value>discard</value>
+  </data>
+  <data name="T_ActiveWindowProperties" xml:space="preserve">
+    <value>Active Window Properties</value>
   </data>
 </root>

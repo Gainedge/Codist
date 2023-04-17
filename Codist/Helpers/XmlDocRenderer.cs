@@ -113,7 +113,6 @@ namespace Codist
 						.AddXmlDoc(returns, this))
 						);
 				}
-
 			}
 			#endregion
 			#region Value
@@ -525,7 +524,7 @@ namespace Codist
 				return;
 			}
 			if (Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.ContainingType)) {
-				ShowContainingType(inlines, s, _SymbolFormatter);
+				ShowContainingType(inlines, s, SymbolFormatter.SemiTransparent);
 			}
 			_SymbolFormatter.Format(inlines, s, null, false);
 
@@ -586,7 +585,8 @@ namespace Codist
 			if (_CodeFont != null) {
 				return _CodeFont;
 			}
-			ThemeHelper.GetFontSettings(Microsoft.VisualStudio.Shell.Interop.FontsAndColorsCategory.TextEditor, out var fontName, out var fontSize);
+
+			ThemeHelper.GetFontSettings(Microsoft.VisualStudio.Shell.Interop.FontsAndColorsCategory.TextEditor, out var fontName, out _);
 			return _CodeFont = new FontFamily(fontName);
 		}
 

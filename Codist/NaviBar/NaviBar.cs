@@ -1,11 +1,11 @@
 ﻿using System;
+using System.Windows;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Codist.Controls;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text.Editor;
-using System.Windows;
-using System.Windows.Automation.Peers;
 
 namespace Codist.NaviBar
 {
@@ -33,8 +33,7 @@ namespace Codist.NaviBar
 		internal ExternalAdornment ListContainer { get; private set; }
 
 		protected override void OnPreviewMouseRightButtonUp(MouseButtonEventArgs e) {
-			var h = WpfHelper.GetParentOrSelf<DependencyObject>(e.Source as DependencyObject, o => o is IContextMenuHost) as IContextMenuHost;
-			if (h != null) {
+			if ((e.Source as DependencyObject).GetParentOrSelf<DependencyObject>(o => o is IContextMenuHost) is IContextMenuHost h) {
 				h.ShowContextMenu(e);
 				e.Handled = true;
 			}
