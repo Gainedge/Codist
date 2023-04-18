@@ -10,7 +10,7 @@ namespace Codist.Margins
 	[Order(After = PredefinedMarginNames.OverviewChangeTracking, Before = PredefinedMarginNames.OverviewMark)]
 	[MarginContainer(PredefinedMarginNames.VerticalScrollBar)]
 	[ContentType(Constants.CodeTypes.Code)]
-	[ContentType("projection")]
+	[ContentType(Constants.CodeTypes.Projection)]
 	[TextViewRole(PredefinedTextViewRoles.Interactive)]
 	sealed class CommentMarginFactory : IWpfTextViewMarginProvider
 	{
@@ -73,7 +73,10 @@ namespace Codist.Margins
 	sealed class DisableChangeTrackerMarginFactory : IWpfTextViewMarginProvider
 	{
 		public IWpfTextViewMargin CreateMargin(IWpfTextViewHost wpfTextViewHost, IWpfTextViewMargin marginContainer) {
-			return CodistPackage.VsVersion.Major >= 17 && wpfTextViewHost.TextView.TextBuffer.MayBeEditor() ? new DisableChangeTrackerMargin(marginContainer) : null;
+			return CodistPackage.VsVersion.Major >= 17
+				&& wpfTextViewHost.TextView.TextBuffer.MayBeEditor()
+				? new DisableChangeTrackerMargin(marginContainer)
+				: null;
 		}
 	}
 

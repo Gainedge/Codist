@@ -92,7 +92,7 @@ namespace Codist.Taggers
 			IWpfTextView _View;
 			CSharpTagger _Container;
 			ITextBuffer _Buffer;
-			CancellationTokenSource _TaskBreaker;
+			CancellationTokenSource _ParserBreaker, _RenderBreaker;
 			AsyncParser _Parser;
 			Timer _Timer;
 			ParseResult _ParseResult;
@@ -146,7 +146,7 @@ namespace Codist.Taggers
 				var snapshot = spans[0].Snapshot;
 				var isNewSnapshot = _ParseResult?.Snapshot != snapshot;
 				if (isNewSnapshot == false) {
-					return Tagger.GetTags(spans, _ParseResult, _TaskBreaker.GetToken());
+					return Tagger.GetTags(spans, _ParseResult, SyncHelper.CancelAndRetainToken(ref _RenderBreaker));
 				}
 				if (snapshot.TextBuffer != _Buffer) {
 					goto NA;
@@ -156,7 +156,7 @@ namespace Codist.Taggers
 					// don't schedule parsing unless snapshot is changed
 					if (_Parser.State == ParserState.Working) {
 						// cancel existing parsing
-						_TaskBreaker?.Cancel();
+						_ParserBreaker?.Cancel();
 					}
 					_Timer.Change(_ParseResult != null ? 300 : 100, Timeout.Infinite);
 				}
@@ -165,7 +165,7 @@ namespace Codist.Taggers
 					EnqueueSpans(spans);
 				}
 				if (_ParseResult != null && _ParseResult.Snapshot.TextBuffer == snapshot.TextBuffer) {
-					return UseOldResult(spans, snapshot, _ParseResult, _TaskBreaker.GetToken());
+					return UseOldResult(spans, snapshot, _ParseResult, SyncHelper.CancelAndRetainToken(ref _RenderBreaker));
 				}
 			NA:
 				return Enumerable.Empty<ITagSpan<IClassificationTag>>();
@@ -223,7 +223,7 @@ namespace Codist.Taggers
 			}
 
 			void StartAsyncParser(object state) {
-				_Parser?.Start(_Buffer, SyncHelper.CancelAndRetainToken(ref _TaskBreaker));
+				_Parser?.Start(_Buffer, SyncHelper.CancelAndRetainToken(ref _ParserBreaker));
 			}
 
 			void EnqueueSpans(NormalizedSnapshotSpanCollection spans) {
@@ -336,10 +336,10 @@ namespace Codist.Taggers
 			}
 
 			internal void ReleaseAsyncTimer() {
-				if (_TaskBreaker != null) {
-					_TaskBreaker.Cancel();
-					_TaskBreaker.Dispose();
-					_TaskBreaker = null;
+				if (_ParserBreaker != null) {
+					_ParserBreaker.Cancel();
+					_ParserBreaker.Dispose();
+					_ParserBreaker = null;
 				}
 				_Timer?.Dispose();
 				_Timer = null;
@@ -351,11 +351,8 @@ namespace Codist.Taggers
 					_View.LostAggregateFocus -= View_LostFocus;
 					_View = null;
 				}
-				if (_TaskBreaker != null) {
-					_TaskBreaker.Cancel();
-					_TaskBreaker.Dispose();
-					_TaskBreaker = null;
-				}
+				SyncHelper.CancelAndDispose(ref _ParserBreaker, false);
+				SyncHelper.CancelAndDispose(ref _RenderBreaker, false);
 				if (_Buffer != null) {
 					UnsubscribeBufferEvents(_Buffer);
 					_Container._Taggers.Remove(_Buffer);
@@ -521,7 +518,7 @@ namespace Codist.Taggers
 							//|| ct == Constants.CodeStaticSymbol
 							|| ct.EndsWith("name", StringComparison.Ordinal)) {
 							var itemSpan = item.TextSpan;
-							node = unitCompilation.FindNode(itemSpan, true);
+							node = unitCompilation.FindNode(itemSpan, true, true);
 							foreach (var type in GetClassificationType(node, semanticModel, cancellationToken)) {
 								tags.Add(CreateClassificationSpan(snapshot, itemSpan, type));
 							}
@@ -665,18 +662,37 @@ namespace Codist.Taggers
 				if (node.RawKind == (int)SyntaxKind.DestructorDeclaration) {
 					return CreateClassificationSpan(snapshot, itemSpan, TransientTags.DestructorDeclaration);
 				}
-				var opMethod = semanticModel.GetSymbol(node.IsKind(SyntaxKind.Argument) ? ((ArgumentSyntax)node).Expression : node, cancellationToken) as IMethodSymbol;
-				if (opMethod?.MethodKind == MethodKind.UserDefinedOperator) {
-					return CreateClassificationSpan(snapshot,
-						itemSpan,
-						node.RawKind == (int)SyntaxKind.OperatorDeclaration
-							? TransientTags.OverrideDeclaration
-							: __Classifications.OverrideMember);
+				if (node.IsKind(SyntaxKind.ArrowExpressionClause)) {
+					switch (node.Parent.Kind()) {
+						case SyntaxKind.MethodDeclaration:
+							return CreateClassificationSpan(snapshot, itemSpan, CSharpClassifications.Instance.Method);
+						case SyntaxKind.PropertyDeclaration:
+						case SyntaxKind.GetAccessorDeclaration:
+						case SyntaxKind.SetAccessorDeclaration:
+						case SyntaxKind.IndexerDeclaration:
+							return CreateClassificationSpan(snapshot, itemSpan, CSharpClassifications.Instance.Property);
+						case SyntaxKind.AddAccessorDeclaration:
+						case SyntaxKind.RemoveAccessorDeclaration:
+							return CreateClassificationSpan(snapshot, itemSpan, CSharpClassifications.Instance.Event);
+						case SyntaxKind.ConstructorDeclaration:
+						case SyntaxKind.DestructorDeclaration:
+							return CreateClassificationSpan(snapshot, itemSpan, CSharpClassifications.Instance.ConstructorMethod);
+					}
+					return null;
 				}
-				if (opMethod?.MethodKind == MethodKind.LambdaMethod) {
-					var l = ClassifyLambdaExpression(itemSpan, snapshot, semanticModel, unitCompilation);
-					if (l != null) {
-						return l;
+				if (semanticModel.GetSymbol(node.IsKind(SyntaxKind.Argument) ? ((ArgumentSyntax)node).Expression : node, cancellationToken) is IMethodSymbol opMethod) {
+					if (opMethod.MethodKind == MethodKind.UserDefinedOperator) {
+						return CreateClassificationSpan(snapshot,
+							itemSpan,
+							node.RawKind == (int)SyntaxKind.OperatorDeclaration
+								? TransientTags.OverrideDeclaration
+								: __Classifications.OverrideMember);
+					}
+					if (opMethod.MethodKind == MethodKind.LambdaMethod) {
+						var l = ClassifyLambdaExpression(itemSpan, snapshot, semanticModel, unitCompilation);
+						if (l != null) {
+							return l;
+						}
 					}
 				}
 				return null;
@@ -693,7 +709,7 @@ namespace Codist.Taggers
 							return ClassifyCurlyBraces(itemSpan, snapshot, unitCompilation);
 						case '[':
 						case ']':
-							return ClassifyBrackets(itemSpan, snapshot, unitCompilation);
+							return ClassifyBrackets(itemSpan, snapshot, semanticModel, unitCompilation, cancellationToken);
 					}
 				}
 				return null;
@@ -704,11 +720,16 @@ namespace Codist.Taggers
 				if (node is BaseTypeDeclarationSyntax == false
 					&& node is ExpressionSyntax == false
 					&& node is NamespaceDeclarationSyntax == false
+					&& node is AccessorDeclarationSyntax == false
 					&& !node.IsKind(SyntaxKind.SwitchStatement)
 					&& (node = node.Parent) == null) {
 					return null;
 				}
-				var type = ClassifySyntaxNode(node, node is ExpressionSyntax ? HighlightOptions.MemberBraceTags : HighlightOptions.MemberDeclarationBraceTags, HighlightOptions.KeywordBraceTags);
+				var type = ClassifySyntaxNode(node,
+					node is ExpressionSyntax || node is AccessorDeclarationSyntax
+						? HighlightOptions.MemberBraceTags
+						: HighlightOptions.MemberDeclarationBraceTags,
+					HighlightOptions.KeywordBraceTags);
 				return type != null
 					? CreateClassificationSpan(snapshot, itemSpan, type)
 					: null;
@@ -777,23 +798,32 @@ namespace Codist.Taggers
 				return null;
 			}
 
-			static TagSpan<IClassificationTag> ClassifyBrackets(TextSpan itemSpan, ITextSnapshot snapshot, CompilationUnitSyntax unitCompilation) {
-				// highlight attribute annotation
+			static TagSpan<IClassificationTag> ClassifyBrackets(TextSpan itemSpan, ITextSnapshot snapshot, SemanticModel semanticModel, CompilationUnitSyntax unitCompilation, CancellationToken cancellationToken) {
 				var node = unitCompilation.FindNode(itemSpan, true, false);
+				if (node.IsKind(SyntaxKind.Argument)) {
+					node = ((ArgumentSyntax)node).Expression;
+				}
 				switch (node.Kind()) {
+					case SyntaxKind.BracketedArgumentList:
+						return (node = node.Parent).IsKind(SyntaxKind.ElementAccessExpression)
+							&& semanticModel.GetTypeInfo(((ElementAccessExpressionSyntax)node).Expression, cancellationToken).Type?.TypeKind != TypeKind.Array
+							? CreateClassificationSpan(snapshot, itemSpan, HighlightOptions.MemberBraceTags.Property)
+							: node.IsKind(SyntaxKind.VariableDeclarator)
+							? CreateClassificationSpan(snapshot, itemSpan, HighlightOptions.MemberDeclarationBraceTags.Constructor)
+							: null;
+					case SyntaxKind.BracketedParameterList:
+						return node.Parent.IsKind(SyntaxKind.IndexerDeclaration)
+							? CreateClassificationSpan(snapshot, itemSpan, HighlightOptions.MemberDeclarationBraceTags.Property)
+							: null;
 					case SyntaxKind.AttributeList:
 						return CreateClassificationSpan(snapshot, node.Span, __Classifications.AttributeNotation);
 					case SyntaxKind.ArrayRankSpecifier:
-						return node.Parent.Parent.IsKind(SyntaxKind.ArrayCreationExpression)
+						return node.Parent.Parent.Kind().IsAny(SyntaxKind.ArrayCreationExpression, SyntaxKind.StackAllocArrayCreationExpression, SyntaxKind.ImplicitStackAllocArrayCreationExpression)
 							? CreateClassificationSpan(snapshot, itemSpan, HighlightOptions.MemberBraceTags.Constructor)
 							: null;
 					case SyntaxKind.ImplicitStackAllocArrayCreationExpression:
 					case SyntaxKind.ImplicitArrayCreationExpression:
 						return CreateClassificationSpan(snapshot, itemSpan, HighlightOptions.MemberBraceTags.Constructor);
-					case SyntaxKind.Argument:
-						return ((ArgumentSyntax)node).Expression.IsKind(SyntaxKind.ImplicitStackAllocArrayCreationExpression)
-							? CreateClassificationSpan(snapshot, itemSpan, HighlightOptions.MemberBraceTags.Constructor)
-							: null;
 				}
 				return null;
 			}
@@ -855,18 +885,28 @@ namespace Codist.Taggers
 					case CodeAnalysisHelper.WithInitializerExpression:
 						return tag.Constructor;
 					case SyntaxKind.IndexerDeclaration:
-					case SyntaxKind.PropertyDeclaration: return tag.Property;
+					case SyntaxKind.PropertyDeclaration:
+					case SyntaxKind.GetAccessorDeclaration:
+					case SyntaxKind.SetAccessorDeclaration:
+						return tag.Property;
 					case SyntaxKind.ClassDeclaration:
 					case CodeAnalysisHelper.RecordDeclaration:
 						return tag.Class;
-					case SyntaxKind.InterfaceDeclaration: return tag.Interface;
-					case SyntaxKind.EnumDeclaration: return tag.Enum;
+					case SyntaxKind.InterfaceDeclaration:
+						return tag.Interface;
+					case SyntaxKind.EnumDeclaration:
+						return tag.Enum;
 					case CodeAnalysisHelper.RecordStructDeclaration:
 					case SyntaxKind.StructDeclaration:
 						return tag.Struct;
-					case SyntaxKind.Attribute: return __Classifications.AttributeName;
-					case SyntaxKind.EventDeclaration: return tag.Event;
-					case SyntaxKind.DelegateDeclaration: return tag.Delegate;
+					case SyntaxKind.Attribute:
+						return __Classifications.AttributeName;
+					case SyntaxKind.EventDeclaration:
+					case SyntaxKind.AddAccessorDeclaration:
+					case SyntaxKind.RemoveAccessorDeclaration:
+						return tag.Event;
+					case SyntaxKind.DelegateDeclaration:
+						return tag.Delegate;
 					case SyntaxKind.NamespaceDeclaration:
 						return tag.Namespace;
 					case SyntaxKind.IfStatement:
@@ -899,8 +939,6 @@ namespace Codist.Taggers
 			}
 
 			static Chain<ClassificationTag> GetClassificationType(SyntaxNode node, SemanticModel semanticModel, CancellationToken cancellationToken) {
-				node = node.IsKind(SyntaxKind.Argument) ? ((ArgumentSyntax)node).Expression : node;
-				//System.Diagnostics.Debug.WriteLine(node.GetType().Name + node.Span.ToString());
 				var symbol = semanticModel.GetSymbolInfo(node, cancellationToken).Symbol;
 				var tags = new Chain<ClassificationTag>();
 				if (symbol is null) {
@@ -930,7 +968,10 @@ namespace Codist.Taggers
 									: __Classifications.Declaration);
 								break;
 							case SymbolKind.Event:
-								tags.Add(__Classifications.NestedDeclaration);
+								if (HighlightOptions.NonPrivateField
+									&& symbol.DeclaredAccessibility >= Accessibility.ProtectedAndInternal) {
+									tags.Add(__Classifications.NestedDeclaration);
+								}
 								break;
 							case SymbolKind.Method:
 								if (HighlightOptions.LocalFunctionDeclaration
@@ -961,6 +1002,8 @@ namespace Codist.Taggers
 							case SymbolKind.Local:
 								tags.Add(__Classifications.LocalDeclaration);
 								break;
+							case SymbolKind.RangeVariable:
+								return tags.Add(__Classifications.LocalDeclaration);
 						}
 					}
 				}
@@ -1130,10 +1173,21 @@ namespace Codist.Taggers
 
 		static class TransientTags
 		{
-			public static readonly ClassificationTag ClassDeclaration = ClassificationTagHelper.CreateTransientClassificationTag(__Classifications.ClassName.ClassificationType, ClassificationTagHelper.Declaration);
-			public static readonly ClassificationTag StructDeclaration = ClassificationTagHelper.CreateTransientClassificationTag(__Classifications.StructName.ClassificationType, ClassificationTagHelper.Declaration);
-			public static readonly ClassificationTag DestructorDeclaration = ClassificationTagHelper.CreateTransientClassificationTag(__Classifications.ResourceKeyword, __Classifications.Declaration);
-			public static readonly ClassificationTag OverrideDeclaration = ClassificationTagHelper.CreateTransientClassificationTag(__Classifications.OverrideMember, __Classifications.Declaration);
+			public static readonly ClassificationTag ClassDeclaration = ClassificationTagHelper.CreateTransientClassificationTag(__Classifications.ClassName, __Classifications.Declaration);
+
+			public static readonly ClassificationTag StructDeclaration = ClassificationTagHelper.CreateTransientClassificationTag(__Classifications.StructName, __Classifications.Declaration);
+
+			public static readonly ClassificationTag ConstructorDeclaration = ClassificationTagHelper.CreateTransientClassificationTag(__Classifications.ConstructorMethod, __Classifications.NestedDeclaration);
+
+			public static readonly ClassificationTag MethodDeclaration = ClassificationTagHelper.CreateTransientClassificationTag(__Classifications.Method, __Classifications.NestedDeclaration);
+
+			public static readonly ClassificationTag EventDeclaration = ClassificationTagHelper.CreateTransientClassificationTag(__Classifications.Event, __Classifications.NestedDeclaration);
+
+			public static readonly ClassificationTag PropertyDeclaration = ClassificationTagHelper.CreateTransientClassificationTag(__Classifications.Property, __Classifications.NestedDeclaration);
+
+			public static readonly ClassificationTag DestructorDeclaration = ClassificationTagHelper.CreateTransientClassificationTag(__Classifications.ResourceKeyword, __Classifications.NestedDeclaration);
+
+			public static readonly ClassificationTag OverrideDeclaration = ClassificationTagHelper.CreateTransientClassificationTag(__Classifications.OverrideMember, __Classifications.NestedDeclaration);
 		}
 
 		static class HighlightOptions

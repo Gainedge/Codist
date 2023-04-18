@@ -30,26 +30,38 @@ namespace Codist
 		}
 
 		public static ISymbol GetSymbolExt(this SemanticModel semanticModel, SyntaxNode node, CancellationToken cancellationToken = default) {
-			return (node is AttributeArgumentSyntax
-						? semanticModel.GetSymbolInfo(((AttributeArgumentSyntax)node).Expression, cancellationToken).Symbol
-						: null)
-					?? (node is SimpleBaseTypeSyntax || node is TypeConstraintSyntax
-						? semanticModel.GetSymbolInfo(node.FindNode(node.Span, false, true), cancellationToken).Symbol
-						: null)
-					?? (node is ArgumentListSyntax
-						? semanticModel.GetSymbolInfo(node.Parent, cancellationToken).Symbol
-						: null)
-					?? (node.Parent is MemberAccessExpressionSyntax
-						? semanticModel.GetSymbolInfo(node.Parent, cancellationToken).CandidateSymbols.FirstOrDefault()
-						: null)
-					?? (node.Parent is ArgumentSyntax
-						? semanticModel.GetSymbolInfo(((ArgumentSyntax)node.Parent).Expression, cancellationToken).CandidateSymbols.FirstOrDefault()
-						: null)
-					?? (node is AccessorDeclarationSyntax
-						? semanticModel.GetDeclaredSymbol(node, cancellationToken)
-						: null)
-					?? (node is TypeParameterSyntax || node is ParameterSyntax || node.RawKind == (int)RecordDeclaration || node.RawKind == (int)RecordStructDeclaration ? semanticModel.GetDeclaredSymbol(node, cancellationToken) : null)
-					?? (node.Parent.IsKind(SyntaxKind.ElementAccessExpression) ? semanticModel.GetSymbolInfo((ElementAccessExpressionSyntax)node.Parent, cancellationToken).Symbol : null);
+			SyntaxKind k;
+			ISymbol s = null;
+			if ((k = node.Kind()) == SyntaxKind.AttributeArgument) {
+				s = semanticModel.GetSymbolInfo(((AttributeArgumentSyntax)node).Expression, cancellationToken).Symbol;
+			}
+			else if (node is SimpleBaseTypeSyntax || k == SyntaxKind.TypeConstraint) {
+				s = semanticModel.GetSymbolInfo(node.FindNode(node.Span, false, true), cancellationToken).Symbol;
+			}
+			else if (k == SyntaxKind.ArgumentList) {
+				s = semanticModel.GetSymbolInfo(node.Parent, cancellationToken).Symbol;
+			}
+			else if (node is AccessorDeclarationSyntax) {
+				s = semanticModel.GetDeclaredSymbol(node, cancellationToken);
+			}
+			else if (k.IsAny(SyntaxKind.TypeParameter, SyntaxKind.Parameter, RecordDeclaration, RecordStructDeclaration)) {
+				s = semanticModel.GetDeclaredSymbol(node, cancellationToken);
+			}
+			if (s != null) {
+				return s;
+			}
+			node = node.Parent;
+			k = node.Kind();
+			if (k.IsAny(SyntaxKind.SimpleMemberAccessExpression, SyntaxKind.PointerMemberAccessExpression)) {
+				s = semanticModel.GetSymbolInfo(node, cancellationToken).CandidateSymbols.FirstOrDefault();
+			}
+			else if (k == SyntaxKind.Argument) {
+				s = semanticModel.GetSymbolInfo(((ArgumentSyntax)node).Expression, cancellationToken).CandidateSymbols.FirstOrDefault();
+			}
+			else if (k == SyntaxKind.ElementAccessExpression) {
+				s = semanticModel.GetSymbolInfo((ElementAccessExpressionSyntax)node, cancellationToken).Symbol;
+			}
+			return s;
 		}
 
 		public static ISymbol GetSymbolOrFirstCandidate(this SemanticModel semanticModel, SyntaxNode node, CancellationToken cancellationToken = default) {
@@ -188,11 +200,12 @@ namespace Codist
 					}
 					break;
 				case SymbolKind.Property:
-					var p = ((IPropertySymbol)symbol).ExplicitInterfaceImplementations;
+					var ps = (IPropertySymbol)symbol;
+					var p = ps.ExplicitInterfaceImplementations;
 					if (p.Length != 0) {
-						return p[0].Name;
+						return ps.IsIndexer ? p[0].Name.Replace("[]", String.Empty) : p[0].Name;
 					}
-					break;
+					return ps.IsIndexer ? ps.Name.Replace("[]", String.Empty) : ps.Name;
 				case SymbolKind.Event:
 					var e = ((IEventSymbol)symbol).ExplicitInterfaceImplementations;
 					if (e.Length != 0) {
@@ -304,6 +317,20 @@ namespace Codist
 		public static bool IsAnyKind(this ISymbol symbol, SymbolKind kind, SymbolKind kind2, SymbolKind kind3) {
 			SymbolKind k;
 			return (k = symbol.Kind) == kind || k == kind2 || k == kind3;
+		}
+
+		public static ISymbol GetUnderlyingSymbol(this ISymbol symbol) {
+			switch (symbol.Kind) {
+				case SymbolKind.ArrayType:
+					return ((IArrayTypeSymbol)symbol).ElementType.GetUnderlyingSymbol();
+				case SymbolKind.PointerType:
+					return ((IPointerTypeSymbol)symbol).PointedAtType.GetUnderlyingSymbol();
+				case SymbolKind.Alias:
+					return ((IAliasSymbol)symbol).Target.GetUnderlyingSymbol();
+				case SymbolKind.Discard:
+					return ((IDiscardSymbol)symbol).Type.GetUnderlyingSymbol();
+			}
+			return symbol;
 		}
 
 		public static ISymbol GetAliasTarget(this ISymbol symbol) {
@@ -1095,26 +1122,30 @@ namespace Codist
 
 		public static IMethodSymbol AsMethod(this ISymbol symbol) {
 			switch (symbol.Kind) {
-				case SymbolKind.Method: return symbol as IMethodSymbol;
+				case SymbolKind.Method: return (IMethodSymbol)symbol;
 				case SymbolKind.Event: return ((IEventSymbol)symbol).RaiseMethod;
 				case SymbolKind.NamedType:
-					var t = symbol as INamedTypeSymbol;
+					var t = (INamedTypeSymbol)symbol;
 					return t.TypeKind == TypeKind.Delegate ? t.DelegateInvokeMethod : null;
 				default: return null;
 			}
 		}
 
-		public static async Task<Project> GetProjectAsync(this ISymbol symbol, Solution solution, CancellationToken cancellationToken = default) {
+		public static Task<Project> GetProjectAsync(this ISymbol symbol, Solution solution, CancellationToken cancellationToken = default) {
 			var asm = symbol.ContainingAssembly;
-			if (asm != null) {
-				foreach (var item in solution.Projects) {
+			return asm == null
+				? Task.FromResult<Project>(null)
+				: GetProjectAsync(asm, solution, cancellationToken);
+
+			async Task<Project> GetProjectAsync(IAssemblySymbol a, Solution s, CancellationToken ct) {
+				foreach (var item in s.Projects) {
 					if (item.SupportsCompilation
-						&& (await item.GetCompilationAsync(cancellationToken).ConfigureAwait(false)).Assembly == asm) {
+						&& (await item.GetCompilationAsync(ct).ConfigureAwait(false)).Assembly == a) {
 						return item;
 					}
 				}
+				return null;
 			}
-			return null;
 		}
 		#endregion
 
@@ -1428,7 +1459,9 @@ namespace Codist
 
 		public static int CompareByFieldIntegerConst(ISymbol a, ISymbol b) {
 			IFieldSymbol fa = a as IFieldSymbol, fb = b as IFieldSymbol;
-			return fa == null ? -1 : fb == null ? 1 : Convert.ToInt64(fa.ConstantValue).CompareTo(Convert.ToInt64(fb.ConstantValue));
+			return fa == null ? -1
+				: fb == null ? 1
+				: Convert.ToInt64(fa.ConstantValue).CompareTo(Convert.ToInt64(fb.ConstantValue));
 		}
 
 		public static bool IsBoundedGenericType(this INamedTypeSymbol type) {
@@ -1485,13 +1518,8 @@ namespace Codist
 					}
 				}
 			}
-			if (typeParameters.IsDefault == false) {
-				var typeParams = method.TypeParameters;
-				if (typeParams.Length != typeParameters.Length) {
-					return false;
-				}
-			}
-			return true;
+			return typeParameters.IsDefaultOrEmpty
+				|| method.TypeParameters.Length == typeParameters.Length;
 		}
 
 		/// <summary>Returns whether a symbol could have an override.</summary>
@@ -1598,7 +1626,7 @@ namespace Codist
 					il.Emit(OpCodes.Ldc_I4_2);
 					il.Emit(OpCodes.Ret);
 				}
-				return m.CreateDelegate(typeof(Func<IAssemblySymbol, int>)) as Func<IAssemblySymbol, int>;
+				return m.CreateDelegate<Func<IAssemblySymbol, int>>();
 			}
 		}
 

@@ -62,6 +62,13 @@ namespace Codist.Commands
 			Section s;
 
 			var view = window.Document?.GetActiveWpfDocumentView();
+			if (view == null) {
+				view = TextEditorHelper.GetActiveWpfInteractiveView();
+				if (view?.VisualElement.IsFocused == false) {
+					view = null;
+				}
+			}
+
 			if (view != null) {
 				var d = view.TextBuffer.GetTextDocument();
 				if (d != null) {
@@ -71,9 +78,7 @@ namespace Codist.Commands
 					AppendNameValue(s, R.T_LastSaved, d.LastSavedTime == default ? R.T_NotSaved : (object)d.LastSavedTime.ToLocalTime());
 					AppendNameValue(s, R.T_LastModified, d.LastContentModifiedTime.ToLocalTime());
 				}
-			}
 
-			if (view != null) {
 				s = NewSection(blocks, "IWpfTextView", SubSectionFontSize);
 				AppendNameValue(s, R.T_LineCount + " (TextSnapshot.LineCount)", view.TextSnapshot.LineCount);
 				AppendNameValue(s, R.T_CharacterCount + " (TextSnapshot.Length)", view.TextSnapshot.Length);
@@ -129,7 +134,6 @@ namespace Codist.Commands
 			AppendNameValue(s, "Type", window.Type);
 			AppendNameValue(s, "AutoHides", window.AutoHides);
 			AppendNameValue(s, "IsFloating", window.IsFloating);
-			AppendNameValue(s, "DocumentData", window.DocumentData);
 			// AppendNameValue(s, "HWnd", window.HWnd); // this property is unavailable in 64bit VS
 			AppendNameValue(s, "Width", window.Width);
 			AppendNameValue(s, "Height", window.Height);
@@ -180,6 +184,7 @@ namespace Codist.Commands
 				AppendNameValue(ss, "Type", doc.Type);
 				AppendNameValue(ss, "ExtenderNames", doc.ExtenderNames);
 				AppendNameValue(ss, "ExtenderCATID", doc.ExtenderCATID);
+				AppendNameValue(ss, "DocumentData", window.DocumentData);
 			}
 
 			ShowSpecialWindowTypeInfo(blocks, window);
