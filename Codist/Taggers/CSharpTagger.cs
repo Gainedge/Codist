@@ -865,9 +865,9 @@ namespace Codist.Taggers
 					case SyntaxKind.AnonymousMethodExpression:
 					case SyntaxKind.SimpleLambdaExpression:
 					case SyntaxKind.ParenthesizedLambdaExpression:
-					case SyntaxKind.LocalFunctionStatement:
 					case SyntaxKind.ConversionOperatorDeclaration:
 					case SyntaxKind.OperatorDeclaration:
+					case SyntaxKind.LocalFunctionStatement:
 						return tag.Method;
 					case SyntaxKind.InvocationExpression:
 						return ((((InvocationExpressionSyntax)node).Expression as IdentifierNameSyntax)?.Identifier.ValueText == "nameof") ? null : tag.Method;
@@ -952,7 +952,6 @@ namespace Codist.Taggers
 							symbol = semanticModel.GetSymbolInfo(attributeArgument.Expression, cancellationToken).Symbol;
 							if (symbol?.Kind == SymbolKind.Field && (symbol as IFieldSymbol)?.IsConst == true) {
 								tags.Add(__Classifications.ConstField);
-								tags.Add(__Classifications.StaticMember);
 							}
 						}
 						symbol = FindSymbolOrSymbolCandidateForNode(node, semanticModel, cancellationToken);
@@ -977,6 +976,9 @@ namespace Codist.Taggers
 								if (HighlightOptions.LocalFunctionDeclaration
 									|| ((IMethodSymbol)symbol).MethodKind != MethodKind.LocalFunction) {
 									tags.Add(__Classifications.NestedDeclaration);
+								}
+								if (((IMethodSymbol)symbol).MethodKind == MethodKind.LocalFunction) {
+									tags.Add(__Classifications.LocalFunctionDeclaration);
 								}
 								break;
 							case SymbolKind.Property:

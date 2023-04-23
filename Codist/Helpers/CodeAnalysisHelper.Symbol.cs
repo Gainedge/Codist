@@ -194,6 +194,7 @@ namespace Codist
 							}
 							break;
 						case MethodKind.Constructor:
+						case MethodKind.StaticConstructor:
 							return m.ContainingType.Name;
 						case MethodKind.Destructor:
 							return "~" + m.ContainingType.Name;
@@ -203,9 +204,12 @@ namespace Codist
 					var ps = (IPropertySymbol)symbol;
 					var p = ps.ExplicitInterfaceImplementations;
 					if (p.Length != 0) {
-						return ps.IsIndexer ? p[0].Name.Replace("[]", String.Empty) : p[0].Name;
+						ps = p[0];
 					}
-					return ps.IsIndexer ? ps.Name.Replace("[]", String.Empty) : ps.Name;
+					if (ps.IsIndexer) {
+						return ps.Name.Replace("[]", String.Empty);
+					}
+					break;
 				case SymbolKind.Event:
 					var e = ((IEventSymbol)symbol).ExplicitInterfaceImplementations;
 					if (e.Length != 0) {
@@ -226,9 +230,7 @@ namespace Codist
 				else if (symbol.IsStatic && symbol.ContainingType?.TypeKind == TypeKind.Interface) {
 					return "static abstract ";
 				}
-				else {
-					return "abstract ";
-				}
+				return "abstract ";
 			}
 			if (symbol.IsStatic) {
 				return "static ";
@@ -239,7 +241,9 @@ namespace Codist
 			if (symbol.IsOverride) {
 				return symbol.IsSealed ? "sealed override " : "override ";
 			}
-			if (symbol.IsSealed && (symbol.Kind == SymbolKind.NamedType && ((INamedTypeSymbol)symbol).TypeKind == TypeKind.Class || symbol.Kind == SymbolKind.Method)) {
+			if (symbol.IsSealed
+				&& (symbol.Kind == SymbolKind.NamedType && ((INamedTypeSymbol)symbol).TypeKind == TypeKind.Class
+					|| symbol.Kind == SymbolKind.Method)) {
 				return "sealed ";
 			}
 			return String.Empty;
@@ -442,6 +446,7 @@ namespace Codist
 			int GetMethodImageId(IMethodSymbol m) {
 				switch (m.MethodKind) {
 					case MethodKind.Constructor:
+					case MethodKind.StaticConstructor:
 						switch (m.DeclaredAccessibility) {
 							case Accessibility.Public: return IconIds.PublicConstructor;
 							case Accessibility.Protected:
@@ -452,6 +457,8 @@ namespace Codist
 							case Accessibility.Internal: return IconIds.InternalConstructor;
 							default: return IconIds.Constructor;
 						}
+					case MethodKind.Destructor:
+						return IconIds.Destructor;
 					case MethodKind.UserDefinedOperator:
 						switch (m.DeclaredAccessibility) {
 							case Accessibility.Public: return KnownImageIds.OperatorPublic;
@@ -929,7 +936,7 @@ namespace Codist
 				&& type.GetBaseTypes().Any(t => t.MatchTypeName(nameof(Attribute), "System"));
 		}
 
-		public static bool IsCommonClass(this ISymbol symbol) {
+		public static bool IsCommonBaseType(this ISymbol symbol) {
 			if (symbol is ITypeSymbol type) {
 				switch (type.SpecialType) {
 					case SpecialType.System_Object:

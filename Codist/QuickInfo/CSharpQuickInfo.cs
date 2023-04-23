@@ -15,7 +15,6 @@ using Microsoft.CodeAnalysis.Text;
 using Microsoft.VisualStudio.Language.Intellisense;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text;
-using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text.Projection;
 using R = Codist.Properties.Resources;
 using Task = System.Threading.Tasks.Task;
@@ -140,7 +139,7 @@ namespace Codist.QuickInfo
 					break;
 				case SyntaxKind.ExclamationEqualsToken:
 				case SyntaxKind.EqualsEqualsToken:
-					symbol = semanticModel.GetTypeInfo(unitCompilation.FindNode(token.Span), cancellationToken).ConvertedType;
+					symbol = semanticModel.GetTypeInfo(unitCompilation.FindNode(token.Span, false, true), cancellationToken).ConvertedType;
 					isConvertedType = true;
 					break;
 				case SyntaxKind.EqualsToken:
@@ -151,6 +150,7 @@ namespace Codist.QuickInfo
 				case SyntaxKind.DefaultKeyword:
 				case SyntaxKind.SwitchKeyword:
 				case SyntaxKind.QuestionToken:
+				case SyntaxKind.ColonToken:
 				case SyntaxKind.QuestionQuestionToken:
 				case CodeAnalysisHelper.QuestionQuestionEqualsToken:
 				case SyntaxKind.UnderscoreToken:
@@ -167,7 +167,7 @@ namespace Codist.QuickInfo
 					isConvertedType = true;
 					break;
 				case SyntaxKind.AsKeyword:
-					var asType = (unitCompilation.FindNode(token.Span) as BinaryExpressionSyntax)?.GetLastIdentifier();
+					var asType = (unitCompilation.FindNode(token.Span, false, true) as BinaryExpressionSyntax)?.GetLastIdentifier();
 					if (asType != null) {
 						token = asType.Identifier;
 						skipTriggerPointCheck = true;
@@ -195,14 +195,13 @@ namespace Codist.QuickInfo
 					}
 					goto case SyntaxKind.CommaToken;
 				case SyntaxKind.CommaToken:
-				case SyntaxKind.ColonToken:
 				case SyntaxKind.SemicolonToken:
 					token = token.GetPreviousToken();
 					skipTriggerPointCheck = true;
 					goto ClassifyToken;
 				case SyntaxKind.OpenBracketToken:
 				case SyntaxKind.CloseBracketToken:
-					if ((node = unitCompilation.FindNode(token.Span)).IsKind(SyntaxKind.BracketedArgumentList)
+					if ((node = unitCompilation.FindNode(token.Span, false, true)).IsKind(SyntaxKind.BracketedArgumentList)
 						&& node.Parent.IsKind(SyntaxKind.ElementAccessExpression)) {
 						symbol = semanticModel.GetSymbolInfo((ElementAccessExpressionSyntax)node.Parent, cancellationToken).Symbol;
 					}
@@ -385,7 +384,16 @@ namespace Codist.QuickInfo
 				}
 			}
 			overrider?.ApplyClickAndGo(symbol);
-			return container.ItemCount == 0 ? null : CreateQuickInfoItem(session, token, container.ToUI().Tag());
+			if (container.ItemCount == 0) {
+				if (symbol != null) {
+					// place holder
+					container.Add(new ContentPresenter());
+				}
+				else {
+					return null;
+				}
+			}
+			return CreateQuickInfoItem(session, token, container.ToUI().Tag());
 		}
 
 		static QuickInfoItem CreateQuickInfoItem(IAsyncQuickInfoSession session, SyntaxToken? token, object item) {
@@ -1253,14 +1261,14 @@ namespace Codist.QuickInfo
 
 		static void ShowBaseType(InfoContainer qiContent, ITypeSymbol typeSymbol) {
 			var baseType = typeSymbol.BaseType;
-			if (baseType == null || baseType.IsCommonClass()) {
+			if (baseType == null || baseType.IsCommonBaseType()) {
 				return;
 			}
 			var classList = new ThemedTipText(R.T_BaseType, true)
 				.AddSymbol(baseType, null, __SymbolFormatter);
 			var info = new ThemedTipDocument().Append(new ThemedTipParagraph(IconIds.BaseTypes, classList));
 			while ((baseType = baseType.BaseType) != null) {
-				if (baseType.IsCommonClass() == false) {
+				if (baseType.IsCommonBaseType() == false) {
 					classList.Inlines.Add(new ThemedTipText(" - ") { TextWrapping = TextWrapping.Wrap }.AddSymbol(baseType, null, __SymbolFormatter));
 				}
 			}
@@ -1674,7 +1682,7 @@ namespace Codist.QuickInfo
 			public readonly bool MaybeVsProject;
 
 			public SpecialProjectInfo(SemanticModel model) {
-				IsCodist = model.GetTypeSymbol(nameof(IconIds), nameof(Codist)) != null;
+				IsCodist = model.GetTypeSymbol(nameof(CodistPackage), nameof(Codist)) != null;
 				MaybeVsProject = model.GetNamespaceSymbol("Microsoft", "VisualStudio", "PlatformUI") != null || model.GetTypeSymbol(nameof(VsColors), "Microsoft", "VisualStudio", "Shell") != null;
 			}
 		}

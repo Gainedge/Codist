@@ -15,7 +15,7 @@ namespace Codist
 {
 	sealed class Config
 	{
-		internal const string CurrentVersion = "7.2.0";
+		internal const string CurrentVersion = "7.3.0";
 		const string ThemePrefix = "res:";
 		const int DefaultIconSize = 20;
 		internal const string LightTheme = ThemePrefix + "Light",
@@ -187,15 +187,9 @@ namespace Codist
 		}
 
 		static void UpgradeConfig(Config config, Version oldVersion) {
-			if (oldVersion < new Version(6, 6)
-				&& config.QuickInfoOptions.MatchFlags(QuickInfoOptions.AlternativeStyle) == false) {
-				config.QuickInfoOptions |= QuickInfoOptions.AlternativeStyle;
-				__Updated?.Invoke(new ConfigUpdatedEventArgs(config, Features.SuperQuickInfo));
-			}
-			if (oldVersion < new Version(6, 7)
-				&& config.QuickInfoOptions.MatchFlags(QuickInfoOptions.BaseType)
-				&& config.QuickInfoOptions.MatchFlags(QuickInfoOptions.Enum) == false) {
-				config.QuickInfoOptions |= QuickInfoOptions.Enum;
+			if (oldVersion < new Version(7, 4)
+				&& config.QuickInfoOptions.MatchFlags(QuickInfoOptions.NodeRange) == false) {
+				config.QuickInfoOptions |= QuickInfoOptions.NodeRange;
 				__Updated?.Invoke(new ConfigUpdatedEventArgs(config, Features.SuperQuickInfo));
 			}
 		}
@@ -701,6 +695,7 @@ namespace Codist
 		Dot,
 		Dash,
 		DashDot,
+		Squiggle
 	}
 
 	[Flags]
@@ -745,8 +740,9 @@ namespace Codist
 		BaseTypeInheritance = 0,
 		[Obsolete]
 		InterfacesInheritance = 0,
-		Attributes = 1,
-		BaseType = 1 << 1,
+		NodeRange = 1,
+		Attributes = 1 << 1,
+		BaseType = 1 << 2,
 		Declaration = 1 << 3,
 		SymbolLocation = 1 << 4,
 		Interfaces = 1 << 5,
@@ -772,15 +768,15 @@ namespace Codist
 		ExampleDoc = 1 << 25,
 		Color = 1 << 26,
 		Selection = 1 << 27,
+		CtrlSuppress = 1 << 28,
 		[Obsolete]
 		CtrlSupress = 1 << 28,
-		CtrlSuppress = 1 << 28,
 		CtrlQuickInfo = 1 << 29,
 		AlternativeStyle = 1 << 30,
 		UseCodeFontForXmlDocSymbol = 1 << 31,
 		DocumentationOverride = OverrideDefaultDocumentation | DocumentationFromBaseType | DocumentationFromInheritDoc,
 		QuickInfoOverride = DocumentationOverride | AlternativeStyle,
-		Default = AlternativeStyle | Attributes | BaseType | Interfaces | Enum | NumericValues | InterfaceImplementations | MethodOverload | Parameter | OverrideDefaultDocumentation | DocumentationFromBaseType | DocumentationFromInheritDoc | SeeAlsoDoc | ExceptionDoc | ReturnsDoc | RemarksDoc,
+		Default = NodeRange | AlternativeStyle | Attributes | BaseType | Interfaces | Enum | NumericValues | InterfaceImplementations | MethodOverload | Parameter | OverrideDefaultDocumentation | DocumentationFromBaseType | DocumentationFromInheritDoc | SeeAlsoDoc | ExceptionDoc | ReturnsDoc | RemarksDoc,
 	}
 
 	[Flags]
@@ -910,9 +906,9 @@ namespace Codist
 	{
 		None,
 		SafeMode = 1,
+		DemonstrationMode = 1 << 1,
 		[Obsolete]
 		DemostrationMode = 1 << 1,
-		DemonstrationMode = 1 << 1,
 		NoScaling = 1 << 2,
 		Default = SafeMode | DemonstrationMode | NoScaling
 	}

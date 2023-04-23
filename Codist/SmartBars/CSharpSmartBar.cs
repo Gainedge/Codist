@@ -26,13 +26,13 @@ namespace Codist.SmartBars
 		static readonly Taggers.HighlightClassifications __HighlightClassifications = Taggers.HighlightClassifications.Instance;
 		static readonly string[] __UnitTestingNamespace = new[] { "UnitTesting", "TestTools", "VisualStudio", "Microsoft" };
 		SemanticContext _Context;
-		ExternalAdornment _SymbolListContainer;
+		TextViewOverlay _SymbolListContainer;
 		ISymbol _Symbol;
 
 		public CSharpSmartBar(IWpfTextView view, Microsoft.VisualStudio.Text.Operations.ITextSearchService2 textSearchService) : base(view, textSearchService) {
 			ThreadHelper.ThrowIfNotOnUIThread();
 			_Context = SemanticContext.GetOrCreateSingletonInstance(view);
-			_SymbolListContainer = ExternalAdornment.GetOrCreate(view);
+			_SymbolListContainer = TextViewOverlay.GetOrCreate(view);
 			view.Closed += View_Closed;
 		}
 
@@ -441,8 +441,15 @@ namespace Codist.SmartBars
 							edit.Replace(item, $"<typeparamref name=\"{t}\"/>");
 							continue;
 						}
+						while ((d = d.Ancestors().FirstOrDefault() as TypeDeclarationSyntax) != null) {
+							if (d.FindTypeParameter(t) != null) {
+								edit.Replace(item, $"<typeparamref name=\"{t}\"/>");
+								goto NEXT;
+							}
+						}
 					}
 					edit.Replace(item, (SyntaxFacts.GetKeywordKind(t) != SyntaxKind.None ? "<see langword=\"" : "<see cref=\"") + t + "\"/>");
+					NEXT:;
 				}
 				if (t != null && Keyboard.Modifiers.MatchFlags(ModifierKeys.Control | ModifierKeys.Shift)
 					&& FindNext(arg.ctx, t) == false) {
@@ -452,13 +459,14 @@ namespace Codist.SmartBars
 		}
 
 		void MakeUrl(CommandContext ctx) {
-			var t = ctx.View.GetFirstSelectionText();
+			var v = ctx.View;
+			var t = v.GetFirstSelectionText();
 			if (t.StartsWith("http://", StringComparison.Ordinal) || t.StartsWith("https://", StringComparison.Ordinal)) {
 				foreach (var s in WrapWith(ctx, "<a href=\"", "\">text</a>", false)) {
 					if (s.Snapshot != null) {
 						// select the "text"
-						ctx.View.Selection.Select(new SnapshotSpan(s.Snapshot, s.End - 8, 4), false);
-						ctx.View.Caret.MoveTo(s.End - 4);
+						v.Selection.Select(new SnapshotSpan(s.Snapshot, s.End - 8, 4), false);
+						v.Caret.MoveTo(s.End - 4);
 						return;
 					}
 				}
@@ -467,8 +475,8 @@ namespace Codist.SmartBars
 				foreach (var s in WrapWith(ctx, "<a href=\"url\">", "</a>", false)) {
 					if (s.Snapshot != null) {
 						// select the "url"
-						ctx.View.Selection.Select(new SnapshotSpan(s.Snapshot, s.Start.Position + 9, 3), false);
-						ctx.View.Caret.MoveTo(s.Start + 12);
+						v.Selection.Select(new SnapshotSpan(s.Snapshot, s.Start.Position + 9, 3), false);
+						v.Caret.MoveTo(s.Start + 12);
 						return;
 					}
 				}

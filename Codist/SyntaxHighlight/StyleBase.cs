@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Media;
 using AppHelpers;
+using Codist.Controls;
 using Microsoft.VisualStudio.Text.Classification;
 using Newtonsoft.Json;
 
@@ -182,38 +183,46 @@ namespace Codist.SyntaxHighlight
       return tdc.Count > 0 || hasSet ? tdc : null;
     }
 
-    TextDecoration MakeLineDecoration(TextDecorationLocation location) {
-      var d = new TextDecoration {
-        Location = location,
-        Pen = new Pen {
-          Brush = new SolidColorBrush(LineOpacity == 0 ? LineColor : LineColor.Alpha(LineOpacity))
-        }
-      };
-      if(LineOffset != 0) {
-        d.PenOffset = LineOffset;
-        d.PenOffsetUnit = TextDecorationUnit.Pixel;
-      }
-      if(LineThickness > 0) {
-        d.Pen.Thickness = LineThickness + 1;
-        d.PenThicknessUnit = TextDecorationUnit.Pixel;
-      }
-      if(LineStyle != LineStyle.Solid) {
-        switch(LineStyle) {
-          case LineStyle.Dot:
-            d.Pen.DashStyle = new DashStyle(new double[] { 2, 2 }, 0);
-            break;
-          case LineStyle.Dash:
-            d.Pen.DashStyle = new DashStyle(new double[] { 4, 4 }, 0);
-            break;
-          case LineStyle.DashDot:
-            d.Pen.DashStyle = new DashStyle(new double[] { 4, 4, 2, 4 }, 0);
-            break;
-          default:
-            break;
-        }
-      }
-      return d;
-    }
+		TextDecoration MakeLineDecoration(TextDecorationLocation location) {
+			var d = new TextDecoration {
+				Location = location,
+				Pen = new Pen {
+					Brush = new SolidColorBrush(LineOpacity == 0 ? LineColor : LineColor.Alpha(LineOpacity))
+				},
+			};
+			if (LineStyle != LineStyle.Solid) {
+				switch (LineStyle) {
+					case LineStyle.Dot:
+						d.Pen.DashStyle = new DashStyle(new double[] { 2, 2 }, 0);
+						break;
+					case LineStyle.Dash:
+						d.Pen.DashStyle = new DashStyle(new double[] { 4, 4 }, 0);
+						break;
+					case LineStyle.DashDot:
+						d.Pen.DashStyle = new DashStyle(new double[] { 4, 4, 2, 4 }, 0);
+						break;
+					case LineStyle.Squiggle:
+						if (location == TextDecorationLocation.Underline) {
+							d.Pen.Brush = SquiggleBrushCache.GetOrCreate(d.Pen.Brush);
+							d.PenOffset = LineOffset;
+							d.PenOffsetUnit = TextDecorationUnit.Pixel;
+							d.Pen.Thickness = 3.0;
+							d.PenThicknessUnit = TextDecorationUnit.Pixel;
+							return d;
+						}
+						break;
+				}
+			}
+			if (LineOffset != 0 && location != TextDecorationLocation.Strikethrough) {
+				d.PenOffset = LineOffset;
+				d.PenOffsetUnit = TextDecorationUnit.Pixel;
+			}
+			if (LineThickness > 0) {
+				d.Pen.Thickness = LineThickness + 1;
+				d.PenThicknessUnit = TextDecorationUnit.Pixel;
+			}
+			return d;
+		}
 
     internal StyleBase Clone() {
       return (StyleBase)MemberwiseClone();

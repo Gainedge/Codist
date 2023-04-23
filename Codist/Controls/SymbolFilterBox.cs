@@ -194,6 +194,10 @@ namespace Codist.Controls
 					return filterTypes.MatchFlags(MemberFilterTypes.Private | MemberFilterTypes.Event);
 				case IconIds.Region: // #region
 					return filterTypes == MemberFilterTypes.All;
+				case KnownImageIds.MethodSnippet:
+					return filterTypes.MatchFlags(MemberFilterTypes.Method | MemberFilterTypes.Private);
+				case KnownImageIds.FlowDecision:
+					return filterTypes.MatchFlags(MemberFilterTypes.AllMembers);
 			}
 			return false;
 		}
@@ -606,7 +610,7 @@ namespace Codist.Controls
 						continue;
 					}
 					if (symbol.CanBeReferencedByName == false) {
-						if ((symbol is IMethodSymbol ms) && ms.MethodKind == MethodKind.Constructor) {
+						if ((symbol is IMethodSymbol ms) && (ms.MethodKind == MethodKind.Constructor || ms.MethodKind == MethodKind.StaticConstructor)) {
 							++m;
 						}
 						continue;

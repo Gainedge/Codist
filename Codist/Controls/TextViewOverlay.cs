@@ -1,25 +1,31 @@
 ﻿using System;
+using System.ComponentModel.Composition;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
+using Microsoft.VisualStudio.Utilities;
 
 namespace Codist.Controls
 {
 	// HACK: put the symbol list, smart bar, etc. on top of the WpfTextView.
 	// Don't use AdornmentLayer to do so, otherwise contained objects will go up and down when scrolling code window.
 	// Another side effect of AdornmentLayer is that it scales images automatically and makes CrispImages blurry (github: #213).
-	sealed class ExternalAdornment : ContentPresenter
+	sealed class TextViewOverlay : ContentPresenter
 	{
-		internal const string QuickInfoSuppressionId = nameof(ExternalAdornment);
+		internal const string QuickInfoSuppressionId = nameof(TextViewOverlay);
+		const string SyntaxNodeRange = nameof(SyntaxNodeRange);
 
 		IWpfTextView _View;
 		Canvas _Canvas;
 		int _LayerZIndex;
 		bool _IsDragging;
 		Point _BeginDragPosition;
+		IAdornmentLayer _TextRangeAdornment;
 
-		public ExternalAdornment(IWpfTextView view) {
+		public TextViewOverlay(IWpfTextView view) {
 			UseLayoutRounding = true;
 			SnapsToDevicePixels = true;
 			// put the control on top of the editor window and share the same size
@@ -27,6 +33,7 @@ namespace Codist.Controls
 			Grid.SetRow(this, 1);
 			Grid.SetIsSharedSizeScope(this, true);
 			var grid = view.VisualElement.GetParent<Grid>();
+			_TextRangeAdornment = view.GetAdornmentLayer(SyntaxNodeRange);
 			if (grid != null) {
 				grid.Children.Add(this);
 				view.Selection.SelectionChanged += ViewSelectionChanged;
@@ -40,20 +47,35 @@ namespace Codist.Controls
 			_View = view;
 		}
 
-		// if nothing in the adornment, it is sized (0,0)
+		// if nothing on the overlay, it is sized (0,0)
 		public double DisplayHeight => ActualHeight > 0 ? ActualHeight : this.GetParent<FrameworkElement>().ActualHeight;
 
-		public static ExternalAdornment GetOrCreate(IWpfTextView view) {
-			return view.Properties.GetOrCreateSingletonProperty(() => new ExternalAdornment(view));
+		public static TextViewOverlay GetOrCreate(IWpfTextView view) {
+			return view.Properties.GetOrCreateSingletonProperty(() => new TextViewOverlay(view));
 		}
-		public static ExternalAdornment Get(IWpfTextView view) {
-			return view.Properties.TryGetProperty(typeof(ExternalAdornment), out ExternalAdornment a) ? a : null;
+		public static TextViewOverlay Get(IWpfTextView view) {
+			return view.Properties.TryGetProperty(typeof(TextViewOverlay), out TextViewOverlay a) ? a : null;
 		}
 
-		public event EventHandler<AdornmentChildRemovedEventArgs> ChildRemoved;
+		public event EventHandler<OverlayElementRemovedEventArgs> ChildRemoved;
 
 		public void FocusOnTextView() {
 			_View.VisualElement.Focus();
+		}
+
+		public bool AddRangeAdornment(SnapshotSpan span) {
+			return AddRangeAdornment(span, ThemeHelper.MenuHoverBackgroundColor, 1);
+		}
+		public bool AddRangeAdornment(SnapshotSpan span, Color color, double thickness) {
+			return _TextRangeAdornment.AddAdornment(span, null, new GeometryAdornment(color, _View.TextViewLines.GetMarkerGeometry(span), thickness));
+		}
+		public bool SetRangeAdornment(SnapshotSpan span) {
+			ClearRangeAdornments();
+			return AddRangeAdornment(span);
+		}
+
+		public void ClearRangeAdornments() {
+			_TextRangeAdornment.RemoveAllAdornments();
 		}
 
 		public bool Contains(UIElement element) {
@@ -86,7 +108,7 @@ namespace Codist.Controls
 			element.MouseEnter -= SuppressQuickInfo;
 			element.MouseLeftButtonDown -= BringToFront;
 			if (_View.IsClosed == false) {
-				ChildRemoved?.Invoke(this, new AdornmentChildRemovedEventArgs(element));
+				ChildRemoved?.Invoke(this, new OverlayElementRemovedEventArgs(element));
 			}
 		}
 
@@ -229,7 +251,7 @@ namespace Codist.Controls
 			if (_View != null) {
 				_View.Closed -= View_Closed;
 				_View.Selection.SelectionChanged -= ViewSelectionChanged;
-				_View.Properties.RemoveProperty(typeof(ExternalAdornment));
+				_View.Properties.RemoveProperty(typeof(TextViewOverlay));
 				_View.VisualElement.GetParent<Grid>()?.Children.Remove(this);
 				foreach (var item in _Canvas.Children) {
 					if (item is FrameworkElement fe) {
@@ -244,6 +266,8 @@ namespace Codist.Controls
 				_Canvas.PreviewMouseRightButtonUp -= Canvas_PreviewMouseRightButtonUp;
 				_Canvas.Children.Clear();
 				_Canvas = null;
+				_TextRangeAdornment.RemoveAllAdornments();
+				_TextRangeAdornment = null;
 				_View = null;
 			}
 		}
@@ -262,6 +286,38 @@ namespace Codist.Controls
 
 		void SuppressQuickInfo(object sender, MouseEventArgs e) {
 			_View.Properties[QuickInfoSuppressionId] = true;
+		}
+
+		sealed class GeometryAdornment : UIElement
+		{
+			readonly DrawingVisual _Child;
+
+			public GeometryAdornment(Color color, Geometry geometry, double thickness) {
+				_Child = new DrawingVisual();
+				using (var context = _Child.RenderOpen()) {
+					context.DrawGeometry(new SolidColorBrush(color.Alpha(25)),
+						thickness < 0.1 ? null : new Pen(ThemeHelper.MenuHoverBorderBrush, thickness),
+						geometry);
+				}
+				AddVisualChild(_Child);
+			}
+
+			protected override int VisualChildrenCount => 1;
+
+			protected override Visual GetVisualChild(int index) {
+				return _Child;
+			}
+		}
+
+		sealed class OverlayDefinition
+		{
+			/// <summary>
+			/// Defines the adornment layer for syntax node range highlight.
+			/// </summary>
+			[Export(typeof(AdornmentLayerDefinition))]
+			[Name(nameof(SyntaxNodeRange))]
+			[Order(After = PredefinedAdornmentLayers.CurrentLineHighlighter)]
+			AdornmentLayerDefinition _SyntaxNodeRangeAdornmentLayer;
 		}
 	}
 }

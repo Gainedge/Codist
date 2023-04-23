@@ -78,7 +78,7 @@
     <Compile Include="Commands\ToggleAutoBuildVersionCommand.cs" />
     <Compile Include="Commands\SyntaxCustomizerWindowCommand.cs" />
     <Compile Include="Commands\VersionInfoBar.cs" />
-    <Compile Include="Controls\AdornmentChildRemovedEventArgs.cs" />
+    <Compile Include="Controls\OverlayElementRemovedEventArgs.cs" />
     <Compile Include="Controls\CommandToolTip.cs" />
     <Compile Include="Controls\ExternalCommand.cs" />
     <Compile Include="Controls\ExtIconProvider.cs" />
@@ -89,6 +89,7 @@
     <Compile Include="Controls\MenuItemFilter.cs" />
     <Compile Include="Controls\MessageWindow.cs" />
     <Compile Include="Controls\SearchScopeBox.cs" />
+    <Compile Include="Controls\SquiggleBrushCache.cs" />
     <Compile Include="Controls\SymbolFilterBox.cs" />
     <Compile Include="Controls\SymbolItemTemplateSelector.cs" />
     <Compile Include="Controls\SymbolListType.cs" />
@@ -135,6 +136,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="QuickInfo\CSharpNodeRangeQuickInfo.cs" />
     <Compile Include="QuickInfo\ColorQuickInfoUI.cs" />
     <Compile Include="QuickInfo\CSharpOpCodeQuickInfo.cs" />
     <Compile Include="QuickInfo\InfoContainer.cs" />
@@ -188,7 +190,7 @@
     <Compile Include="Commands\IncrementVsixVersionCommand.cs" />
     <Compile Include="Commands\NaviBarSearchDeclarationCommand.cs" />
     <Compile Include="Controls\CSharpSymbolContextMenu.cs" />
-    <Compile Include="Controls\ExternalAdornment.cs" />
+    <Compile Include="Controls\TextViewOverlay.cs" />
     <Compile Include="Controls\KeystrokeThief.cs" />
     <Compile Include="Controls\SymbolFilters.cs" />
     <Compile Include="Controls\QuickInfoTextBox.cs" />
