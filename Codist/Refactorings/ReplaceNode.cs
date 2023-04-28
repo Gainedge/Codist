@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis.Editing;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text;
+using Codist.Controls;
 
 namespace Codist.Refactorings
 {
@@ -42,8 +43,20 @@ namespace Codist.Refactorings
 		public static RefactoringAction InsertAfter(SyntaxNode oldNode, SyntaxNode insert) {
 			return new RefactoringAction(ActionType.InsertAfter, new List<SyntaxNode> { oldNode }, new List<SyntaxNode> { insert });
 		}
+		public static RefactoringAction InsertAfter(SyntaxNode oldNode, IEnumerable<SyntaxNode> insert) {
+			return new RefactoringAction(ActionType.InsertAfter, new List<SyntaxNode> { oldNode }, new List<SyntaxNode> (insert));
+		}
 
 		public void Refactor(SemanticContext context) {
+			try {
+				RefactorInternal(context);
+			}
+			catch (Exception ex) {
+				MessageWindow.Error(ex, Title);
+			}
+		}
+
+		private void RefactorInternal(SemanticContext context) {
 			var ctx = new RefactoringContext(context) {
 				Refactoring = this
 			};

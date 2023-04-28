@@ -135,10 +135,10 @@ namespace Codist.Commands
 			AppendNameValue(s, "AutoHides", window.AutoHides);
 			AppendNameValue(s, "IsFloating", window.IsFloating);
 			// AppendNameValue(s, "HWnd", window.HWnd); // this property is unavailable in 64bit VS
-			AppendNameValue(s, "Width", window.Width);
-			AppendNameValue(s, "Height", window.Height);
 			AppendNameValue(s, "Left", window.Left);
 			AppendNameValue(s, "Top", window.Top);
+			AppendNameValue(s, "Width", window.Width);
+			AppendNameValue(s, "Height", window.Height);
 			AppendNameValue(s, "Linkable", window.Linkable);
 			AppendNameValue(s, "LinkedWindowFrame.Caption", window.LinkedWindowFrame?.Caption);
 			AppendNameValue(s, "Project.Name", window.Project?.Name);
@@ -172,22 +172,22 @@ namespace Codist.Commands
 			}
 
 			var doc = window.Document;
-			if (doc != null) {
-				ss = NewIndentSection(s, "Document:");
-				AppendNameValue(ss, "Language", doc.Language);
-				try {
-					AppendNameValue(ss, "Kind", doc.Kind);
-				}
-				catch (NotImplementedException) {
-					// ignore
-				}
-				AppendNameValue(ss, "Type", doc.Type);
-				AppendNameValue(ss, "ExtenderNames", doc.ExtenderNames);
-				AppendNameValue(ss, "ExtenderCATID", doc.ExtenderCATID);
-				AppendNameValue(ss, "DocumentData", window.DocumentData);
+			if (doc == null) {
+				ShowSpecialWindowTypeInfo(blocks, window);
+				return;
 			}
-
-			ShowSpecialWindowTypeInfo(blocks, window);
+			ss = NewIndentSection(s, "Document:");
+			AppendNameValue(ss, "Language", doc.Language);
+			try {
+				AppendNameValue(ss, "Kind", doc.Kind);
+			}
+			catch (NotImplementedException) {
+				// ignore
+			}
+			AppendNameValue(ss, "Type", doc.Type);
+			AppendNameValue(ss, "ExtenderNames", doc.ExtenderNames);
+			AppendNameValue(ss, "ExtenderCATID", doc.ExtenderCATID);
+			AppendNameValue(ss, "DocumentData", window.DocumentData);
 		}
 
 		[SuppressMessage("Usage", Suppression.VSTHRD010, Justification = Suppression.CheckedInCaller)]
@@ -206,14 +206,15 @@ namespace Codist.Commands
 			if (CodistPackage.DTE.ToolWindows.SolutionExplorer.SelectedItems is object[] items) {
 				foreach (UIHierarchyItem hi in items.OfType<UIHierarchyItem>()) {
 					var obj = hi.Object;
-					if (obj is Project p) {
+					if (obj is ProjectItem pi) {
+						ShowDTEProjectItemProperties(blocks, pi);
+					}
+					else if (obj is Project p) {
 						ShowDTEProjectProperties(blocks, p);
 					}
 					else if (obj is Solution s) {
 						ShowDTESolutionProperties(blocks, s);
-					}
-					else if (obj is ProjectItem pi) {
-						ShowDTEProjectItemProperties(blocks, pi);
+						ShowDTEProperties(blocks);
 					}
 					else {
 						var ss = NewSection(blocks, "UIHierarchyItem", SubSectionFontSize);
@@ -365,6 +366,32 @@ namespace Codist.Commands
 			}
 		}
 
+		static void ShowDTEProperties(BlockCollection blocks) {
+			var s = NewSection(blocks, "DTE", SubSectionFontSize);
+			var dte = CodistPackage.DTE;
+			AppendNameValue(s, "Edition", dte.Edition);
+			AppendNameValue(s, "DisplayMode", dte.DisplayMode);
+			AppendNameValue(s, "Mode", dte.Mode);
+			AppendNameValue(s, "Solution.FullName", dte.Solution.FullName);
+			AppendNameValue(s, "ActiveDocument.Name", dte.ActiveDocument?.Name);
+			AppendNameValue(s, "ActiveSolutionProjects", dte.ActiveSolutionProjects);
+			AppendNameValue(s, "SelectedItems.Count", dte.SelectedItems.Count);
+			AppendNameValue(s, "ActiveWindow.Caption", dte.ActiveWindow?.Caption);
+			AppendNameValue(s, "CommandLineArguments", dte.CommandLineArguments);
+			AppendNameValue(s, "RegistryRoot", dte.RegistryRoot);
+			AppendNameValue(s, "WindowConfigurations.ActiveConfigurationName", dte.WindowConfigurations?.ActiveConfigurationName);
+			AppendNameValue(s, "Windows/Caption", dte.Windows.OfType<Window>().Select(w => w.Caption).ToArray());
+			AppendNameValue(s, "Version", dte.Version);
+
+			var ca = dte.ContextAttributes;
+			if (ca != null && ca.Count != 0) {
+				s = NewIndentSection(s, "ContextAttributes:");
+				foreach (ContextAttribute item in ca) {
+					AppendPropertyValue(s, item.Name, item.Values);
+				}
+			}
+		}
+
 		static void ShowContentType (IContentType type, Section section, HashSet<IContentType> dedup, int indent) {
 			Append(section, type.DisplayName != type.TypeName ? $"{type.DisplayName} ({type.TypeName})" : type.DisplayName, indent * 10);
 			foreach (var bt in type.BaseTypes) {
@@ -434,7 +461,7 @@ namespace Codist.Commands
 			return section;
 		}
 		static void AppendNameValue(Section section, string name, object value) {
-			Paragraph p = new Paragraph {
+			var p = new Paragraph {
 				Margin = __ParagraphIndent,
 				TextIndent = -10,
 				Inlines = {
@@ -446,7 +473,7 @@ namespace Codist.Commands
 			section.Blocks.Add(p);
 		}
 		static void AppendPropertyValue(Section section, object key, object value) {
-			Paragraph p = new Paragraph {
+			var p = new Paragraph {
 				Margin = __ParagraphIndent,
 				TextIndent = -10,
 				Inlines = {
@@ -489,11 +516,12 @@ namespace Codist.Commands
 			if (value is Type type) {
 				return new TypeRun(type, f);
 			}
-			switch (Type.GetTypeCode(type = value.GetType())) {
+			type = value.GetType();
+			if (type.IsEnum) {
+				return new Run(value.ToString()) { Foreground = f.EnumField };
+			}
+			switch (Type.GetTypeCode(type)) {
 				case TypeCode.Object:
-					if (type.IsEnum) {
-						return new Run(value.ToString()) { Foreground = f.EnumField };
-					}
 					if (type.Name == "__ComObject" && type.Namespace == "System") {
 						return new Run(ReflectionHelper.GetTypeNameFromComObject(value) ?? "System.__ComObject") { Foreground = f.Class };
 					}
@@ -525,8 +553,8 @@ namespace Codist.Commands
 			}
 		}
 		static string GetTypeName(Type type) {
-			return (type.DeclaringType != null ? (GetTypeName(type.DeclaringType) + "+" + type.Name) : type.Name)
-				+ (type.IsGenericType ? ("<" + String.Join(",", type.GenericTypeArguments.Select(GetTypeName)) + ">") : String.Empty);
+			return (type.DeclaringType != null ? $"{GetTypeName(type.DeclaringType)}+{type.Name}" : type.Name)
+				+ (type.IsGenericType ? $"<{String.Join(",", type.GenericTypeArguments.Select(GetTypeName))}>" : String.Empty);
 		}
 		static Brush GetTypeBrush(SymbolFormatter f, Type type) {
 			return type.IsClass ? f.Class

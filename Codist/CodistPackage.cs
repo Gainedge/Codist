@@ -135,13 +135,7 @@ namespace Codist
 			__BuildEvents = new AutoBuildVersion.BuildEvents(this);
 
 			//_extenderCookie = DTE.ObjectExtenders.RegisterExtenderProvider(VSConstants.CATID.CSharpFileProperties_string, BuildBots.AutoReplaceExtenderProvider.Name, new BuildBots.AutoReplaceExtenderProvider());
-			Commands.ScreenshotCommand.Initialize();
-			Commands.WindowInformerCommand.Initialize();
-			Commands.IncrementVsixVersionCommand.Initialize();
-			Commands.AutoBuildVersionWindowCommand.Initialize();
-			Commands.NaviBarSearchDeclarationCommand.Initialize();
-			Commands.ToggleAutoBuildVersionCommand.Initialize();
-			Commands.SemanticContextCommand.Initialize();
+			Commands.CommandRegistry.Initialize();
 			Display.JumpListEnhancer.Initialize();
 			Display.LayoutOverrider.InitializeLayoutOverride();
 

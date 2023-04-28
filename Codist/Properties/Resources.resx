@@ -2127,8 +2127,8 @@ Sent or received bytes per second through all network interfaces</value>
   <data name="OT_TaskManagerParameter" xml:space="preserve">
     <value>Task manager program parameter (optional):</value>
   </data>
-  <data name="CMD_DeleteContainingBlock" xml:space="preserve">
-    <value>Delete Containing Block</value>
+  <data name="CMD_DeleteContainingStatement" xml:space="preserve">
+    <value>Delete Containing Statement</value>
   </data>
   <data name="CMD_WrapInIf" xml:space="preserve">
     <value>Wrap in &lt;if&gt;</value>
@@ -2456,5 +2456,14 @@ Expression too long</value>
   </data>
   <data name="T_Squiggle" xml:space="preserve">
     <value>Squiggle</value>
+  </data>
+  <data name="CMD_OpenOutputFolder" xml:space="preserve">
+    <value>Open Output Folder</value>
+  </data>
+  <data name="T_FailedToOpenOutputFolder" xml:space="preserve">
+    <value>Failed to open output folder</value>
+  </data>
+  <data name="T_OutputFolderMissing" xml:space="preserve">
+    <value>Output folder does not exists</value>
   </data>
 </root>
