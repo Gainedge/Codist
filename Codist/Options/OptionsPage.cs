@@ -782,7 +782,7 @@ namespace Codist.Options
 		{
 			readonly Controls.IntegerBox _TopSpace, _BottomSpace;
 			readonly OptionBox<DisplayOptimizations> _MainWindow, _CodeWindow, _MenuLayoutOverride, _HideSearchBox, _HideAccountBox, _HideFeedbackButton, _CpuMonitor, _MemoryMonitor, _DriveMonitor, _NetworkMonitor;
-			readonly OptionBox<BuildOptions> _BuildTimestamp;
+			readonly OptionBox<BuildOptions> _BuildTimestamp, _ShowOutputWindowAfterBuild;
 			readonly TextBox _TaskManagerPath, _TaskManagerParameter;
 			readonly Button _BrowseTaskManagerPath;
 
@@ -846,7 +846,8 @@ namespace Codist.Options
 					new DescriptionBox(R.OT_OutputNote),
 					new WrapPanel {
 						Children = {
-							Config.Instance.BuildOptions.CreateOptionBox(BuildOptions.BuildTimestamp, UpdateConfig, R.OT_BuildTimestamp).Set(ref _BuildTimestamp).SetLazyToolTip(() => R.OT_BuildTimestampTip)
+							Config.Instance.BuildOptions.CreateOptionBox(BuildOptions.BuildTimestamp, UpdateConfig, R.OT_BuildTimestamp).Set(ref _BuildTimestamp).SetLazyToolTip(() => R.OT_BuildTimestampTip),
+							Config.Instance.BuildOptions.CreateOptionBox(BuildOptions.ShowOutputPaneAfterBuild, UpdateConfig, R.OT_ShowOutputPaneAfterBuild).Set(ref _ShowOutputWindowAfterBuild)
 						}
 					}
 					.ForEachChild((CheckBox b) => b.MinWidth = MinColumnWidth),
@@ -892,6 +893,7 @@ namespace Codist.Options
 				_HideFeedbackButton.UpdateWithOption(o);
 				_HideSearchBox.UpdateWithOption(o);
 				_BuildTimestamp.UpdateWithOption(config.BuildOptions);
+				_ShowOutputWindowAfterBuild.UpdateWithOption(config.BuildOptions);
 			}
 
 			void UpdateCodeWindowDisplayOption(DisplayOptimizations options, bool value) {
@@ -935,10 +937,10 @@ namespace Codist.Options
 				}
 				Config.Instance.Set(options, value);
 				if (value) {
-					Display.LayoutOverrider.CompactMenu();
+					Display.LayoutOverride.CompactMenu();
 				}
 				else {
-					Display.LayoutOverrider.UndoCompactMenu();
+					Display.LayoutOverride.UndoCompactMenu();
 				}
 				Config.Instance.FireConfigChangedEvent(Features.None);
 			}
@@ -960,7 +962,7 @@ namespace Codist.Options
 					return;
 				}
 				Config.Instance.Set(options, value);
-				Display.LayoutOverrider.ToggleUIElement(element, !value);
+				Display.LayoutOverride.ToggleUIElement(element, !value);
 				Config.Instance.FireConfigChangedEvent(Features.None);
 			}
 

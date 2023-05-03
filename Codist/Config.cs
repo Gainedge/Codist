@@ -270,7 +270,7 @@ namespace Codist
 				#endif
 				return Instance;
 			}
-			Display.LayoutOverrider.Reload(config.DisplayOptimizations);
+			Display.LayoutOverride.Reload(config.DisplayOptimizations);
 			Display.ResourceMonitor.Reload(config.DisplayOptimizations);
 			#if DEBUG
 			__LastLoaded = DateTime.Now;
@@ -886,6 +886,7 @@ namespace Codist
 		None,
 		BuildTimestamp = 1,
 		PrintSolutionProjectProperties = 1 << 1,
+		ShowOutputPaneAfterBuild = 1 << 2,
 		VsixAutoIncrement = 1 << 8,
 		Default = None
 	}

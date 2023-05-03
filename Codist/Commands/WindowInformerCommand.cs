@@ -61,13 +61,10 @@ namespace Codist.Commands
 			blocks.Clear();
 			Section s;
 
-			var view = window.Document?.GetActiveWpfDocumentView();
-			if (view == null) {
-				view = TextEditorHelper.GetActiveWpfInteractiveView();
+			var view = TextEditorHelper.GetActiveWpfInteractiveView();
 				if (view?.VisualElement.IsFocused == false) {
-					view = null;
+				view = window.Document?.GetActiveWpfDocumentView();
 				}
-			}
 
 			if (view != null) {
 				var d = view.TextBuffer.GetTextDocument();
@@ -89,6 +86,14 @@ namespace Codist.Commands
 
 				AppendNameValue(s, R.T_CaretPosition, view.Caret.Position.BufferPosition.Position);
 				AppendNameValue(s, "Caret.OverwriteMode", view.Caret.OverwriteMode);
+
+				AppendNameValue(s, "ViewportLeft", view.ViewportLeft);
+				AppendNameValue(s, "ViewportTop", view.ViewportTop);
+				AppendNameValue(s, "ViewportWidth", view.ViewportWidth);
+				AppendNameValue(s, "ViewportHeight", view.ViewportHeight);
+				AppendNameValue(s, "VisualElement.ActualWidth", view.VisualElement.ActualWidth);
+				AppendNameValue(s, "VisualElement.ActualHeight", view.VisualElement.ActualHeight);
+				AppendNameValue(s, "TextViewLines.Count", view.TextViewLines.Count);
 
 				Append(s, "TextBuffer.ContentType:");
 				ShowContentType(view.TextBuffer.ContentType, s, new HashSet<IContentType>(), 2);
@@ -196,7 +201,8 @@ namespace Codist.Commands
 				case vsWindowType.vsWindowTypeSolutionExplorer:
 					ShowDTESolutionSelectedItems(blocks);
 					break;
-				default:
+				case vsWindowType.vsWindowTypeOutput:
+					ShowDTEOutputWindows(blocks);
 					break;
 			}
 		}
@@ -222,6 +228,16 @@ namespace Codist.Commands
 						AppendNameValue(ss, "Object", hi.Object);
 					}
 				}
+			}
+		}
+		[SuppressMessage("Usage", Suppression.VSTHRD010, Justification = Suppression.CheckedInCaller)]
+		static void ShowDTEOutputWindows(BlockCollection blocks) {
+			var s = NewSection(blocks, "OutputWindow", SubSectionFontSize);
+			var o = CodistPackage.DTE.ToolWindows.OutputWindow;
+			AppendNameValue(s, "ActivePane.Name", o.ActivePane?.Name);
+			var ss = NewIndentSection(s, "OutputWindowPanes");
+			foreach (var item in o.OutputWindowPanes.OfType<OutputWindowPane>()) {
+				AppendNameValue(ss, item.Name, item.Guid);
 			}
 		}
 
