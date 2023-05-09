@@ -206,6 +206,7 @@ namespace Codist.QuickInfo
 				await _quickInfoSession.DismissAsync();
 				s.GoToDefinition();
 			}
+
 			void ShowToolTip(object sender, ToolTipEventArgs e) {
 				var s = _symbol;
 				if (s != null) {
@@ -214,15 +215,16 @@ namespace Codist.QuickInfo
 					t.ToolTipOpening -= ShowToolTip;
 				}
 			}
+
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void ShowContextMenu(object sender, ContextMenuEventArgs e) {
-				await TH.JoinableTaskFactory.SwitchToMainThreadAsync(default);
+				await SyncHelper.SwitchToMainThreadAsync(default);
 				var s = sender as FrameworkElement;
 				if (s.ContextMenu == null) {
 					var v = _quickInfoSession.TextView;
 					var ctx = SemanticContext.GetOrCreateSingletonInstance(v as IWpfTextView);
 					await ctx.UpdateAsync(_textBuffer, default);
-					await TH.JoinableTaskFactory.SwitchToMainThreadAsync(default);
+					await SyncHelper.SwitchToMainThreadAsync(default);
 					var m = new CSharpSymbolContextMenu(_symbol,
 						v.TextBuffer.ContentType.TypeName == Constants.CodeTypes.InteractiveContent
 							? null
@@ -238,7 +240,7 @@ namespace Codist.QuickInfo
 					m.DisposeOnClose();
 					s.ContextMenu = m;
 				}
-				await TH.JoinableTaskFactory.SwitchToMainThreadAsync(default);
+				await SyncHelper.SwitchToMainThreadAsync(default);
 				HoldQuickInfo(s, true);
 				s.ContextMenu.IsOpen = true;
 			}

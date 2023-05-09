@@ -17,7 +17,6 @@ using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Task = System.Threading.Tasks.Task;
-using TH = Microsoft.VisualStudio.Shell.ThreadHelper;
 
 namespace Codist.NaviBar
 {
@@ -149,7 +148,7 @@ namespace Codist.NaviBar
 
 		async Task UpdateAsync(CancellationToken token) {
 			var nodes = await UpdateModelAndGetContainingNodesAsync(token);
-			await TH.JoinableTaskFactory.SwitchToMainThreadAsync(token);
+			await SyncHelper.SwitchToMainThreadAsync(token);
 			int ic = Items.Count, c = Math.Min(ic, nodes.Length);
 			int i, i2;
 			#region Remove outdated nodes on NaviBar
@@ -252,7 +251,7 @@ namespace Codist.NaviBar
 					position = n.SpanStart;
 				}
 			}
-			await TH.JoinableTaskFactory.SwitchToMainThreadAsync(token);
+			await SyncHelper.SwitchToMainThreadAsync(token);
 			return _SemanticContext.GetContainingNodes(position,
 				Config.Instance.NaviBarOptions.MatchFlags(NaviBarOptions.SyntaxDetail),
 				Config.Instance.NaviBarOptions.MatchFlags(NaviBarOptions.RegionOnBar));
@@ -334,10 +333,8 @@ namespace Codist.NaviBar
 						((ThemedImageButton)Items[i - 1]).PerformClick();
 					}
 				}
-				else {
-					if ((i = Items.IndexOf(_ActiveItem)) < Items.Count - 1) {
-						((ThemedImageButton)Items[i + 1]).PerformClick();
-					}
+				else if ((i = Items.IndexOf(_ActiveItem)) < Items.Count - 1) {
+					((ThemedImageButton)Items[i + 1]).PerformClick();
 				}
 				e.Handled = true;
 			}
@@ -365,8 +362,19 @@ namespace Codist.NaviBar
 				return;
 			}
 			View.VisualElement.Focus();
-			if ((menu.SelectedItem as SymbolItem)?.GoToSource() == true) {
-				HideMenu();
+			if (menu.SelectedItem is SymbolItem i) {
+				GoToSourceAndHideMenuAsync(this, i);
+			}
+
+			async void GoToSourceAndHideMenuAsync(CSharpBar me, SymbolItem item) {
+				try {
+					if (await item.GoToSourceAsync()) {
+						me.HideMenu();
+					}
+				}
+				catch (OperationCanceledException) {
+					// ignore
+				}
 			}
 		}
 
@@ -412,8 +420,8 @@ namespace Codist.NaviBar
 			return p != -1 && p < Items.Count - 1 ? (Items[p + 1] as ISymbolContainer)?.Symbol : null;
 		}
 
-		static void AddParameterList(TextBlock t, SyntaxNode node) {
-			ParameterListSyntax p = null;
+		static void AddParameterList(TextBlock text, SyntaxNode node) {
+			BaseParameterListSyntax p;
 			if (node is BaseMethodDeclarationSyntax bm) {
 				p = bm.ParameterList;
 			}
@@ -423,16 +431,22 @@ namespace Codist.NaviBar
 			else if (node is OperatorDeclarationSyntax o) {
 				p = o.ParameterList;
 			}
+			else if (node is IndexerDeclarationSyntax id) {
+				p = id.ParameterList;
+			}
+			else {
+				return;
+			}
 			if (p != null) {
-				t.Append(p.GetParameterListSignature(Config.Instance.NaviBarOptions.MatchFlags(NaviBarOptions.ParameterListShowParamName)), ThemeHelper.SystemGrayTextBrush);
+				text.Append(p.GetParameterListSignature(Config.Instance.NaviBarOptions.MatchFlags(NaviBarOptions.ParameterListShowParamName)), ThemeHelper.SystemGrayTextBrush);
 			}
 		}
 
-		static void AddReturnType(SymbolItem i, SyntaxNode node) {
-			if (String.IsNullOrEmpty(i.Hint)) {
+		static void AddReturnType(SymbolItem item, SyntaxNode node) {
+			if (String.IsNullOrEmpty(item.Hint)) {
 				var t = node.GetMemberDeclarationType();
 				if (t != null) {
-					i.Hint = t.ToString();
+					item.Hint = t.ToString();
 				}
 			}
 		}

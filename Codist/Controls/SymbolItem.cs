@@ -22,6 +22,7 @@ namespace Codist.Controls
 		internal SymbolList Container { get; private set; }
 		internal Location Location { get; set; }
 
+		#region WPF shared properties
 		// the following properties must be public since they are also used in WPF
 		public SymbolUsageKind Usage { get; set; }
 
@@ -33,7 +34,7 @@ namespace Codist.Controls
 			set => _Hint = value;
 		}
 		public bool IsExternal => Usage == SymbolUsageKind.External
-			|| Container != null && Container.ContainerType == SymbolListType.None && Symbol?.ContainingAssembly.GetSourceType() == AssemblySource.Metadata;
+			|| Container?.ContainerType == SymbolListType.None && Symbol?.ContainingAssembly.GetSourceType() == AssemblySource.Metadata;
 		public TextBlock Content {
 			get => _Content ?? (_Content = Symbol != null
 				? CreateContentForSymbol(Symbol, _IncludeContainerType, true)
@@ -42,6 +43,7 @@ namespace Codist.Controls
 					: new ThemedMenuText());
 			set => _Content = value;
 		}
+		#endregion
 
 		public SymbolItem(SymbolList list) {
 			Container = list;
@@ -82,17 +84,17 @@ namespace Codist.Controls
 
 		public event PropertyChangedEventHandler PropertyChanged;
 
-		public bool GoToSource() {
+		public async Task<bool> GoToSourceAsync() {
 			if (Location?.IsInSource == true) {
 				GoToLocation();
 				return true;
 			}
 			if (SyntaxNode != null) {
-				GoToNode();
+				await GoToNodeAsync();
 				return true;
 			}
 			if (Symbol != null) {
-				return GoToSymbol();
+				return await GoToSymbolAsync();
 			}
 			return false;
 		}
@@ -103,20 +105,23 @@ namespace Codist.Controls
 			loc.GoToSource();
 		}
 
-		void GoToNode() {
-			RefreshSyntaxNode();
+		async Task GoToNodeAsync() {
+			await RefreshSyntaxNodeAsync();
 			var node = SyntaxNode;
 			CloseUnpinnedMenus();
 			node.GetIdentifierToken().GetLocation().GoToSource();
 		}
 
-		bool GoToSymbol() {
-			RefreshSymbol();
+		async Task<bool> GoToSymbolAsync() {
+			await RefreshSymbolAsync();
 			if (Symbol.Kind == SymbolKind.Namespace) {
-				SyncHelper.RunSync(() => Container.SemanticContext.FindMembersAsync(Symbol, _Content.GetParent<ListBoxItem>().NullIfMouseOver()));
+				await SyncHelper.SwitchToMainThreadAsync();
+				var item = _Content.GetParent<ListBoxItem>().NullIfMouseOver();
+				await Container.SemanticContext.FindMembersAsync(Symbol, item);
 				return false;
 			}
 			var s = Symbol.GetSourceReferences();
+			await SyncHelper.SwitchToMainThreadAsync();
 			switch (s.Length) {
 				case 0:
 					if (Container.SemanticContext.Document != null) {
@@ -131,7 +136,8 @@ namespace Codist.Controls
 					s[0].GoToSource();
 					return true;
 				default:
-					Container.SemanticContext.ShowLocations(Symbol, s, _Content.GetParent<ListBoxItem>().NullIfMouseOver());
+					var item = _Content.GetParent<ListBoxItem>().NullIfMouseOver();
+					Container.SemanticContext.ShowLocations(Symbol, s, item);
 					return false;
 			}
 		}
@@ -175,15 +181,15 @@ namespace Codist.Controls
 		internal async Task SetSymbolToSyntaxNodeAsync() {
 			Symbol = await Container.SemanticContext.GetSymbolAsync(SyntaxNode);
 		}
-		internal void RefreshSyntaxNode() {
-			var node = Container.SemanticContext.RelocateDeclarationNode(SyntaxNode);
+		internal async Task RefreshSyntaxNodeAsync() {
+			var node = await Container.SemanticContext.RelocateDeclarationNodeAsync(SyntaxNode);
 			if (node != null && node != SyntaxNode) {
 				SyntaxNode = node;
 			}
 		}
-		internal void RefreshSymbol() {
+		async Task RefreshSymbolAsync() {
 			if (Symbol.ContainingAssembly.GetSourceType() != AssemblySource.Metadata) {
-				var symbol = Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.Run(() => Container.SemanticContext.RelocateSymbolAsync(Symbol));
+				var symbol = await Container.SemanticContext.RelocateSymbolAsync(Symbol);
 				if (symbol != null && symbol != Symbol) {
 					Symbol = symbol;
 				}

@@ -15,7 +15,6 @@ using Microsoft.VisualStudio.PlatformUI;
 using Microsoft.VisualStudio.Shell;
 using R = Codist.Properties.Resources;
 using Task = System.Threading.Tasks.Task;
-using TH = Microsoft.VisualStudio.Shell.ThreadHelper;
 
 namespace Codist.NaviBar
 {
@@ -81,7 +80,7 @@ namespace Codist.NaviBar
 					var ct = Bar._CancellationSource.GetToken();
 					try {
 						await CreateMenuForTypeSymbolNodeAsync(ct);
-						await TH.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
+						await SyncHelper.SwitchToMainThreadAsync(ct);
 
 						if (_Menu.Symbols.Count == 0) {
 							goto GOTO_DEFINITION;
@@ -153,17 +152,20 @@ namespace Codist.NaviBar
 			}
 
 			async Task RefreshItemsAsync(CancellationToken cancellationToken) {
-				var sm = Bar._SemanticContext.SemanticModel;
-				await Bar._SemanticContext.UpdateAsync(cancellationToken).ConfigureAwait(true);
-				if (sm != Bar._SemanticContext.SemanticModel) {
+				var ctx = Bar._SemanticContext;
+				var sm = ctx.SemanticModel;
+				await ctx.UpdateAsync(cancellationToken).ConfigureAwait(false);
+				if (sm != ctx.SemanticModel) {
 					_Menu.ClearSymbols();
 					_Symbol = null;
-					Node = Bar._SemanticContext.RelocateDeclarationNode(Node);
+					Node = await ctx.RelocateDeclarationNodeAsync(Node).ConfigureAwait(false);
 					await AddItemsAsync(Node, cancellationToken);
+					await SyncHelper.SwitchToMainThreadAsync(cancellationToken);
 					_Menu.RefreshItemsSource(true);
 					return;
 				}
 				// select node item which contains caret
+				await SyncHelper.SwitchToMainThreadAsync(cancellationToken);
 				var pos = Bar.View.GetCaretPosition();
 				foreach (var item in _Menu.Symbols) {
 					if (item.Usage != SymbolUsageKind.Container) {
@@ -176,8 +178,7 @@ namespace Codist.NaviBar
 			}
 
 			Task AddItemsAsync(SyntaxNode node, CancellationToken cancellationToken) {
-				var kind = node.Kind();
-				switch (kind) {
+				switch (node.Kind()) {
 					case SyntaxKind.SwitchStatement:
 						AddSwitchLabels(node);
 						return Task.CompletedTask;
@@ -203,8 +204,8 @@ namespace Codist.NaviBar
 			}
 
 			async Task AddExternalItemsAsync(SyntaxNode node, MemberListOptions externals, CancellationToken cancellationToken) {
-				await Bar._SemanticContext.UpdateAsync(cancellationToken).ConfigureAwait(true);
-				var symbol = await Bar._SemanticContext.GetSymbolAsync(node, cancellationToken).ConfigureAwait(true);
+				await Bar._SemanticContext.UpdateAsync(cancellationToken).ConfigureAwait(false);
+				var symbol = await Bar._SemanticContext.GetSymbolAsync(node, cancellationToken).ConfigureAwait(false);
 				if (symbol == null) {
 					return;
 				}
@@ -238,7 +239,7 @@ namespace Codist.NaviBar
 			}
 
 			async Task AddExternalNodesAsync(SyntaxReference item, string textOverride, bool includeDirectives, CancellationToken cancellationToken) {
-				var externalNode = await item.GetSyntaxAsync(cancellationToken);
+				var externalNode = await item.GetSyntaxAsync(cancellationToken).ConfigureAwait(false);
 				var i = _Menu.Add(externalNode);
 				i.Location = item.SyntaxTree.GetLocation(item.Span);
 				i.Content.Text = textOverride ?? System.IO.Path.GetFileName(item.SyntaxTree.FilePath);
@@ -418,6 +419,7 @@ namespace Codist.NaviBar
 							case SyntaxKind.SealedKeyword: AddIcon(ref icons, IconIds.SealedMethod); break;
 							case SyntaxKind.OverrideKeyword: AddIcon(ref icons, IconIds.OverrideMethod); break;
 							case SyntaxKind.ReadOnlyKeyword: AddIcon(ref icons, IconIds.ReadonlyMethod); break;
+							case SyntaxKind.VirtualKeyword: AddIcon(ref icons, IconIds.VirtualMember); break;
 						}
 					}
 					if (isStatic == false && isExt == false
@@ -442,6 +444,7 @@ namespace Codist.NaviBar
 								break;
 							case SyntaxKind.ReadOnlyKeyword: AddIcon(ref icons, IconIds.ReadonlyMethod); break;
 							case SyntaxKind.RefKeyword: AddIcon(ref icons, IconIds.RefMember); break;
+							case SyntaxKind.VirtualKeyword: AddIcon(ref icons, IconIds.VirtualMember); break;
 							case CodeAnalysisHelper.RequiredKeyword: AddIcon(ref icons, IconIds.RequiredMember); break;
 						}
 					}
@@ -482,6 +485,7 @@ namespace Codist.NaviBar
 							case SyntaxKind.ReadOnlyKeyword: AddIcon(ref icons, IconIds.ReadonlyField); break;
 							case SyntaxKind.VolatileKeyword: AddIcon(ref icons, IconIds.VolatileField); break;
 							case SyntaxKind.StaticKeyword: AddIcon(ref icons, IconIds.StaticMember); break;
+							case SyntaxKind.VirtualKeyword: AddIcon(ref icons, IconIds.VirtualMember); break;
 						}
 					}
 					return icons;
