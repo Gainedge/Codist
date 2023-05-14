@@ -348,6 +348,9 @@ namespace Codist.QuickInfo
 						return ThemeHelper.GetImage(IconIds.StatusSpell);
 					}
 				}
+				if (tt.IndexOf("vsspell", StringComparison.InvariantCultureIgnoreCase) >= 0) {
+          return ThemeHelper.GetImage(IconIds.StatusSpell);
+        }
 				var errorTagger = GetErrorTagger();
 				return errorTagger != null
 					? (_ErrorTags ?? (_ErrorTags = new ErrorTags()))
