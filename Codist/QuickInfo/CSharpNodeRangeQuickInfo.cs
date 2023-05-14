@@ -3,7 +3,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using AppHelpers;
 using Codist.Controls;
-using Microsoft.CodeAnalysis.Text;
 using Microsoft.VisualStudio.Language.Intellisense;
 using Microsoft.VisualStudio.Text.Editor;
 
@@ -17,15 +16,15 @@ namespace Codist.QuickInfo
 				|| session.TextView is IWpfTextView view == false
 				|| (context = SemanticContext.GetOrCreateSingletonInstance(view)) == null
 				? Task.FromResult<QuickInfoItem>(null)
-				: InternalGetQuickInfoItemAsync(session, view, context, cancellationToken);
+				: InternalGetQuickInfoItemAsync(session, context, cancellationToken);
 		}
 
-		async Task<QuickInfoItem> InternalGetQuickInfoItemAsync(IAsyncQuickInfoSession session, IWpfTextView view, SemanticContext sc, CancellationToken cancellationToken) {
-			await sc.UpdateAsync(cancellationToken).ConfigureAwait(false);
-			var node = sc.GetNode(session.GetTriggerPoint(view.TextBuffer).GetPosition(view.TextSnapshot), true, false);
+		async Task<QuickInfoItem> InternalGetQuickInfoItemAsync(IAsyncQuickInfoSession session, SemanticContext sc, CancellationToken cancellationToken) {
+			await sc.UpdateAsync(session.GetSourceBuffer(out var triggerPoint), cancellationToken).ConfigureAwait(false);
+			var node = sc.GetNode(triggerPoint, true, false);
 			if (node != null) {
 				node = node.GetNodePurpose();
-				session.Properties.AddProperty(typeof(CSharpNodeRangeQuickInfo), node.Span);
+				session.Properties.AddProperty(typeof(CSharpNodeRangeQuickInfo), sc.MapSourceSpan(node.Span));
 				session.StateChanged += Session_StateChanged;
 			}
 			return null;
@@ -40,7 +39,7 @@ namespace Codist.QuickInfo
 						TextViewOverlay.Get(view)?.ClearRangeAdornments();
 						break;
 					case QuickInfoSessionState.Visible:
-						TextViewOverlay.Get(view)?.SetRangeAdornment(s.Properties.GetProperty<TextSpan>(typeof(CSharpNodeRangeQuickInfo)).CreateSnapshotSpan(view.TextSnapshot));
+						TextViewOverlay.Get(view)?.SetRangeAdornment(s.Properties.GetProperty<Microsoft.VisualStudio.Text.SnapshotSpan>(typeof(CSharpNodeRangeQuickInfo)));
 						break;
 				}
 			}

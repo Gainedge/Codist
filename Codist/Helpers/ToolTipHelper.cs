@@ -201,14 +201,14 @@ namespace Codist
 		static void ShowColorPreview(ISymbol symbol, ThemedToolTip tip) {
 			var preview = QuickInfo.ColorQuickInfoUI.PreviewColorProperty(symbol as IPropertySymbol, false);
 			if (preview != null) {
-				tip.Add(preview);
+				tip.Add(preview.WrapMargin(WpfHelper.MiddleMargin));
 			}
 		}
 
 		internal static TTarget SetTipOptions<TTarget>(this TTarget target)
 			where TTarget : DependencyObject {
-			ToolTipService.SetBetweenShowDelay(target, 0);
-			ToolTipService.SetInitialShowDelay(target, 1000);
+			ToolTipService.SetBetweenShowDelay(target, 100);
+			ToolTipService.SetInitialShowDelay(target, 400);
 			ToolTipService.SetShowDuration(target, 15000);
 			return target;
 		}

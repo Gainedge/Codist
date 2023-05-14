@@ -113,7 +113,7 @@ namespace Codist.Controls
 		}
 
 		async Task<bool> GoToSymbolAsync() {
-			await RefreshSymbolAsync();
+			await RefreshSymbolAsync(default);
 			if (Symbol.Kind == SymbolKind.Namespace) {
 				await SyncHelper.SwitchToMainThreadAsync();
 				var item = _Content.GetParent<ListBoxItem>().NullIfMouseOver();
@@ -128,8 +128,20 @@ namespace Codist.Controls
 						var symbol = Symbol;
 						var proj = Container.SemanticContext.Document.Project;
 						CloseUnpinnedMenus();
-						return ServicesHelper.Instance.VisualStudioWorkspace.TryGoToDefinition(symbol, proj, default);
+						if (ServicesHelper.Instance.VisualStudioWorkspace.TryGoToDefinition(symbol, proj, default) == false) {
+							// Note: the symbol may come from other projects, which will fail the above call.
+							// In this case, we will try on related projects
+							foreach (var p in proj.GetRelatedProjects()) {
+								if (ServicesHelper.Instance.VisualStudioWorkspace.TryGoToDefinition(symbol, p, default)) {
+									return true;
+								}
+							}
+							VsShellHelper.Log($"TryGoToDefinition failed for {symbol}");
+							return false;
+						}
+						return true;
 					}
+					VsShellHelper.Log($"SemanticContext.Document is null for {Symbol}");
 					return false;
 				case 1:
 					CloseUnpinnedMenus();
@@ -187,25 +199,20 @@ namespace Codist.Controls
 				SyntaxNode = node;
 			}
 		}
-		async Task RefreshSymbolAsync() {
-			if (Symbol.ContainingAssembly.GetSourceType() != AssemblySource.Metadata) {
-				var symbol = await Container.SemanticContext.RelocateSymbolAsync(Symbol);
-				if (symbol != null && symbol != Symbol) {
-					Symbol = symbol;
-				}
-			}
-		}
-		internal Task RefreshSymbolAsync(CancellationToken cancellationToken) {
-			if (Symbol.ContainingAssembly.GetSourceType() == AssemblySource.Metadata) {
-				return Task.CompletedTask;
-			}
-			return RefreshSymbolInternalAsync(cancellationToken);
-		}
 
-		async Task RefreshSymbolInternalAsync(CancellationToken cancellationToken) {
-			var symbol = await Container.SemanticContext.RelocateSymbolAsync(Symbol, cancellationToken);
-			if (symbol != null && symbol != Symbol) {
-				Symbol = symbol;
+		internal Task RefreshSymbolAsync(CancellationToken cancellationToken) {
+			return Symbol.ContainingAssembly.GetSourceType() == AssemblySource.Metadata
+				? Task.CompletedTask
+				: RefreshSymbolInternalAsync(this, cancellationToken);
+
+			async Task RefreshSymbolInternalAsync(SymbolItem me, CancellationToken ct) {
+				var oldSymbol = me.Symbol;
+				if (oldSymbol != null) {
+					var symbol = await me.Container?.SemanticContext?.RelocateSymbolAsync(oldSymbol, ct);
+					if (symbol != null && symbol != oldSymbol) {
+						me.Symbol = symbol;
+					}
+				}
 			}
 		}
 

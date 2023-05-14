@@ -778,6 +778,24 @@ namespace Codist
 		}
 
 		/// <summary>
+		/// Gets the trigger point and the containing <see cref="ITextBuffer"/> of <see cref="IAsyncQuickInfoSession"/>.
+		/// </summary>
+		public static ITextBuffer GetSourceBuffer(this IAsyncQuickInfoSession session, out SnapshotPoint snapshotPoint) {
+			var buffer = session.TextView.TextBuffer;
+			ITrackingPoint triggerPoint;
+			if (buffer is IProjectionBuffer projection) {
+				foreach (var sb in projection.SourceBuffers) {
+					if ((triggerPoint = session.GetTriggerPoint(sb)) != null) {
+						snapshotPoint = triggerPoint.GetPoint(sb.CurrentSnapshot);
+						return sb;
+					}
+				}
+			}
+			snapshotPoint = session.GetTriggerPoint(buffer).GetPoint(buffer.CurrentSnapshot);
+			return buffer;
+		}
+
+		/// <summary>
 		/// <para>When we click from the Symbol Link or the context menu command on the Quick Info,
 		/// <see cref="OpenFile"/> command will be executed and caret will be moved to the new place.</para>
 		/// <para>While we <i>Navigate Backward</i>, the caret will be located at the place before Symbol Link 
@@ -1060,6 +1078,10 @@ namespace Codist
 					|| textBuffer.Properties.ContainsProperty(typeof(ITextDocument))
 					|| textBuffer is IProjectionBuffer pb && pb.SourceBuffers.Any(MayBeEditor))
 				&& textBuffer.ContentType.IsOfType("RoslynPreviewContentType") == false;
+		}
+		public static TObject GetOrCreateSingletonProperty<TObject>(this IPropertyOwner propertyOwner)
+			where TObject : class, new() {
+			return propertyOwner.Properties.GetOrCreateSingletonProperty(() => new TObject());
 		}
 		public static ITextDocument GetTextDocument(this ITextBuffer textBuffer) {
 			return textBuffer.Properties.TryGetProperty<ITextDocument>(typeof(ITextDocument), out var d) ? d : null;

@@ -229,14 +229,14 @@ namespace Codist
 			}
 
 			protected override void OnUnload() {
-				MouseLeftButtonDown -= GoToSymbol;
-				MouseRightButtonDown -= ShowContextMenu;
+				//MouseLeftButtonDown -= GoToSymbol;
+				//MouseRightButtonDown -= ShowContextMenu;
 				if (ContextMenu is CSharpSymbolContextMenu m) {
 					m.Closed -= DismissQuickInfo;
 					m.Dispose();
 					ContextMenu = null;
 				}
-				_Symbol = null;
+				//_Symbol = null;
 			}
 
 			protected override object CreateToolTip() {
@@ -282,9 +282,18 @@ namespace Codist
 			}
 
 			void GoToSymbol(object sender, RoutedEventArgs e) {
-				_Symbol.GoToDefinition();
+				if (_Symbol.Kind == SymbolKind.Namespace) {
+					FindMembersForNamespace(_Symbol);
+				}
+				else {
+					_Symbol.GoToDefinition();
+				}
 				QuickInfo.QuickInfoOverride.DismissQuickInfo(this);
 				e.Handled = true;
+
+				async void FindMembersForNamespace(ISymbol symbol) {
+					await SemanticContext.GetHovered().FindMembersAsync(symbol);
+				}
 			}
 		}
 	}
