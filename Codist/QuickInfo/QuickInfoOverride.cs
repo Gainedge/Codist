@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -335,9 +335,27 @@ namespace Codist.QuickInfo {
         return _Session?.TextView.Properties.GetOrCreateSingletonProperty(CreateErrorTagger);
       }
 
-      ITagAggregator<IErrorTag> CreateErrorTagger() {
-        return ServicesHelper.Instance.ViewTagAggregatorFactory.CreateTagAggregator<IErrorTag>(_Session.TextView);
-      }
+			public CrispImage GetIconForErrorText(TextBlock textBlock) {
+				var f = textBlock.Inlines.FirstInline;
+				var tt = ((f as Hyperlink)?.Inlines.FirstInline as Run)?.Text;
+				if (tt == null) {
+					tt = (f as Run)?.Text;
+					if (tt == null) {
+						return null;
+					}
+					if (tt == "SPELL") {
+						return ThemeHelper.GetImage(IconIds.StatusSpell);
+					}
+				}
+				if (tt.IndexOf("vsspell", StringComparison.InvariantCultureIgnoreCase) >= 0) {
+          return ThemeHelper.GetImage(IconIds.StatusSpell);
+        }
+				var errorTagger = GetErrorTagger();
+				return errorTagger != null
+					? (_ErrorTags ?? (_ErrorTags = new ErrorTags()))
+						.GetErrorIcon(tt, errorTagger, _Session.ApplicableToSpan.GetSpan(_Session.TextView.TextSnapshot))
+					: null;
+			}
 
       public FrameworkElement GetIconForErrorText(TextBlock textBlock) {
         var f = textBlock.Inlines.FirstInline;
