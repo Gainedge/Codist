@@ -114,11 +114,6 @@ namespace Codist.Taggers
 					var lastTriviaSpan = default(TextSpan);
 					SyntaxNode node;
 					TagSpan<IClassificationTag> tag = null;
-					var r = GetAttributeNotationSpan(snapshot, textSpan, compilationUnit);
-					if (r != null) {
-						tags.Add(r);
-					}
-
 					foreach (var item in classifiedSpans) {
 						var ct = item.ClassificationType;
 						switch (ct) {
@@ -165,20 +160,6 @@ namespace Codist.Taggers
 					}
 				}
 				return tags;
-			}
-
-			static TagSpan<IClassificationTag> GetAttributeNotationSpan(ITextSnapshot snapshot, TextSpan textSpan, CompilationUnitSyntax unitCompilation) {
-				var spanNode = unitCompilation.FindNode(textSpan, true, false);
-				if (spanNode.HasLeadingTrivia && spanNode.GetLeadingTrivia().FullSpan.Contains(textSpan)) {
-					return null;
-				}
-				switch (spanNode.Kind()) {
-					case SyntaxKind.AttributeArgument:
-					//case SyntaxKind.AttributeList:
-					case SyntaxKind.AttributeArgumentList:
-						return CreateClassificationSpan(snapshot, textSpan, __Classifications.AttributeNotation);
-				}
-				return null;
 			}
 
 			static TagSpan<IClassificationTag> ClassifyDeclarationKeyword(TextSpan itemSpan, ITextSnapshot snapshot, SyntaxNode node, CompilationUnitSyntax unitCompilation, out TagSpan<IClassificationTag> secondaryTag) {
@@ -338,17 +319,17 @@ namespace Codist.Taggers
 			}
 
 			static TagSpan<IClassificationTag> ClassifyPunctuation(TextSpan itemSpan, ITextSnapshot snapshot, SemanticModel semanticModel, CompilationUnitSyntax unitCompilation, CancellationToken cancellationToken) {
-				if (HighlightOptions.AllBraces && itemSpan.Length == 1) {
+				if ((HighlightOptions.AllBraces || HighlightOptions.AttributeAnnotation) && itemSpan.Length == 1) {
 					switch (snapshot[itemSpan.Start]) {
 						case '(':
 						case ')':
 							return HighlightOptions.AllParentheses ? ClassifyParentheses(itemSpan, snapshot, semanticModel, unitCompilation, cancellationToken) : null;
 						case '{':
 						case '}':
-							return ClassifyCurlyBraces(itemSpan, snapshot, unitCompilation);
+							return HighlightOptions.AllBraces ? ClassifyCurlyBraces(itemSpan, snapshot, unitCompilation) : null;
 						case '[':
 						case ']':
-							return ClassifyBrackets(itemSpan, snapshot, semanticModel, unitCompilation, cancellationToken);
+							return HighlightOptions.AttributeAnnotation ? ClassifyBrackets(itemSpan, snapshot, semanticModel, unitCompilation, cancellationToken) : null;
 					}
 				}
 				return null;
@@ -839,7 +820,7 @@ namespace Codist.Taggers
 			public static TransientMemberTagHolder MemberBraceTags { get; private set; }
 
 			// use fields to cache option flags
-			public static bool AllBraces, AllParentheses, LocalFunctionDeclaration, NonPrivateField, StyleConstructorAsType, CapturingLambda;
+			public static bool AllBraces, AllParentheses, LocalFunctionDeclaration, NonPrivateField, StyleConstructorAsType, CapturingLambda, AttributeAnnotation;
 
 			static bool Init() {
 				Config.RegisterUpdateHandler(UpdateCSharpHighlighterConfig);
@@ -899,6 +880,7 @@ namespace Codist.Taggers
 				LocalFunctionDeclaration = o.MatchFlags(SpecialHighlightOptions.LocalFunctionDeclaration);
 				NonPrivateField = o.MatchFlags(SpecialHighlightOptions.NonPrivateField);
 				StyleConstructorAsType = o.MatchFlags(SpecialHighlightOptions.UseTypeStyleOnConstructor);
+				AttributeAnnotation = FormatStore.GetStyles().TryGetValue(Constants.CSharpAttributeNotation, out var s) && s.IsSet;
 			}
 		}
 	}

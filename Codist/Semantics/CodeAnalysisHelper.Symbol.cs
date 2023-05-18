@@ -362,6 +362,14 @@ namespace Codist
 			}
 		}
 
+		public static IEnumerable<INamedTypeSymbol> GetBaseTypes(this ITypeSymbol type) {
+			var baseType = type.BaseType;
+			while (baseType != null) {
+				yield return baseType;
+				baseType = baseType.BaseType;
+			}
+		}
+
 		public static ITypeSymbol ResolveElementType(this ITypeSymbol t) {
 			switch (t.Kind) {
 				case SymbolKind.ArrayType: return ResolveElementType(((IArrayTypeSymbol)t).ElementType);
@@ -622,6 +630,14 @@ namespace Codist
 			return null;
 		}
 
+		public static ITypeSymbol GetEventArgsType(this IEventSymbol symbol) {
+			ImmutableArray<IParameterSymbol> parameters;
+			return symbol.Type.GetMembers("Invoke").FirstOrDefault() is IMethodSymbol invoke
+				&& (parameters = invoke.Parameters).Length == 2
+				? parameters[1].Type
+				: null;
+		}
+
 		public static string GetParameterString(this ISymbol symbol, bool withParamName = false) {
 			switch (symbol.Kind) {
 				case SymbolKind.Property: return GetPropertyAccessors((IPropertySymbol)symbol);
@@ -753,6 +769,10 @@ namespace Codist
 				ns = ns.ContainingNamespace;
 			}
 			return ns == null || ns.IsGlobalNamespace;
+		}
+
+		public static INamespaceSymbol GetCompilationNamespace(this INamespaceSymbol namespaceSymbol, SemanticModel semanticModel) {
+			return semanticModel.Compilation.GetCompilationNamespace(namespaceSymbol);
 		}
 
 		public static string GetTypeName(this ITypeSymbol symbol) {
@@ -1588,8 +1608,7 @@ namespace Codist
 				var il = m.GetILGenerator();
 				var isSource = il.DefineLabel();
 				var isRetargetSource = il.DefineLabel();
-				var notAssemblySymbol = il.DefineLabel();
-				var getUnderlyingAssemblySymbol = il.DefineLabel();
+				Label notAssemblySymbol, getUnderlyingAssemblySymbol;
 				var a = typeof(CSharpCompilation).Assembly;
 				const string NS = "Microsoft.CodeAnalysis.CSharp.Symbols.";
 				var s = a.GetType(NS + "PublicModel.AssemblySymbol"); // from VS16.5
@@ -1608,6 +1627,8 @@ namespace Codist
 					il.Emit(OpCodes.Brtrue_S, isSource);
 				}
 				if (ua != null) { // VS16.5
+					notAssemblySymbol = il.DefineLabel();
+					getUnderlyingAssemblySymbol = il.DefineLabel();
 					// (asm as AssemblySymbol)?.UnderlyingAssemblySymbol is RetargetingAssemblySymbol
 					il.Emit(OpCodes.Ldarg_0);
 					il.Emit(OpCodes.Isinst, s);
