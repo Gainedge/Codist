@@ -89,6 +89,8 @@ namespace Codist.Controls
 					AddCommand(CommandId.ListSymbolMembers);
 					AddCommand(CommandId.ListSymbolLocations);
 					break;
+				case SymbolKind.ErrorType:
+					return;
 			}
 			if (_Host.Context.SemanticModel != null) {
 				if (_Host.Node?.Kind().IsDeclaration() == true
@@ -377,8 +379,8 @@ namespace Codist.Controls
 					goto FALLBACK;
 				}
 				Header = new ThemedMenuText().Append(title.Substring(0, i))
-						.Append(new System.Windows.Documents.Run(titleSubstitution) { TextDecorations = { TextDecorations.Underline } })
-						.Append(title.Substring(i2 + 1));
+					.Append(new System.Windows.Documents.Run(String.IsNullOrEmpty(titleSubstitution) ? "?" : titleSubstitution) { TextDecorations = { TextDecorations.Underline } })
+					.Append(title.Substring(i2 + 1));
 				return;
 			FALLBACK:
 				Header = new ThemedMenuText { Text = title };
@@ -754,13 +756,19 @@ namespace Codist.Controls
 
 			CustomMenuItem CreateWebSearchCommand() {
 				var search = new CustomMenuItem(IconIds.SearchWebSite, R.OT_WebSearch);
-				var symbolName = _Symbol.Name;
+				var symbolName = _Symbol.GetOriginalName();
 				search.Items.AddRange(
-					Config.Instance.SearchEngines.ConvertAll(s => CreateItem(
-						IconIds.SearchWebSite,
-						R.CMD_SearchWith.Replace("<NAME>", s.Name),
-						(sender, args) => ExternalCommand.OpenWithWebBrowser(s.Pattern, symbolName))
-					)
+					Config.Instance.SearchEngines.ConvertAll(s => {
+						var item = CreateItem(
+							IconIds.SearchWebSite,
+							R.CMD_SearchWith.Replace("<NAME>", s.Name),
+							(sender, args) => {
+								var m = (MenuItem)sender;
+								ExternalCommand.OpenWithWebBrowser(m.GetSearchUrl(), m.GetSearchParameter());
+							});
+						item.SetSearchUrlPattern(s.Pattern, symbolName);
+						return item;
+					})
 				);
 				search.Items.Add(CreateItem(IconIds.CustomizeWebSearch, R.CMD_Customize, (sender, args) => CodistPackage.Instance.ShowOptionPage(typeof(Options.WebSearchPage)))
 					.SetLazyToolTip(() => new CommandToolTip(IconIds.CustomizeWebSearch, R.CMD_Customize + "\n" + R.CMDT_CustomizeSearchEngines))

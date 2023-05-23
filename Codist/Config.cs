@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Windows.Media;
-using AppHelpers;
+using CLR;
 using Codist.Margins;
 using Codist.SyntaxHighlight;
 using Codist.Taggers;
@@ -383,7 +383,7 @@ namespace Codist
 			where TStyleType : struct, Enum {
 			var r = new TStyle[Enum.GetValues(typeof(TStyleType)).Length];
 			for (var i = 0; i < r.Length; i++) {
-				r[i] = new TStyle { StyleID = ClrHacker.DirectCast<int, TStyleType>(i) };
+				r[i] = new TStyle { StyleID = Op.Cast<int, TStyleType>(i) };
 			}
 			return r;
 		}
@@ -438,7 +438,7 @@ namespace Codist
 				styles.ForEach(i => i.Font = null);
 			}
 			for (var i = styles.Count - 1; i >= 0; i--) {
-				if (styles[i] == null || EnumHelper.IsDefined(styles[i].StyleID) == false) {
+				if (styles[i] == null || styles[i].StyleID.IsDefined() == false) {
 					styles.RemoveAt(i);
 				}
 			}
@@ -491,7 +491,7 @@ namespace Codist
 			where TStyle : StyleBase<TStyleType>, new()
 			where TStyleType : struct, Enum {
 			foreach (var s in GetDefaultCodeStyles<TStyle, TStyleType>()) {
-				if (s.Id > 0 && styles.Find(i => ClrHacker.DirectCompare(i.StyleID, s.StyleID)) == null) {
+				if (s.Id > 0 && styles.Find(i => Op.Ceq(i.StyleID, s.StyleID)) == null) {
 					styles.Add(s);
 				}
 			}
@@ -731,7 +731,7 @@ namespace Codist
 	}
 
 	[Flags]
-	public enum QuickInfoOptions
+	public enum QuickInfoOptions : long
 	{
 		None,
 		[Obsolete]
@@ -762,18 +762,19 @@ namespace Codist
 		DocumentationFromInheritDoc = 1 << 19,
 		SeeAlsoDoc = 1 << 20,
 		TextOnlyDoc = 1 << 21,
-		ExceptionDoc = 1 << 22,
-		ReturnsDoc = 1 << 23,
-		RemarksDoc = 1 << 24,
-		ExampleDoc = 1 << 25,
-		Color = 1 << 26,
-		Selection = 1 << 27,
-		CtrlSuppress = 1 << 28,
+		OrdinaryCommentDoc = 1 << 22,
+		ExceptionDoc = 1 << 23,
+		ReturnsDoc = 1 << 24,
+		RemarksDoc = 1 << 25,
+		ExampleDoc = 1 << 26,
+		Color = 1 << 27,
+		Selection = 1 << 28,
+		CtrlSuppress = 1 << 29,
 		[Obsolete]
-		CtrlSupress = 1 << 28,
-		CtrlQuickInfo = 1 << 29,
-		AlternativeStyle = 1 << 30,
-		UseCodeFontForXmlDocSymbol = 1 << 31,
+		CtrlSupress = 1 << 29,
+		CtrlQuickInfo = 1 << 30,
+		AlternativeStyle = 1L << 31,
+		UseCodeFontForXmlDocSymbol = 1L << 32,
 		DocumentationOverride = OverrideDefaultDocumentation | DocumentationFromBaseType | DocumentationFromInheritDoc,
 		QuickInfoOverride = DocumentationOverride | AlternativeStyle,
 		Default = NodeRange | AlternativeStyle | Attributes | BaseType | Interfaces | Enum | NumericValues | InterfaceImplementations | MethodOverload | Parameter | OverrideDefaultDocumentation | DocumentationFromBaseType | DocumentationFromInheritDoc | SeeAlsoDoc | ExceptionDoc | ReturnsDoc | RemarksDoc,

@@ -7,7 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using AppHelpers;
+using CLR;
 using Codist.Controls;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -91,6 +91,9 @@ namespace Codist.NaviBar
 					_Menu.NeedsRefresh = false;
 					_Menu.ClearSymbols();
 					_Menu.ItemsSource = null;
+				}
+				if (Bar._SemanticContext.IsReady == false) {
+					return;
 				}
 				PopulateTypes();
 				_Note.Clear();
