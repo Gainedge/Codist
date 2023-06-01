@@ -508,6 +508,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Export....
+        /// </summary>
+        internal static string CMD_Export {
+            get {
+                return ResourceManager.GetString("CMD_Export", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Extract interface....
         /// </summary>
         internal static string CMD_ExtractInterface {
@@ -862,6 +871,15 @@ namespace Codist.Properties {
         internal static string CMD_IfElseToConditional {
             get {
                 return ResourceManager.GetString("CMD_IfElseToConditional", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Import....
+        /// </summary>
+        internal static string CMD_Import {
+            get {
+                return ResourceManager.GetString("CMD_Import", resourceCulture);
             }
         }
         
@@ -2949,6 +2967,33 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Delay Display.
+        /// </summary>
+        internal static string OT_DelayDisplay {
+            get {
+                return ResourceManager.GetString("OT_DelayDisplay", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Postpone the display of Quick Info.
+        /// </summary>
+        internal static string OT_DelayDisplayNote {
+            get {
+                return ResourceManager.GetString("OT_DelayDisplayNote", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Delay time (milliseconds):.
+        /// </summary>
+        internal static string OT_DelayTime {
+            get {
+                return ResourceManager.GetString("OT_DelayTime", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Displays declaration information of a symbol if it is not a public instance one, as well as event or delegate signatures.
         /// </summary>
         internal static string OT_DesclarationTip {
@@ -4681,7 +4726,7 @@ namespace Codist.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Set the above value to 0 to for unlimited size.
+        ///   Looks up a localized string similar to Set the above value to 0 for unlimited size.
         /// </summary>
         internal static string OT_UnlimitedSize {
             get {

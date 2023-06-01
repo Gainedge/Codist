@@ -599,7 +599,7 @@ namespace Codist.Margins
 			async void UpdateReferences(object sender, EventArgs e) {
 				var ct = SyncHelper.CancelAndRetainToken(ref _Cancellation);
 				try {
-					if (await UpdateAsync(null, ct)) {
+					if (await Task.Run(() => UpdateAsync(null, ct))) {
 						_Margin?.InvalidateVisual();
 					}
 				}
@@ -629,13 +629,12 @@ namespace Codist.Margins
 						return false;
 					}
 				}
-				var doc = state.GetDocument();
-				_References = await ThreadHelper.JoinableTaskFactory.RunAsync(async () => GetReferenceItems(
-					await SymbolFinder.FindReferencesAsync(symbol.GetAliasTarget(), doc.Project.Solution, ImmutableSortedSet.Create(doc), cancellationToken).ConfigureAwait(false),
+				_References = GetReferenceItems(
+					await SymbolFinder.FindReferencesAsync(symbol.GetAliasTarget(), state.Document.Project.Solution, ImmutableSortedSet.Create(state.Document), cancellationToken).ConfigureAwait(false),
 					state.Model.SyntaxTree,
 					state.GetCompilationUnit(cancellationToken),
 					cancellationToken
-					));
+					);
 				return true;
 			}
 

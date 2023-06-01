@@ -404,7 +404,8 @@ namespace Codist.QuickInfo
 				if (p == null) {
 					goto EXIT;
 				}
-
+				p.SetProperty(FontFamilyProperty, ThemeHelper.ToolTipFont)
+					.SetProperty(FontSizeProperty, ThemeHelper.ToolTipFontSize);
 				try {
 					if (Config.Instance.DisplayOptimizations.MatchFlags(DisplayOptimizations.CodeWindow)) {
 						WpfHelper.SetUITextRenderOptions(p, true);
