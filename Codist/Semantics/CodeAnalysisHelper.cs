@@ -958,7 +958,7 @@ namespace Codist
 				return "()";
 			}
 			var isIndexer = parameters.Parent.IsKind(SyntaxKind.IndexerDeclaration);
-			using (var r = Microsoft.VisualStudio.Utilities.ReusableStringBuilder.AcquireDefault(30)) {
+			using (var r = ReusableStringBuilder.AcquireDefault(30)) {
 				var sb = r.Resource;
 				sb.Append(isIndexer ? '[' : '(');
 				foreach (var item in parameters.Parameters) {
@@ -1079,29 +1079,44 @@ namespace Codist
 					return (expression as PostfixUnaryExpressionSyntax).Operand.ToString();
 				case SyntaxKind.ObjectCreationExpression:
 					return (expression as ObjectCreationExpressionSyntax).Type.GetExpressionSignature();
-				case SyntaxKind.TypeOfExpression: return (expression as TypeOfExpressionSyntax).Type.GetExpressionSignature();
-				case SyntaxKind.IdentifierName: return (expression as IdentifierNameSyntax).Identifier.Text;
-				case SyntaxKind.QualifiedName: return (expression as QualifiedNameSyntax).Right.Identifier.Text;
-				case SyntaxKind.AliasQualifiedName: return (expression as AliasQualifiedNameSyntax).Name.Identifier.Text;
-				case SyntaxKind.SimpleMemberAccessExpression: return (expression as MemberAccessExpressionSyntax).Name.Identifier.Text;
+				case SyntaxKind.TypeOfExpression:
+					return (expression as TypeOfExpressionSyntax).Type.GetExpressionSignature();
+				case SyntaxKind.IdentifierName:
+					return (expression as IdentifierNameSyntax).Identifier.Text;
+				case SyntaxKind.QualifiedName:
+					return (expression as QualifiedNameSyntax).Right.Identifier.Text;
+				case SyntaxKind.AliasQualifiedName:
+					return (expression as AliasQualifiedNameSyntax).Name.Identifier.Text;
+				case SyntaxKind.SimpleMemberAccessExpression:
+					return (expression as MemberAccessExpressionSyntax).Name.Identifier.Text;
 				case SyntaxKind.PointerMemberAccessExpression:
 					return ((MemberAccessExpressionSyntax)expression).Name.Identifier.Text;
-				case SyntaxKind.MemberBindingExpression: return (expression as MemberBindingExpressionSyntax).Name.Identifier.Text;
+				case SyntaxKind.MemberBindingExpression:
+					return (expression as MemberBindingExpressionSyntax).Name.Identifier.Text;
 				case SyntaxKind.CastExpression:
 					return (expression as CastExpressionSyntax).Type.GetExpressionSignature();
-				case SyntaxKind.FalseLiteralExpression: return "false";
-				case SyntaxKind.TrueLiteralExpression: return "true";
-				case SyntaxKind.NullLiteralExpression: return "null";
-				case SyntaxKind.ThisExpression: return "this";
-				case SyntaxKind.BaseExpression: return "base";
-				case SyntaxKind.InvocationExpression: return (expression as InvocationExpressionSyntax).Expression.GetExpressionSignature();
-				case SyntaxKind.ConditionalAccessExpression: return (expression as ConditionalAccessExpressionSyntax).WhenNotNull.GetExpressionSignature();
+				case SyntaxKind.FalseLiteralExpression:
+					return "false";
+				case SyntaxKind.TrueLiteralExpression:
+					return "true";
+				case SyntaxKind.NullLiteralExpression:
+					return "null";
+				case SyntaxKind.ThisExpression:
+					return "this";
+				case SyntaxKind.BaseExpression:
+					return "base";
+				case SyntaxKind.InvocationExpression:
+					return (expression as InvocationExpressionSyntax).Expression.GetExpressionSignature();
+				case SyntaxKind.ConditionalAccessExpression:
+					return (expression as ConditionalAccessExpressionSyntax).WhenNotNull.GetExpressionSignature();
 				case SyntaxKind.CharacterLiteralExpression:
 				case SyntaxKind.NumericLiteralExpression:
 				case SyntaxKind.StringLiteralExpression:
 					return (expression as LiteralExpressionSyntax).Token.ValueText;
-				case SyntaxKind.ConditionalExpression: return (expression as ConditionalExpressionSyntax).Condition.GetExpressionSignature() + "?:";
-				default: return expression.GetFirstIdentifier()?.Identifier.Text;
+				case SyntaxKind.ConditionalExpression:
+					return (expression as ConditionalExpressionSyntax).Condition.GetExpressionSignature() + "?:";
+				default:
+					return expression.GetFirstIdentifier()?.Identifier.Text;
 			}
 		}
 		public static SyntaxNode GetAncestorOrSelfDeclaration(this SyntaxNode node) {
@@ -1457,13 +1472,9 @@ namespace Codist
 			return tp?.Parameters.FirstOrDefault(p => p.Identifier.Text == name);
 		}
 		public static bool IsLineComment(this SyntaxTrivia trivia) {
-			switch (trivia.Kind()) {
-				case SyntaxKind.MultiLineCommentTrivia:
-				case SyntaxKind.SingleLineCommentTrivia:
-					return true;
-			}
-			return false;
+			return trivia.Kind().CeqAny(SyntaxKind.MultiLineCommentTrivia, SyntaxKind.SingleLineCommentTrivia);
 		}
+
 		static readonly char[] __SplitLineChars = new char[] { '\r', '\n' };
 		public static string GetCommentContent(this SyntaxTriviaList trivias) {
 			using (var rsb = ReusableStringBuilder.AcquireDefault(100)) {
@@ -1531,13 +1542,7 @@ namespace Codist
 				var n = node;
 				while ((n = n.Parent).IsKind(SyntaxKind.QualifiedName)) {
 				}
-				switch (n.Kind()) {
-					case SyntaxKind.UsingDirective:
-					case SyntaxKind.NamespaceDeclaration:
-						return node;
-					default:
-						return n;
-				}
+				return n.IsAnyKind(SyntaxKind.UsingDirective, SyntaxKind.NamespaceDeclaration) ? node : n;
 			}
 			return node;
 		}
@@ -1545,7 +1550,7 @@ namespace Codist
 		/// <summary>Navigates upward through ancestral axis and find out the first node reflecting the usage.</summary>
 		public static SyntaxNode GetNodePurpose(this SyntaxNode node) {
 			NameSyntax originName;
-			if (node.IsKind(SyntaxKind.IdentifierName) || node.IsKind(SyntaxKind.GenericName)) {
+			if (node.IsAnyKind(SyntaxKind.IdentifierName, SyntaxKind.GenericName)) {
 				originName = node as NameSyntax;
 				node = node.Parent;
 			}

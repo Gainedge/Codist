@@ -247,7 +247,7 @@ namespace Codist
 				case SymbolKind.TypeParameter:
 					if (symbol is ITypeParameterSymbol tp) {
 						if (tp.Variance != VarianceKind.None) {
-							signature.Inlines.InsertBefore(signature.Inlines.FirstInline, (tp.Variance == VarianceKind.Out ? "out " : "in ").Render(Keyword));
+							signature.Inlines.InsertBefore(signature.Inlines.FirstInline, tp.Variance.Case(VarianceKind.Out, "out ", "in ").Render(Keyword));
 						}
 						if (tp.HasConstraint()) {
 							signature.Append(": ");
@@ -660,7 +660,7 @@ namespace Codist
 				if (m.ReturnsByRefReadonly) {
 					return "ref readonly ";
 				}
-				else if (m.ReturnsByRef) {
+				if (m.ReturnsByRef) {
 					return "ref ";
 				}
 			}
@@ -668,7 +668,7 @@ namespace Codist
 				if (p.ReturnsByRefReadonly) {
 					return "ref readonly ";
 				}
-				else if (p.ReturnsByRef) {
+				if (p.ReturnsByRef) {
 					return "ref ";
 				}
 			}
@@ -680,18 +680,30 @@ namespace Codist
 				case SymbolKind.ArrayType:
 					FormatArrayType(text, (IArrayTypeSymbol)symbol, alias, bold);
 					return;
-				case SymbolKind.Event: FormatEventName(text, (IEventSymbol)symbol, alias, bold); return;
+				case SymbolKind.Event: FormatEventName(text, (IEventSymbol)symbol, alias, bold);
+					return;
 				case SymbolKind.Field:
 					text.Add(symbol.Render(alias, bold, ((IFieldSymbol)symbol).IsConst ? Const : Field));
 					return;
-				case SymbolKind.Method: FormatMethodName(text, symbol, alias, bold); return;
-				case SymbolKind.NamedType: FormatTypeName(text, symbol, alias, bold); return;
-				case SymbolKind.Namespace: text.Add(symbol.Render(alias, bold, Namespace)); return;
-				case SymbolKind.Parameter: text.Add(symbol.Render(null, bold, Parameter)); return;
-				case SymbolKind.Property: FormatPropertyName(text, (IPropertySymbol)symbol, alias, bold); return;
+				case SymbolKind.Method:
+					FormatMethodName(text, symbol, alias, bold);
+					return;
+				case SymbolKind.NamedType:
+					FormatTypeName(text, symbol, alias, bold);
+					return;
+				case SymbolKind.Namespace:
+					text.Add(symbol.Render(alias, bold, Namespace));
+					return;
+				case SymbolKind.Parameter:
+					text.Add(symbol.Render(null, bold, Parameter));
+					return;
+				case SymbolKind.Property:
+					FormatPropertyName(text, (IPropertySymbol)symbol, alias, bold);
+					return;
 				case SymbolKind.Local:
 				case SymbolKind.RangeVariable:
-					text.Add(symbol.Render(null, bold, Local)); return;
+					text.Add(symbol.Render(null, bold, Local));
+					return;
 				case SymbolKind.TypeParameter:
 					FormatTypeParameter(text, (ITypeParameterSymbol)symbol, alias, bold);
 					return;
@@ -707,9 +719,15 @@ namespace Codist
 				case CodeAnalysisHelper.FunctionPointerType:
 					text.Add((symbol as ITypeSymbol).GetTypeName());
 					return;
-				case SymbolKind.Label: text.Add(symbol.Render(null, bold, null)); return;
-				case SymbolKind.Discard: text.Add("_".Render(Keyword)); return;
-				default: text.Add(symbol.Name); return;
+				case SymbolKind.Label:
+					text.Add(symbol.Render(null, bold, null))
+						; return;
+				case SymbolKind.Discard:
+					text.Add("_".Render(Keyword));
+					return;
+				default:
+					text.Add(symbol.Name);
+					return;
 			}
 		}
 
@@ -773,15 +791,20 @@ namespace Codist
 			}
 			switch (type.TypeKind) {
 				case TypeKind.Class:
-					text.Add(symbol.Render(alias ?? (type.IsAnonymousType ? "{anonymous}" : null), bold, Class)); break;
+					text.Add(symbol.Render(alias ?? (type.IsAnonymousType ? "{anonymous}" : null), bold, Class));
+					break;
 				case TypeKind.Delegate:
-					text.Add(symbol.Render(alias, bold, Delegate)); break;
+					text.Add(symbol.Render(alias, bold, Delegate));
+					break;
 				case TypeKind.Dynamic:
-					text.Add(symbol.Render(alias ?? symbol.Name, bold, Keyword)); return;
+					text.Add(symbol.Render(alias ?? symbol.Name, bold, Keyword));
+					return;
 				case TypeKind.Enum:
-					text.Add(symbol.Render(alias, bold, Enum)); return;
+					text.Add(symbol.Render(alias, bold, Enum));
+					return;
 				case TypeKind.Interface:
-					text.Add(symbol.Render(alias, bold, Interface)); break;
+					text.Add(symbol.Render(alias, bold, Interface));
+					break;
 				case TypeKind.Struct:
 					ITypeSymbol nullable;
 					if (type.IsTupleType) {
@@ -806,9 +829,11 @@ namespace Codist
 					}
 					break;
 				case TypeKind.TypeParameter:
-					text.Add(symbol.Render(alias ?? symbol.Name, bold, TypeParameter)); return;
+					text.Add(symbol.Render(alias ?? symbol.Name, bold, TypeParameter));
+					return;
 				default:
-					text.Add(symbol.MetadataName.Render(bold, false, Class)); return;
+					text.Add(symbol.MetadataName.Render(bold, false, Class));
+					return;
 			}
 			if (type.GetNullableAnnotation() == 2) {
 				text.Add("?".Render(PlainText));
@@ -972,10 +997,7 @@ namespace Codist
 			var a = item.AttributeClass.Name;
 			block.Add("[".Render(PlainText));
 			if (attributeType != 0) {
-				block.Add((attributeType == 1 ? "return"
-					: attributeType == 2 ? "field"
-					: attributeType == 3 ? "assembly"
-					: "?").Render(Keyword));
+				block.Add(attributeType.Switch(String.Empty, "return", "field", "assembly", "?").Render(Keyword));
 				block.Add(": ".Render(PlainText));
 			}
 			block.Add(WpfHelper.Render(item.AttributeConstructor ?? (ISymbol)item.AttributeClass, a.EndsWith("Attribute", StringComparison.Ordinal) ? a.Substring(0, a.Length - 9) : a, Class));
@@ -999,7 +1021,7 @@ namespace Codist
 				if (++i > 1) {
 					block.Add(", ".Render(PlainText));
 				}
-				var attrMember = item.AttributeClass.GetMembers(arg.Key).FirstOrDefault(m => m.Kind == SymbolKind.Field || m.Kind == SymbolKind.Property);
+				var attrMember = item.AttributeClass.GetMembers(arg.Key).FirstOrDefault(m => m.Kind.CeqAny(SymbolKind.Field, SymbolKind.Property));
 				if (attrMember != null) {
 					block.Add(arg.Key.Render(attrMember.Kind == SymbolKind.Property ? Property : Field));
 				}

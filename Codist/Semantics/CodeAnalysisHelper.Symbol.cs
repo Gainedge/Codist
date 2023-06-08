@@ -323,14 +323,6 @@ namespace Codist
 			return t;
 		}
 
-		public static bool IsAnyKind(this ISymbol symbol, SymbolKind kind, SymbolKind kind2) {
-			return symbol.Kind == kind || symbol.Kind == kind2;
-		}
-		public static bool IsAnyKind(this ISymbol symbol, SymbolKind kind, SymbolKind kind2, SymbolKind kind3) {
-			SymbolKind k;
-			return (k = symbol.Kind) == kind || k == kind2 || k == kind3;
-		}
-
 		public static ISymbol GetUnderlyingSymbol(this ISymbol symbol) {
 			switch (symbol.Kind) {
 				case SymbolKind.ArrayType:
@@ -371,12 +363,12 @@ namespace Codist
 			}
 		}
 
-		public static ITypeSymbol ResolveElementType(this ITypeSymbol t) {
-			switch (t.Kind) {
-				case SymbolKind.ArrayType: return ResolveElementType(((IArrayTypeSymbol)t).ElementType);
-				case SymbolKind.PointerType: return ResolveElementType(((IPointerTypeSymbol)t).PointedAtType);
+		public static ITypeSymbol ResolveElementType(this ITypeSymbol type) {
+			switch (type.Kind) {
+				case SymbolKind.ArrayType: return ResolveElementType(((IArrayTypeSymbol)type).ElementType);
+				case SymbolKind.PointerType: return ResolveElementType(((IPointerTypeSymbol)type).PointedAtType);
 			}
-			return t;
+			return type;
 		}
 
 		public static ITypeSymbol ResolveSingleGenericTypeArgument(this ITypeSymbol type) {
@@ -396,20 +388,15 @@ namespace Codist
 			switch (symbol.Kind) {
 				case SymbolKind.Assembly: return KnownImageIds.Assembly;
 				case SymbolKind.DynamicType: return KnownImageIds.Dynamic;
-				case SymbolKind.Event:
-					return GetEventImageId((IEventSymbol)symbol);
-				case SymbolKind.Field:
-					return GetFieldImageId((IFieldSymbol)symbol);
+				case SymbolKind.Event: return GetEventImageId((IEventSymbol)symbol);
+				case SymbolKind.Field: return GetFieldImageId((IFieldSymbol)symbol);
 				case SymbolKind.Label: return KnownImageIds.Label;
 				case SymbolKind.Local: return IconIds.LocalVariable;
-				case SymbolKind.Method:
-					return GetMethodImageId((IMethodSymbol)symbol);
-				case SymbolKind.NamedType:
-					return GetTypeImageId((INamedTypeSymbol)symbol);
+				case SymbolKind.Method: return GetMethodImageId((IMethodSymbol)symbol);
+				case SymbolKind.NamedType: return GetTypeImageId((INamedTypeSymbol)symbol);
 				case SymbolKind.Namespace: return IconIds.Namespace;
 				case SymbolKind.Parameter: return IconIds.Argument;
-				case SymbolKind.Property:
-					return GetPropertyImageId((IPropertySymbol)symbol);
+				case SymbolKind.Property: return GetPropertyImageId((IPropertySymbol)symbol);
 				case FunctionPointerType: return IconIds.FunctionPointer;
 				case SymbolKind.Discard: return IconIds.Discard;
 				default: return KnownImageIds.Item;
@@ -1005,6 +992,7 @@ namespace Codist
 
 		static bool IsCustomAwaiter(ITypeSymbol type) {
 			int f = 0;
+			const int HAS_GET_RESULT = 1, HAS_ON_COMPLETED = 2, HAS_IS_COMPLETED = 4, IS_AWAITER = 7;
 			foreach (var item in type.GetMembers()) {
 				if (item.IsStatic) {
 					continue;
@@ -1018,28 +1006,29 @@ namespace Codist
 						switch (m.Name) {
 							case "GetResult":
 								if (m.Parameters.Length == 0) {
-									f |= 1;
+									f |= HAS_GET_RESULT;
 								}
 								continue;
 							case "OnCompleted":
 								var mp = m.Parameters;
 								if (m.ReturnsVoid
 									&& mp.Length == 1
-									&& mp[0].Type.MatchTypeName("Action", "System")
-									&& (mp[0].Type as INamedTypeSymbol)?.IsGenericType == false) {
-									f |= 2;
+									&& mp[0].Type is INamedTypeSymbol pt
+									&& pt.IsGenericType == false
+									&& pt.MatchTypeName("Action", "System")) {
+									f |= HAS_ON_COMPLETED;
 								}
 								continue;
 						}
 						continue;
 					case SymbolKind.Property:
 						if (item.Name == "IsCompleted" && item.GetReturnType()?.SpecialType == SpecialType.System_Boolean) {
-							f |= 4;
+							f |= HAS_IS_COMPLETED;
 						}
 						continue;
 				}
 			}
-			return f == 7;
+			return f == IS_AWAITER;
 		}
 
 		public static bool IsDisposable(this ISymbol symbol) {
@@ -1291,9 +1280,7 @@ namespace Codist
 
 		public static bool IsAccessible(this ISymbol symbol, bool checkContainingType) {
 			return symbol != null
-				&& (symbol.DeclaredAccessibility == Accessibility.Public
-					|| symbol.DeclaredAccessibility == Accessibility.Protected
-					|| symbol.DeclaredAccessibility == Accessibility.ProtectedOrInternal
+				&& (symbol.DeclaredAccessibility.CeqAny(Accessibility.Public, Accessibility.Protected, Accessibility.ProtectedOrInternal)
 					|| symbol.ContainingAssembly.GetSourceType() != AssemblySource.Metadata)
 				&& (checkContainingType == false || symbol.ContainingType?.IsAccessible(true) != false);
 		}
@@ -1342,7 +1329,6 @@ namespace Codist
 								return true;
 							}
 						} while ((from = from.BaseType) != null);
-						return false;
 					}
 					return false;
 			}

@@ -63,10 +63,11 @@ namespace Codist.QuickInfo
 			var skipTriggerPointCheck = false;
 			var isConvertedType = false;
 			symbol = null;
-			var overrider = Config.Instance.QuickInfoOptions.HasAnyFlag(QuickInfoOptions.QuickInfoOverride)
+			// the Quick Info override
+			var o = Config.Instance.QuickInfoOptions.HasAnyFlag(QuickInfoOptions.QuickInfoOverride)
 				? QuickInfoOverride.CreateOverride(session)
 				: null;
-			var container = new InfoContainer(overrider);
+			var container = new InfoContainer();
 			ClassifyToken:
 			switch (token.Kind()) {
 				case SyntaxKind.WhitespaceTrivia:
@@ -90,14 +91,14 @@ namespace Codist.QuickInfo
 						isConvertedType = true;
 						goto PROCESS;
 					}
-					if (overrider != null) {
-						overrider.OverrideBuiltInXmlDoc = false;
+					if (o != null) {
+						o.OverrideBuiltInXmlDoc = false;
 					}
 					ShowBlockInfo(container, currentSnapshot, node, semanticModel);
 					goto RETURN;
 				case SyntaxKind.CloseBraceToken:
-					if (overrider != null) {
-						overrider.OverrideBuiltInXmlDoc = false;
+					if (o != null) {
+						o.OverrideBuiltInXmlDoc = false;
 					}
 					if ((node = unitCompilation.FindNode(token.Span)).IsKind(SyntaxKind.Interpolation)) {
 						goto case SyntaxKind.CommaToken;
@@ -318,7 +319,7 @@ namespace Codist.QuickInfo
 						&& token.Span.Length >= 8) {
 							container.Add(new ThemedTipText(token.ValueText) { FontSize = ThemeHelper.ToolTipFontSize * 2 });
 						}
-						else if (node.IsKind(SyntaxKind.Block) || node.IsKind(SyntaxKind.SwitchStatement)) {
+						else if (node.IsAnyKind(SyntaxKind.Block, SyntaxKind.SwitchStatement)) {
 							ShowBlockInfo(container, currentSnapshot, node, semanticModel);
 						}
 						isConvertedType = true;
@@ -328,7 +329,7 @@ namespace Codist.QuickInfo
 						isConvertedType = true;
 						break;
 					default:
-						if (node.IsKind(SyntaxKind.Block) || node.IsKind(SyntaxKind.SwitchStatement)) {
+						if (node.IsAnyKind(SyntaxKind.Block, SyntaxKind.SwitchStatement)) {
 							ShowBlockInfo(container, currentSnapshot, node, semanticModel);
 						}
 						break;
@@ -344,7 +345,7 @@ namespace Codist.QuickInfo
 				}
 				ctor = node.Parent as ObjectCreationExpressionSyntax;
 				OverrideDocumentation(node,
-					overrider,
+					o,
 					ctor?.Type == node
 						? semanticModel.GetSymbolInfo(ctor, cancellationToken).Symbol ?? symbol
 						: symbol,
@@ -368,15 +369,13 @@ namespace Codist.QuickInfo
 					symbol = symbol.ContainingType;
 				}
 			}
-			overrider?.ApplyClickAndGo(symbol);
+			o?.ApplyClickAndGo(symbol);
 			if (container.ItemCount == 0) {
 				if (symbol != null) {
 					// place holder
-					container.Add(new ContentPresenter());
+					container.Add(new ContentPresenter() { Name = "SymbolPlaceHolder" });
 				}
-				else {
-					return null;
-				}
+				return null;
 			}
 			return CreateQuickInfoItem(session, token, container.ToUI().Tag());
 		}
@@ -388,14 +387,10 @@ namespace Codist.QuickInfo
 
 		static Task<ThemedTipDocument> ShowAvailabilityAsync(Document doc, SyntaxToken token, CancellationToken cancellationToken) {
 			var solution = doc.Project.Solution;
-			if (solution.ProjectIds.Count == 0) {
-				return System.Threading.Tasks.Task.FromResult<ThemedTipDocument>(null);
-			}
-			var linkedDocuments = doc.GetLinkedDocumentIds();
-			if (linkedDocuments.Length == 0) {
-				return System.Threading.Tasks.Task.FromResult<ThemedTipDocument>(null);
-			}
-			return ShowAvailabilityAsync(token, solution, linkedDocuments, cancellationToken);
+			ImmutableArray<DocumentId> linkedDocuments;
+			return solution.ProjectIds.Count == 0 || (linkedDocuments = doc.GetLinkedDocumentIds()).Length == 0
+				? Task.FromResult<ThemedTipDocument>(null)
+				: ShowAvailabilityAsync(token, solution, linkedDocuments, cancellationToken);
 		}
 
 		static async Task<ThemedTipDocument> ShowAvailabilityAsync(SyntaxToken token, Solution solution, ImmutableArray<DocumentId> linkedDocuments, CancellationToken cancellationToken) {
@@ -616,15 +611,12 @@ namespace Codist.QuickInfo
 					ShowPropertyInfo(qiContent, symbol as IPropertySymbol);
 					if (Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.Color)
 						&& session.Mark(nameof(ColorQuickInfoUI))) {
-						qiContent.Add(ColorQuickInfoUI.PreviewColorProperty(symbol as IPropertySymbol, _SpecialProject.MaybeVsProject));
+						qiContent.Add(ColorQuickInfoUI.PreviewColorProperty(symbol as IPropertySymbol, _SpecialProject.MayBeVsProject));
 					}
 					break;
 				case SymbolKind.Namespace:
 					ShowNamespaceInfo(qiContent, symbol as INamespaceSymbol);
 					break;
-			}
-			if (Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.SymbolLocation)) {
-				ShowSymbolLocationInfo(qiContent, semanticModel.Compilation, symbol);
 			}
 			if (Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.Declaration)
 				&& (node.Parent.IsKind(SyntaxKind.Argument) == false || Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.Parameter) == false) /*the signature has already been displayed there*/) {
@@ -639,6 +631,9 @@ namespace Codist.QuickInfo
 						)));
 				}
 			}
+			if (Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.SymbolLocation)) {
+				ShowSymbolLocationInfo(qiContent, semanticModel.Compilation, symbol);
+			}
 		}
 
 		static void ShowSymbolLocationInfo(InfoContainer qiContent, Compilation compilation, ISymbol symbol) {
@@ -647,7 +642,8 @@ namespace Codist.QuickInfo
 				return;
 			}
 			var asmText = new ThemedTipText(R.T_Assembly, true);
-			var item = new ThemedTipDocument().AppendParagraph(IconIds.Module, asmText);
+			var item = new ThemedTipDocument { Name = "SymbolLocation" }
+				.AppendParagraph(IconIds.Module, asmText);
 			if (p.Length > 0) {
 				asmText.AppendFileLink(f, p);
 			}
@@ -866,7 +862,7 @@ namespace Codist.QuickInfo
 				ShowDeclarationModifier(qiContent, field);
 			}
 			if (field.HasConstantValue) {
-				if (_SpecialProject.MaybeVsProject && field.ConstantValue is int fc) {
+				if (field.ConstantValue is int fc && _SpecialProject.MayBeVsProject) {
 					ShowKnownImageId(qiContent, field, fc);
 				}
 				ShowConstInfo(qiContent, field, field.ConstantValue);
@@ -1102,7 +1098,7 @@ namespace Codist.QuickInfo
 			else if (Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.NumericValues)) {
 				var s = ToolTipHelper.ShowNumericForms(value);
 				if (s != null) {
-					if (symbol != null) {
+					if (symbol?.ContainingType?.TypeKind == TypeKind.Enum) {
 						qiContent.ShowEnumQuickInfo(symbol.ContainingType, false);
 					}
 					qiContent.Add(s);
@@ -1592,12 +1588,15 @@ namespace Codist.QuickInfo
 
 		sealed class SpecialProjectInfo
 		{
-			public readonly bool IsCodist;
-			public readonly bool MaybeVsProject;
+			readonly SemanticModel _Model;
+			int _MayBeVsProject;
+
+			public bool MayBeVsProject => _MayBeVsProject != 0
+				? _MayBeVsProject == 1
+				: (_MayBeVsProject = _Model.GetNamespaceSymbol("Microsoft", "VisualStudio", "PlatformUI") != null || _Model.GetTypeSymbol(nameof(VsColors), "Microsoft", "VisualStudio", "Shell") != null ? 1 : -1) == 1;
 
 			public SpecialProjectInfo(SemanticModel model) {
-				IsCodist = model.GetTypeSymbol(nameof(CodistPackage), nameof(Codist)) != null;
-				MaybeVsProject = model.GetNamespaceSymbol("Microsoft", "VisualStudio", "PlatformUI") != null || model.GetTypeSymbol(nameof(VsColors), "Microsoft", "VisualStudio", "Shell") != null;
+				_Model = model;
 			}
 		}
 	}

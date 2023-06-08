@@ -12,13 +12,13 @@ namespace Codist.Controls
 		int _RowCount;
 
 		public ThemedTipDocument() {
-			_Container = new Grid {
+			Child = _Container = new Grid {
 				ColumnDefinitions = {
 					new ColumnDefinition { Width = new GridLength(PlaceHolderSize) },
 					new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-				}
+				},
+				Margin = WpfHelper.SmallVerticalMargin
 			};
-			Child = _Container;
 		}
 
 		public IEnumerable<TextBlock> Paragraphs => _Container.Children.OfType<TextBlock>();
@@ -32,7 +32,12 @@ namespace Codist.Controls
 		}
 		public ThemedTipDocument AppendLine() {
 			_Container.RowDefinitions.Add(new RowDefinition());
-			_Container.Children.Add(new Border { Height = 1, BorderThickness = WpfHelper.TinyMargin, BorderBrush = ThemeHelper.DocumentTextBrush, Margin = WpfHelper.SmallVerticalMargin }.SetValue(Grid.SetRow, _RowCount).SetValue(Grid.SetColumnSpan, 2));
+			_Container.Children.Add(new Border {
+				Height = 1,
+				BorderThickness = WpfHelper.TinyMargin,
+				BorderBrush = ThemeHelper.DocumentTextBrush,
+				Margin = WpfHelper.SmallVerticalMargin
+			}.SetValue(Grid.SetRow, _RowCount).SetValue(Grid.SetColumnSpan, 2));
 			_RowCount++;
 			return this;
 		}
@@ -54,18 +59,6 @@ namespace Codist.Controls
 			_Container.Children.Add(content);
 			_RowCount++;
 			return this;
-		}
-		public void ApplySizeLimit() {
-			var w = Config.Instance.QuickInfoMaxWidth;
-			if (w == 0) {
-				w = Application.Current.MainWindow.RenderSize.Width;
-			}
-			w -= WpfHelper.IconRightMargin + ThemeHelper.DefaultIconSize + WpfHelper.SmallMarginSize + WpfHelper.SmallMarginSize + 22/*scrollbar width*/;
-			foreach (var item in _Container.Children) {
-				if (item is FrameworkElement e) {
-					e.MaxWidth = w;
-				}
-			}
 		}
 	}
 }

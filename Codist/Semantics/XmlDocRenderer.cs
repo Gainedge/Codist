@@ -91,7 +91,7 @@ namespace Codist
 			#endregion
 			#region Type parameter
 			if (Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.TypeParameters)
-				&& (symbol.Kind == SymbolKind.Method || symbol.Kind == SymbolKind.NamedType)) {
+				&& symbol.Kind.CeqAny(SymbolKind.Method, SymbolKind.NamedType)) {
 				var typeParams = symbol.GetTypeParameters();
 				if (typeParams.IsDefaultOrEmpty == false) {
 					var para = new ThemedTipParagraph(IconIds.TypeParameters);
@@ -116,7 +116,7 @@ namespace Codist
 			#endregion
 			#region Returns
 			if (Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.ReturnsDoc)
-					&& (symbol.IsAnyKind(SymbolKind.Method, SymbolKind.Property)
+					&& (symbol.Kind.CeqAny(SymbolKind.Method, SymbolKind.Property)
 					|| symbol.Kind == SymbolKind.NamedType && ((INamedTypeSymbol)symbol).TypeKind == TypeKind.Delegate)) {
 				var returns = doc.Returns ?? doc.ExplicitInheritDoc?.Returns ?? doc.InheritedXmlDocs.FirstOrDefault(i => i.Returns != null)?.Returns;
 				if (returns != null && IsEmptyElement(returns) == false) {
@@ -129,7 +129,8 @@ namespace Codist
 			}
 			#endregion
 			#region Value
-			if (symbol.Kind == SymbolKind.Property || (symbol.Kind == SymbolKind.Method && symbol.ContainingSymbol.Kind == SymbolKind.Property)) {
+			if (symbol.Kind == SymbolKind.Property
+				|| (symbol.Kind == SymbolKind.Method && symbol.ContainingSymbol.Kind == SymbolKind.Property)) {
 				var value = doc.Value ?? doc.ExplicitInheritDoc?.Value ?? doc.InheritedXmlDocs.FirstOrDefault(i => i.Value != null)?.Value;
 				if (value != null && IsEmptyElement(value) == false) {
 					tip.Append(new ThemedTipParagraph(IconIds.Value, new ThemedTipText()
@@ -142,8 +143,7 @@ namespace Codist
 			#endregion
 			#region Remarks
 			if (Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.RemarksDoc)
-					&& symbol.Kind != SymbolKind.Parameter
-					&& symbol.Kind != SymbolKind.TypeParameter) {
+					&& symbol.Kind.CeqAny(SymbolKind.Parameter, SymbolKind.TypeParameter) == false) {
 				var remarks = doc.Remarks ?? doc.ExplicitInheritDoc?.Remarks ?? doc.InheritedXmlDocs.FirstOrDefault(i => i.Remarks != null)?.Remarks;
 				if (remarks != null && IsEmptyElement(remarks) == false) {
 					tip.Append(new ThemedTipParagraph(IconIds.RemarksXmlDoc, new ThemedTipText()
