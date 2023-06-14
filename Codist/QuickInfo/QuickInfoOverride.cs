@@ -529,7 +529,7 @@ namespace Codist.QuickInfo
 							}
 							return ShowAlternativeSignature();
 						}
-						else if (_Override.IsCSharpDoc) {
+						if (_Override.IsCSharpDoc) {
 							UseAlternativeStyle(infoPanel, titlePanel, icon, signature);
 						}
 					}
