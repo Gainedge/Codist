@@ -23,6 +23,7 @@ namespace Codist.Controls
 			ResizeMode = ResizeMode.NoResize;
 			WindowStartupLocation = WindowStartupLocation.CenterOwner;
 			Owner = Application.Current.MainWindow;
+			Resources = SharedDictionaryManager.ThemedControls;
 			Content = new StackPanel {
 				Margin = WpfHelper.MiddleMargin,
 				Children = {
@@ -101,6 +102,9 @@ namespace Codist.Controls
 			}
 			if (img != 0) {
 				_Icon.Content = ThemeHelper.GetImage(img, ThemeHelper.LargeIconSize);
+			}
+			else {
+				_Icon.Visibility = Visibility.Collapsed;
 			}
 		}
 

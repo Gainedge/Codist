@@ -52,6 +52,11 @@ namespace Codist.SyntaxHighlight
 			}
 		}
 
+		public static bool IsOverridden(this IClassificationType classificationType) {
+			lock (__SyncRoot) {
+				return classificationType != null && __SyntaxStyleCache.TryGetValue(classificationType.Classification, out var s) && s.IsSet;
+			}
+		}
 		public static StyleBase GetOrCreateStyle(IClassificationType classificationType) {
 			var c = classificationType.Classification;
 			lock (__SyncRoot) {
@@ -93,7 +98,8 @@ namespace Codist.SyntaxHighlight
 			foreach (var item in __Highlighters) {
 				item.Reset();
 			}
-			ResetStyleCache();
+			__SyntaxStyleCache.Clear();
+			IdentifySymbolSource = false;
 		}
 
 		public static void Reset(string classificationType) {
@@ -232,9 +238,10 @@ namespace Codist.SyntaxHighlight
 				}
 			}
 
-			// note: VS appears to have difficulty in merging semantic braces and some other styles
-			//   by explicitly calling GetTextProperties then SetTextProperties,
-			//   the underlying merging process will be called
+			// note: VS appears to have difficulty in merging semantic braces and some other styles.
+			//   By explicitly iterating the CurrentPriorityOrder collection,
+			//   calling GetTextProperties then SetTextProperties one by one,
+			//   the underlying merging process will be called and the priority order is enforced.
 			public void Refresh() {
 				_Lock++;
 				_Formatters.Push(nameof(Refresh));

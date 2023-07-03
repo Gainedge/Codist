@@ -8,6 +8,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using CLR;
+using Codist.Controls;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.Win32;
 using R = Codist.Properties.Resources;
@@ -231,15 +232,18 @@ namespace Codist.Options
 						return;
 					}
 					try {
-						Config.LoadConfig(d.FileName);
+						string file = d.FileName;
+						Config.LoadConfig(file);
 						if (Version.TryParse(Config.Instance.Version, out var newVersion)
 							&& newVersion > Version.Parse(Config.CurrentVersion)) {
-							MessageBox.Show(R.T_NewVersionConfig, nameof(Codist), MessageBoxButton.OK, MessageBoxImage.Information);
+							new MessageWindow(R.T_NewVersionConfig, nameof(Codist), MessageBoxButton.OK, MessageBoxImage.Information).ShowDialog();
 						}
-						System.IO.File.Copy(d.FileName, Config.ConfigPath, true);
+						if (file != Config.ConfigPath) {
+							System.IO.File.Copy(file, Config.ConfigPath, true);
+						}
 					}
 					catch (Exception ex) {
-						MessageBox.Show(R.T_ErrorLoadingConfig + ex.Message, nameof(Codist));
+						MessageWindow.Error(R.T_ErrorLoadingConfig + ex.Message);
 					}
 				}
 				else if (sender == _SaveButton) {
@@ -1123,7 +1127,7 @@ namespace Codist.Options
 				};
 				_RemoveButton.Click += (s, args) => {
 					var i = _List.SelectedItem as SearchEngine;
-					if (MessageBox.Show(R.OT_ConfirmRemoveSearchEngine.Replace("<NAME>", i.Name), nameof(Codist), MessageBoxButton.YesNo) == MessageBoxResult.Yes) {
+					if (MessageWindow.AskYesNo(R.OT_ConfirmRemoveSearchEngine.Replace("<NAME>", i.Name)) == true) {
 						var p = _List.SelectedIndex;
 						_List.Items.RemoveAndDisposeAt(p);
 						Config.Instance.SearchEngines.RemoveAt(p);
@@ -1154,7 +1158,7 @@ namespace Codist.Options
 					Config.Instance.FireConfigChangedEvent(Features.WebSearch);
 				};
 				_ResetButton.Click += (s, args) => {
-					if (MessageBox.Show(R.OT_ConfirmResetSearchEngine, nameof(Codist), MessageBoxButton.YesNo) == MessageBoxResult.Yes) {
+					if (MessageWindow.AskYesNo(R.OT_ConfirmResetSearchEngine) == true) {
 						Config.Instance.ResetSearchEngines();
 						ResetSearchEngines(Config.Instance.SearchEngines);
 						Config.Instance.FireConfigChangedEvent(Features.WebSearch);
@@ -1324,7 +1328,7 @@ namespace Codist.Options
 					Config.Instance.FireConfigChangedEvent(Features.WrapText);
 				};
 				_ResetButton.Click += (s, args) => {
-					if (MessageBox.Show(R.OT_ConfirmResetWrapText, nameof(Codist), MessageBoxButton.YesNo) == MessageBoxResult.Yes) {
+					if (MessageWindow.AskYesNo(R.OT_ConfirmResetWrapText) == true) {
 						Config.Instance.ResetWrapTexts();
 						ResetWrapTexts(Config.Instance.WrapTexts);
 						Config.Instance.FireConfigChangedEvent(Features.WrapText);

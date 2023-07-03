@@ -91,7 +91,10 @@ namespace Codist
 		#endregion
 		#region user interface icons
 		public const int Filter = KnownImageIds.Filter;
+		public const int FilterCustomized = KnownImageIds.EditFilter;
 		public const int ClearFilter = KnownImageIds.DeleteFilter;
+		public const int Add = KnownImageIds.Add;
+		public const int Remove = KnownImageIds.Cancel;
 		public const int Search = KnownImageIds.Search;
 		public const int RunTest = KnownImageIds.RunTest;
 		public const int DebugTest = KnownImageIds.DebugSelection;
@@ -194,6 +197,7 @@ namespace Codist
 		public const int Cut = KnownImageIds.Cut;
 		public const int Paste = KnownImageIds.Paste;
 		public const int Delete = KnownImageIds.Cancel;
+		public const int Undo = KnownImageIds.Undo;
 		public const int Duplicate = KnownImageIds.CopyItem;
 		public const int Find = KnownImageIds.QuickFind;
 		public const int FindNext = KnownImageIds.FindNext;

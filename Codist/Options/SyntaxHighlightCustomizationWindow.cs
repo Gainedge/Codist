@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using Codist.Controls;
 using Codist.SyntaxHighlight;
@@ -26,6 +27,8 @@ namespace Codist.Options
 
 		readonly StackPanel _SettingsList;
 		readonly ThemedTextBox _SettingsFilterBox;
+		readonly ThemedToggleButton _OverriddenStyleFilterButton;
+		readonly ThemedButton _ClearFilterButton;
 		readonly Border _OptionPageHolder;
 		readonly TextBlock _Notice;
 		readonly ListBox _SyntaxSourceBox;
@@ -74,6 +77,7 @@ namespace Codist.Options
 			MinHeight = 300;
 			MinWidth = 480;
 			SnapsToDevicePixels = true;
+			Resources = SharedDictionaryManager.ThemedControls;
 			Content = new Border {
 				Padding = WpfHelper.MiddleMargin,
 				Child = new Grid {
@@ -157,29 +161,30 @@ namespace Codist.Options
 								new Grid {
 									ColumnDefinitions = {
 										new ColumnDefinition { Width = new GridLength(10, GridUnitType.Star) },
-										new ColumnDefinition { Width = new GridLength(120, GridUnitType.Pixel) },
-										new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) },
 										new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) },
 									},
 									Children = {
 										new TextBlock { Text = R.T_SyntaxStyles, FontWeight = FontWeights.Bold }.SetValue(Grid.SetColumn, 0),
 										new Border {
-											Padding = WpfHelper.SmallMargin,
+											HorizontalAlignment = HorizontalAlignment.Right,
 											Child = new StackPanel {
 												Orientation = Orientation.Horizontal,
 												Children = {
 													ThemeHelper.GetImage(IconIds.Filter).WrapMargin(WpfHelper.GlyphMargin),
 													new ThemedTextBox {
 														Width = 120,
-														Margin = WpfHelper.GlyphMargin
-													}.Set(ref _SettingsFilterBox)
+														Margin = WpfHelper.SmallMargin,
+														ToolTip = R.OT_FilterStyleNamesTip
+													}.Set(ref _SettingsFilterBox),
+													new ThemedControlGroup { Margin = WpfHelper.SmallVerticalMargin }
+														.AddRange(
+															new ThemedToggleButton(IconIds.FilterCustomized, R.OT_ShowCustomizedStylesTip).Set(ref _OverriddenStyleFilterButton),
+															new ThemedImageButton(IconIds.Add, R.CMD_Add).SetValue(ToolTipService.SetPlacement, PlacementMode.Left).Set(ref _AddTagButton),
+															new ThemedImageButton(IconIds.Remove, R.CMD_Remove).SetValue(ToolTipService.SetPlacement, PlacementMode.Left).Set(ref _RemoveTagButton),
+															new ThemedButton(ThemeHelper.GetImage(IconIds.ClearFilter), R.CMD_ClearFilter).SetValue(ToolTipService.SetPlacement, PlacementMode.Left).Set(ref _ClearFilterButton)),
 												}
 											}
-										}.SetValue(Grid.SetColumn, 1),
-										new Button { Content = R.CMD_Add }.ReferenceStyle(VsResourceKeys.ButtonStyleKey)
-											.Set(ref _AddTagButton).SetValue(Grid.SetColumn, 2),
-										new Button { Content = R.CMD_Remove }.ReferenceStyle(VsResourceKeys.ButtonStyleKey)
-											.Set(ref _RemoveTagButton).SetValue(Grid.SetColumn, 3)
+										}.SetValue(Grid.SetColumn, 1)
 									}
 								}.Set(ref _RightPaneTitle),
 								new Border {
@@ -353,6 +358,9 @@ namespace Codist.Options
 			_RemoveTagButton.Click += RemoveTag;
 			_TagBox.TextChanged += ApplyTag;
 			_SettingsFilterBox.TextChanged += FilterSettingsList;
+			_OverriddenStyleFilterButton.Checked += FilterSettingsList;
+			_OverriddenStyleFilterButton.Unchecked += FilterSettingsList;
+			_ClearFilterButton.Click += ClearFilters;
 			Config.Instance.BeginUpdate();
 		}
 
@@ -446,7 +454,7 @@ namespace Codist.Options
 			var l = _SettingsList.Children;
 			l.Clear();
 			_AddTagButton.Visibility = Visibility.Visible;
-			_Notice.Visibility = _SettingsGroup.Visibility = Visibility.Collapsed;
+			_Notice.Visibility = _SettingsGroup.Visibility = _OverriddenStyleFilterButton.Visibility = Visibility.Collapsed;
 			_SelectedStyleButton = null;
 			var tag = _SelectedCommentTag;
 			foreach (var label in Config.Instance.Labels) {
@@ -505,6 +513,7 @@ namespace Codist.Options
 			var l = _SettingsList.Children;
 			l.Clear();
 			_Notice.Toggle(_SettingsList.Visibility != Visibility.Visible);
+			_OverriddenStyleFilterButton.Visibility = Visibility.Visible;
 			_AddTagButton.Visibility = _RemoveTagButton.Visibility = _TagSettingsGroup.Visibility = Visibility.Collapsed;
 			IEnumerable<IClassificationType> classifications;
 			switch (source) {
@@ -607,6 +616,8 @@ namespace Codist.Options
 					case Constants.CSharpOverrideMemberName:
 					case Constants.CSharpDeclarationName:
 					case Constants.CSharpMemberDeclarationName:
+					case Constants.CSharpPrivateMemberName:
+					case Constants.CSharpAbstractMemberName:
 						continue;
 					default:
 						if (t == null || level < 2 || item.IsOfType(t.Classification)) {
@@ -650,7 +661,7 @@ namespace Codist.Options
 			var classifications = ServicesHelper.Instance.ViewTagAggregatorFactory
 				.CreateTagAggregator<Microsoft.VisualStudio.Text.Tagging.IClassificationTag>(_WpfTextView)
 				.GetTags(span)
-				.Where(s => s.Span.ToSnapshotSpan().Intersection(span).GetValueOrDefault().Length > 0)
+				.Where(s => s.Span.GetSpans(span.Snapshot.TextBuffer)[0].Intersection(span).GetValueOrDefault().Length > 0)
 				.Select(t => t.Tag.ClassificationType)
 				.ToList(); // cache the results for iterations below
 			return classifications
@@ -660,10 +671,16 @@ namespace Codist.Options
 		}
 
 		void FilterSettingsList(object sender, EventArgs args) {
+			if (_Lock.IsLocked) {
+				return;
+			}
 			var t = _SettingsFilterBox.Text;
+			var filterByText = String.IsNullOrWhiteSpace(t) == false;
+			var overriddenOnly = _OverriddenStyleFilterButton.IsChecked == true;
 			foreach (var item in _SettingsList.Children) {
 				if (item is StyleSettingsButton b) {
-					b.ToggleVisibility(b.Text.IndexOf(t, StringComparison.OrdinalIgnoreCase) != -1);
+					b.ToggleVisibility((filterByText == false || b.Text.IndexOf(t, StringComparison.OrdinalIgnoreCase) != -1)
+						&& (overriddenOnly == false || b.StyleSettings.IsSet));
 				}
 			}
 			if (_SelectedStyleButton?.Visibility == Visibility.Collapsed) {
@@ -675,6 +692,14 @@ namespace Codist.Options
 				_SelectedCommentTag = null;
 				_TagSettingsGroup.Visibility = Visibility.Collapsed;
 			}
+		}
+
+		void ClearFilters(object sender, EventArgs args) {
+			_Lock.Lock();
+			_SettingsFilterBox.Text = String.Empty;
+			_OverriddenStyleFilterButton.IsChecked = false;
+			_Lock.Unlock();
+			FilterSettingsList(sender, args);
 		}
 
 		void OnSelectTag(object sender, RoutedEventArgs e) {
@@ -1268,14 +1293,6 @@ namespace Codist.Options
 			}
 		}
 
-		sealed class LabeledControl : StackPanel
-		{
-			public LabeledControl(string text, double labelWidth, FrameworkElement control) {
-				Orientation = Orientation.Horizontal;
-				this.Add(new TextBlock { Text = text, Width = labelWidth, VerticalAlignment = VerticalAlignment.Center, Margin = WpfHelper.SmallMargin }, control.WrapMargin(WpfHelper.SmallMargin));
-			}
-		}
-
 		sealed class StyleCheckBox : CheckBox
 		{
 			readonly Action<bool?> _CheckHandler;
@@ -1294,25 +1311,6 @@ namespace Codist.Options
 
 			void CheckHandler(object sender, EventArgs args) {
 				_CheckHandler(IsChecked);
-			}
-		}
-
-		sealed class RadioBox : RadioButton
-		{
-			readonly Action<RadioBox> _CheckHandler;
-
-			public RadioBox(string text, string group, Action<RadioBox> checkHandler) {
-				Content = text;
-				GroupName = group;
-				Margin = WpfHelper.SmallMargin;
-				MinWidth = 60;
-				this.ReferenceStyle(VsResourceKeys.ThemedDialogRadioButtonStyleKey);
-				Checked += CheckHandler;
-				_CheckHandler = checkHandler;
-			}
-
-			void CheckHandler(object sender, EventArgs args) {
-				_CheckHandler(this);
 			}
 		}
 
@@ -1344,7 +1342,7 @@ namespace Codist.Options
 					ContextMenu = new ContextMenu {
 						Resources = SharedDictionaryManager.ContextMenu,
 						MaxHeight = 300,
-						Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+						Placement = PlacementMode.Bottom,
 						PlacementTarget = this,
 						MinWidth = ActualWidth,
 						ItemsSource = new[] { new ThemedMenuItem(-1, R.T_NotSet, SetFont).SetProperty(__InstalledFontNameProperty, null) }
@@ -1353,6 +1351,11 @@ namespace Codist.Options
 					ContextMenu.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
 				}
 				ContextMenu.IsOpen = true;
+			}
+
+			protected override void OnContextMenuOpening(ContextMenuEventArgs e) {
+				e.Handled = true;
+				OnClick();
 			}
 
 			void SetFont(object sender, RoutedEventArgs e) {
@@ -1405,7 +1408,7 @@ namespace Codist.Options
 			byte _Opacity;
 
 			public OpacityButton(Action<byte> opacityChangedHandler) {
-				Content = "Opacity";
+				Content = R.T_Opacity;
 				Width = MIDDLE_LABEL_WIDTH;
 				Margin = WpfHelper.SmallMargin;
 				this.ReferenceStyle(VsResourceKeys.ButtonStyleKey);
@@ -1428,7 +1431,7 @@ namespace Codist.Options
 							SetOpacityValue(new ThemedMenuItem(IconIds.Opacity, R.T_Default, SelectOpacity), 0),
 						},
 						MaxHeight = 300,
-						Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+						Placement = PlacementMode.Bottom,
 						PlacementTarget = this,
 					};
 					ContextMenu.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
@@ -1440,6 +1443,11 @@ namespace Codist.Options
 				}
 				CheckMenuItem(Value, true);
 				ContextMenu.IsOpen = true;
+			}
+
+			protected override void OnContextMenuOpening(ContextMenuEventArgs e) {
+				e.Handled = true;
+				OnClick();
 			}
 
 			static ThemedMenuItem SetOpacityValue(ThemedMenuItem item, int value) {
@@ -1479,19 +1487,6 @@ namespace Codist.Options
 			CommentTagger,
 			CommentLabels,
 			PriorityOrder
-		}
-
-		sealed class TagStyle
-		{
-			public readonly CommentStyleTypes Style;
-			public readonly string Description;
-			public TagStyle(CommentStyleTypes style, string description) {
-				Style = style;
-				Description = description;
-			}
-			public override string ToString() {
-				return Description;
-			}
 		}
 
 		sealed class ClassificationCategoryItem

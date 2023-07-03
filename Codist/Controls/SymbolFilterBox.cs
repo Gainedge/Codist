@@ -49,7 +49,7 @@ namespace Codist.Controls
 			}
 			_FilterContainer
 				.Add(_FilterGroups)
-				.Add(new ThemedButton(IconIds.ClearFilter, R.CMD_ClearFilter, ClearFilters)
+				.Add(new ThemedButton(IconIds.ClearFilter, R.CMD_ClearFilter, ClearFilters) { Padding = WpfHelper.NoMargin, MinHeight = 10 }
 					.SetValue(ToolTipService.SetPlacement, PlacementMode.Left)
 					.ClearBorder());
 			_Filter = filter;
@@ -204,6 +204,9 @@ namespace Codist.Controls
 
 		internal static bool FilterBySymbol(MemberFilterTypes filterTypes, ISymbol symbol) {
 			MemberFilterTypes symbolFlags;
+			if (symbol is null) {
+				return false;
+			}
 			if (symbol.Kind == SymbolKind.Alias) {
 				symbol = ((IAliasSymbol)symbol).Target;
 			}
@@ -230,6 +233,9 @@ namespace Codist.Controls
 
 		internal static bool FilterBySymbolType(MemberFilterTypes filterTypes, ISymbol symbol) {
 			MemberFilterTypes symbolFlags;
+			if (symbol is null) {
+				return false;
+			}
 			if (symbol.Kind == SymbolKind.Alias) {
 				symbol = ((IAliasSymbol)symbol).Target;
 			}
