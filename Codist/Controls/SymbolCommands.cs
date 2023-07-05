@@ -41,16 +41,40 @@ namespace Codist.Controls
 			m.Show();
 		}
 
-		internal static async Task FindDerivedClassesAsync(this SemanticContext context, ISymbol symbol) {
-			var classes = (await SymbolFinder.FindDerivedClassesAsync(symbol as INamedTypeSymbol, context.Document.Project.Solution).ConfigureAwait(false)).ToList();
+		internal static async Task FindDerivedClassesAsync(this SemanticContext context, ISymbol symbol, bool directDerive, bool orderByHierarchy) {
+			var type = (symbol as INamedTypeSymbol).OriginalDefinition;
+			var classes = await SymbolFinder.FindDerivedClassesAsync(type, context.Document.Project.Solution).ConfigureAwait(false);
 			await SyncHelper.SwitchToMainThreadAsync(default);
-			ShowSymbolMenuForResult(symbol, context, classes, R.T_DerivedClasses, false);
+			if (directDerive) {
+				ShowSymbolMenuForResult(symbol, context, classes.Where(c => c.BaseType.OriginalDefinition.MatchWith(type)).ToList(), R.T_DirectlyDerivedClasses, false);
+				return;
+			}
+			if (orderByHierarchy == false) {
+				ShowSymbolMenuForResult(symbol, context, classes.ToList(), R.T_DerivedClasses, false);
+				return;
+			}
+			var hierarchies = new Dictionary<INamedTypeSymbol, List<INamedTypeSymbol>>(CodeAnalysisHelper.GetNamedTypeComparer()) {
+					{ type.OriginalDefinition, new List<INamedTypeSymbol>() }
+				};
+			INamedTypeSymbol t, bt;
+			foreach (var c in classes) {
+				t = c.OriginalDefinition;
+				bt = t.BaseType.OriginalDefinition;
+				if (hierarchies.TryGetValue(bt, out var children)) {
+					children.Add(t);
+				}
+				else {
+
+					hierarchies.Add(bt, new List<INamedTypeSymbol> { t });
+				}
+			}
+			ShowHierarchicalSymbolMenuForResult(symbol, context, type, hierarchies, R.T_DerivedClasses);
 		}
 
-		internal static async Task FindSubInterfacesAsync(this SemanticContext context, ISymbol symbol) {
-			var interfaces = await (symbol as INamedTypeSymbol).FindDerivedInterfacesAsync(context.Document.Project, default).ConfigureAwait(false);
+		internal static async Task FindSubInterfacesAsync(this SemanticContext context, ISymbol symbol, bool directDerive) {
+			var interfaces = await (symbol as INamedTypeSymbol).FindDerivedInterfacesAsync(context.Document.Project, directDerive, default).ConfigureAwait(false);
 			await SyncHelper.SwitchToMainThreadAsync(default);
-			ShowSymbolMenuForResult(symbol, context, interfaces, R.T_DerivedInterfaces, false);
+			ShowSymbolMenuForResult(symbol, context, interfaces, directDerive ? R.T_DirectlyDerivedInterfaces : R.T_DerivedInterfaces, false);
 		}
 
 		internal static async Task FindOverridesAsync(this SemanticContext context, ISymbol symbol) {
@@ -229,6 +253,33 @@ namespace Codist.Controls
 			}
 			m.ExtIconProvider = ExtIconProvider.Default.GetExtIcons;
 			m.Show();
+		}
+
+		static void ShowHierarchicalSymbolMenuForResult<TSymbol>(ISymbol symbol, SemanticContext context, TSymbol root, Dictionary<TSymbol, List<TSymbol>> hierarchies, string suffix) where TSymbol : ISymbol {
+			if (hierarchies.TryGetValue(root, out var members) == false) {
+				return;
+			}
+			members.Sort(CodeAnalysisHelper.CompareSymbol);
+			var m = new SymbolMenu(context);
+			m.Title.SetGlyph(ThemeHelper.GetImage(symbol.GetImageId()))
+				.AddSymbol(symbol, null, true, SymbolFormatter.Instance)
+				.Append(suffix);
+			foreach (var item in members) {
+				m.Add(item, false);
+				AddChildren(hierarchies, m, 0, item);
+			}
+			m.ExtIconProvider = ExtIconProvider.Default.GetExtIcons;
+			m.Show();
+		}
+
+		static void AddChildren<TSymbol>(Dictionary<TSymbol, List<TSymbol>> hierarchies, SymbolMenu m, byte indentLevel, TSymbol item) where TSymbol : ISymbol {
+			indentLevel++;
+			if (hierarchies.TryGetValue(item, out var children)) {
+				foreach (var child in children) {
+					m.Add(child, false).IndentLevel = indentLevel;
+					AddChildren(hierarchies, m, indentLevel, child);
+				}
+			}
 		}
 
 		internal static Task<ISymbol[]> GetNamespacesAndTypesAsync(this SemanticContext context, INamespaceSymbol symbol, CancellationToken cancellationToken) {

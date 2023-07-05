@@ -242,6 +242,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Copy List Content.
+        /// </summary>
+        internal static string CMD_CopyListContent {
+            get {
+                return ResourceManager.GetString("CMD_CopyListContent", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Copy Qualified Symbol Name.
         /// </summary>
         internal static string CMD_CopyQualifiedSymbolName {
@@ -2135,6 +2144,26 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Search classes that derive from current class
+        ///Ctrl: Directly derived classes only.
+        /// </summary>
+        internal static string CMDT_FindDerivedClasses {
+            get {
+                return ResourceManager.GetString("CMDT_FindDerivedClasses", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Search interfaces that inherit from current interface
+        ///Ctrl: Directly inherited interfaces only.
+        /// </summary>
+        internal static string CMDT_FindInheritedInterfaces {
+            get {
+                return ResourceManager.GetString("CMDT_FindInheritedInterfaces", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Search for members that take current type as parameter
         ///Ctrl: Match current symbol only, excluding base or derived symbols.
         /// </summary>
@@ -2646,6 +2675,15 @@ namespace Codist.Properties {
         internal static string OT_AutoIncrementVsixVersionTip {
             get {
                 return ResourceManager.GetString("OT_AutoIncrementVsixVersionTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Automatically pair quotations, parentheses and braces arround selections.
+        /// </summary>
+        internal static string OT_AutoSurround {
+            get {
+                return ResourceManager.GetString("OT_AutoSurround", resourceCulture);
             }
         }
         
@@ -5258,6 +5296,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Auto Pair Punctuation.
+        /// </summary>
+        internal static string T_AutoSurround {
+            get {
+                return ResourceManager.GetString("T_AutoSurround", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Awaitable.
         /// </summary>
         internal static string T_Awaitable {
@@ -5750,6 +5797,24 @@ namespace Codist.Properties {
         internal static string T_DerivedInterfaces {
             get {
                 return ResourceManager.GetString("T_DerivedInterfaces", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to  directly derived classes.
+        /// </summary>
+        internal static string T_DirectlyDerivedClasses {
+            get {
+                return ResourceManager.GetString("T_DirectlyDerivedClasses", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to  directly derived interfaces.
+        /// </summary>
+        internal static string T_DirectlyDerivedInterfaces {
+            get {
+                return ResourceManager.GetString("T_DirectlyDerivedInterfaces", resourceCulture);
             }
         }
         
@@ -6604,29 +6669,29 @@ namespace Codist.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Normal.
+        ///   Looks up a localized string similar to Non-scaling Mode.
         /// </summary>
-        internal static string T_Normal {
+        internal static string T_NonScaleMode {
             get {
-                return ResourceManager.GetString("T_Normal", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to No Scaling Mode.
-        /// </summary>
-        internal static string T_NoScaleMode {
-            get {
-                return ResourceManager.GetString("T_NoScaleMode", resourceCulture);
+                return ResourceManager.GetString("T_NonScaleMode", resourceCulture);
             }
         }
         
         /// <summary>
         ///   Looks up a localized string similar to Starts Visual Studio without DPI scaling to work with WinForms designers..
         /// </summary>
-        internal static string T_NoScaleModeTip {
+        internal static string T_NonScaleModeTip {
             get {
-                return ResourceManager.GetString("T_NoScaleModeTip", resourceCulture);
+                return ResourceManager.GetString("T_NonScaleModeTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Normal.
+        /// </summary>
+        internal static string T_Normal {
+            get {
+                return ResourceManager.GetString("T_Normal", resourceCulture);
             }
         }
         

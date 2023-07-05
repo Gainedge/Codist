@@ -21,6 +21,7 @@ namespace Codist.Controls
 		internal ISymbol Symbol { get; private set; }
 		internal SymbolList Container { get; private set; }
 		internal Location Location { get; set; }
+		internal byte IndentLevel { get; set; }
 
 		#region WPF shared properties
 		// the following properties must be public since they are also used in WPF
@@ -176,8 +177,11 @@ namespace Codist.Controls
 			Container.SelectedValue = this;
 			return true;
 		}
-		static ThemedMenuText CreateContentForSymbol(ISymbol symbol, bool includeType, bool includeParameter) {
+		ThemedMenuText CreateContentForSymbol(ISymbol symbol, bool includeType, bool includeParameter) {
 			var t = new ThemedMenuText();
+			if (IndentLevel != 0) {
+				t.Margin = new Thickness(10 * IndentLevel, 0, 0, 0);
+			}
 			if (includeType && symbol.ContainingType != null) {
 				t.Append(symbol.ContainingType.Name + symbol.ContainingType.GetParameterString() + ".", ThemeHelper.SystemGrayTextBrush);
 			}
@@ -198,8 +202,8 @@ namespace Codist.Controls
 		internal void SetSymbolToSyntaxNode() {
 			Symbol = SyncHelper.RunSync(() => Container.SemanticContext.GetSymbolAsync(SyntaxNode));
 		}
-		internal async Task SetSymbolToSyntaxNodeAsync() {
-			Symbol = await Container.SemanticContext.GetSymbolAsync(SyntaxNode);
+		internal async Task SetSymbolToSyntaxNodeAsync(CancellationToken cancellationToken) {
+			Symbol = await Container.SemanticContext.GetSymbolAsync(SyntaxNode, cancellationToken);
 		}
 		internal async Task RefreshSyntaxNodeAsync() {
 			var node = await Container.SemanticContext.RelocateDeclarationNodeAsync(SyntaxNode);
