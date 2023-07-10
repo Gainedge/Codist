@@ -501,7 +501,7 @@ namespace Codist.Options
 			if (t == null) {
 				return null;
 			}
-			return new StyleSettingsButton(c, t, OnSelectTag) { Text = label.Label, ToolTip = label.Label }.SetProperty(StyleSettingsButton.LabelProperty, label);
+			return new StyleSettingsButton(c, _FormatMap, t, OnSelectTag) { Text = label.Label, ToolTip = label.Label }.SetProperty(StyleSettingsButton.LabelProperty, label);
 
 			CommentStyle FindCommentStyle(CommentLabel cl) {
 				var styleId = cl.StyleID;
@@ -565,7 +565,7 @@ namespace Codist.Options
 				if (t == null) {
 					continue;
 				}
-				var button = new StyleSettingsButton(c, t, OnSelectStyle) { ToolTip = c.Classification };
+				var button = new StyleSettingsButton(c, _FormatMap, t, OnSelectStyle) { ToolTip = c.Classification };
 				if (activeClassification != null && c.Classification == activeClassification) {
 					OnSelectStyle(button, null);
 					_SettingsGroup.Visibility = _StyleNameHolder.Visibility = Visibility.Visible;
@@ -700,6 +700,7 @@ namespace Codist.Options
 			_OverriddenStyleFilterButton.IsChecked = false;
 			_Lock.Unlock();
 			FilterSettingsList(sender, args);
+			_SettingsFilterBox.Focus();
 		}
 
 		void OnSelectTag(object sender, RoutedEventArgs e) {
@@ -1207,23 +1208,23 @@ namespace Codist.Options
 		{
 			public static readonly ExtensionProperty<StyleSettingsButton, CommentLabel> LabelProperty = ExtensionProperty<StyleSettingsButton, CommentLabel>.Register("CommentLabel");
 
-			readonly CheckBox _Selector;
+			readonly RadioButton _Selector;
 			readonly TextBlock _Preview;
 			readonly IClassificationType _Classification;
 			readonly StyleBase _Style;
 
-			public StyleSettingsButton(IClassificationType ct, TextFormattingRunProperties t, RoutedEventHandler clickHandler) {
+			public StyleSettingsButton(IClassificationType ct, IClassificationFormatMap cfm, TextFormattingRunProperties t, RoutedEventHandler clickHandler) {
 				_Classification = ct;
-				_Style = FormatStore.GetOrCreateStyle(ct);
+				_Style = FormatStore.GetOrCreateStyle(ct, cfm);
 				HorizontalContentAlignment = HorizontalAlignment.Stretch;
 				Content = new StackPanel {
 					Orientation = Orientation.Horizontal,
 					Children = {
-						(_Selector = new CheckBox {
+						(_Selector = new RadioButton {
 							VerticalAlignment = VerticalAlignment.Center,
 							Margin = WpfHelper.GlyphMargin,
 							IsEnabled = false
-						}).ReferenceStyle(VsResourceKeys.CheckBoxStyleKey),
+						}).ReferenceStyle(VsResourceKeys.ThemedDialogRadioButtonStyleKey),
 						(_Preview = new TextBlock {
 							Text = ct.Classification,
 							Margin = WpfHelper.SmallMargin,
@@ -1348,7 +1349,6 @@ namespace Codist.Options
 						ItemsSource = new[] { new ThemedMenuItem(-1, R.T_NotSet, SetFont).SetProperty(__InstalledFontNameProperty, null) }
 							.Concat(WpfHelper.GetInstalledFonts().Select(f => new ThemedMenuItem(-1, f.Name, SetFont).SetProperty(__InstalledFontNameProperty, f.Name)))
 					};
-					ContextMenu.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
 				}
 				ContextMenu.IsOpen = true;
 			}
@@ -1434,7 +1434,6 @@ namespace Codist.Options
 						Placement = PlacementMode.Bottom,
 						PlacementTarget = this,
 					};
-					ContextMenu.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
 					var items = new ThemedMenuItem[16];
 					for (int i = 16; i > 0; i--) {
 						items[16 - i] = SetOpacityValue(new ThemedMenuItem(IconIds.None, i.ToString(), SelectOpacity), i * 16 - 1);
@@ -1526,7 +1525,6 @@ namespace Codist.Options
 		{
 			readonly OptionBox<SpecialHighlightOptions> _MarkSpecialPunctuationBox, _HighlightDeclarationBracesBox, _HighlightParameterBracesBox, _HighlightCastParenthesesBox, _HighlightBranchBracesBox, _HighlightLoopBracesBox, _HighlightResourceBracesBox,
 				_HighlightLocalFunctionDeclarationBox, _HighlightNonPrivateFieldDeclarationBox, _HighlightConstructorAsTypeBox, _HighlightCapturingLambdaBox;
-			//readonly OptionBox<SpecialHighlightOptions>[] _Options;
 
 			public CSharpAdditionalHighlightConfigPage() {
 				var o = Config.Instance.SpecialHighlightOptions;

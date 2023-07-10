@@ -15,7 +15,7 @@ namespace Codist
 {
 	sealed class Config
 	{
-		internal const string CurrentVersion = "7.5.0";
+		internal const string CurrentVersion = "7.6.0";
 		const string ThemePrefix = "res:";
 		const int DefaultIconSize = 20;
 		internal const string LightTheme = ThemePrefix + "Light",
@@ -194,6 +194,10 @@ namespace Codist
 				&& config.QuickInfoOptions.MatchFlags(QuickInfoOptions.NodeRange) == false) {
 				config.QuickInfoOptions |= QuickInfoOptions.NodeRange;
 				__Updated?.Invoke(new ConfigUpdatedEventArgs(config, Features.SuperQuickInfo));
+			}
+			if (oldVersion < new Version(7, 6) && config.Features == Features.All) {
+				config.Features = Features.Default;
+				__Updated?.Invoke(new ConfigUpdatedEventArgs(config, Features.None));
 			}
 		}
 
