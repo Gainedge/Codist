@@ -546,13 +546,13 @@ namespace Codist.QuickInfo
 
 			Grid ShowAlternativeSignature() {
 				var s = _Override.ClickAndGoSymbol;
-				var icon = ThemeHelper.GetImage(s.GetImageId(), ThemeHelper.LargeIconSize)
+				var icon = ThemeHelper.GetImage(s.GetImageId(), ThemeHelper.QuickInfoLargeIconSize)
 					.AsSymbolLink(Keyboard.Modifiers == ModifierKeys.Control ? s.OriginalDefinition : s);
 				icon.VerticalAlignment = VerticalAlignment.Top;
 				var signature = SymbolFormatter.Instance.ShowSignature(s);
 				signature.MaxWidth = (Config.Instance.QuickInfo.MaxWidth >= 100
 					? Config.Instance.QuickInfo.MaxWidth
-					: WpfHelper.GetActiveScreenSize().Width / 2) - (ThemeHelper.LargeIconSize + 30);
+					: WpfHelper.GetActiveScreenSize().Width / 2) - (ThemeHelper.QuickInfoLargeIconSize + 30);
 				return new Grid {
 					ColumnDefinitions = {
 						new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) },
