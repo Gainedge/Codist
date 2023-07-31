@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.Composition;
+using Microsoft.VisualStudio.Language.StandardClassification;
 using Microsoft.VisualStudio.Text.Classification;
 using Microsoft.VisualStudio.Utilities;
 
@@ -133,6 +134,11 @@ namespace Codist.Taggers
 		static ClassificationTypeDefinition Namespace;
 
 		[Export(typeof(ClassificationTypeDefinition))]
+		[BaseDefinition(Constants.CodeIdentifier)]
+		[Name(Constants.CSharpNestedTypeName)]
+		static ClassificationTypeDefinition NestedType;
+
+		[Export(typeof(ClassificationTypeDefinition))]
 		[BaseDefinition(Constants.CSharpDeclarationName)]
 		[Name(Constants.CSharpMemberDeclarationName)]
 		static ClassificationTypeDefinition MemberDeclaration;
@@ -208,6 +214,11 @@ namespace Codist.Taggers
 		[BaseDefinition(Constants.CodeFormalLanguage)]
 		[Name(Constants.CSharpVirtualMemberName)]
 		static ClassificationTypeDefinition VirtualMember;
+
+		[Export(typeof(ClassificationTypeDefinition))]
+		[BaseDefinition(Constants.CodeOperator)]
+		[Name(Constants.CSharpVariableCapturedExpression)]
+		static ClassificationTypeDefinition VariableCapturedExpression;
 
 		[Export(typeof(ClassificationTypeDefinition))]
 		[BaseDefinition(Constants.CSharpFieldName)]

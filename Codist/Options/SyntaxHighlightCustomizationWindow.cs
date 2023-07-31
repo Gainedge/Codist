@@ -365,6 +365,7 @@ namespace Codist.Options
 			TextEditorHelper.ActiveTextViewChanged += HandleViewChangedEvent;
 			FormatStore.EditorBackgroundChanged += FormatStore_EditorBackgroundChanged;
 			FormatStore.ClassificationFormatMapChanged += RefreshList;
+			IsVisibleChanged += WindowIsVisibleChanged;
 			Config.Instance.BeginUpdate();
 		}
 
@@ -580,7 +581,7 @@ namespace Codist.Options
 				if (t == null) {
 					continue;
 				}
-				var button = new StyleSettingsButton(c, _FormatCache, t, OnSelectStyle) { ToolTip = c.Classification };
+				var button = new StyleSettingsButton(c, _FormatCache, t, OnSelectStyle).SetLazyToolTip(ShowStyleSettingsButtonToolTip);
 				if (activeClassification != null && c.Classification == activeClassification) {
 					OnSelectStyle(button, null);
 					_SettingsGroup.Visibility = _StyleNameHolder.Visibility = Visibility.Visible;
@@ -606,6 +607,63 @@ namespace Codist.Options
 			else {
 				FilterSettingsList(null, EventArgs.Empty);
 				_RightPaneTitle.Visibility = Visibility.Visible;
+			}
+		}
+
+		ThemedToolTip ShowStyleSettingsButtonToolTip(StyleSettingsButton button) {
+			var tip = new ThemedToolTip();
+			tip.Title.Text = button.Classification.Classification;
+			var k = _FormatCache.ClassificationFormatMap.GetEditorFormatMapKey(button.Classification);
+			var content = tip.Content.Append("EditorFormatMapKey: ").Append(k);
+			var props = _FormatCache.EditorFormatMap.GetProperties(k);
+			ShowResourceDictionary(content, props);
+			if (_FormatCache.TryGetChanges(k, out props, out var changes, out var note)
+				&& (props.Count != 0 || changes.Count != 0)) {
+				content.AppendLine();
+				if (props.Count != 0) {
+					ShowResourceDictionary(content.AppendLine().Append("<original>"), props);
+				}
+				if (changes.Count != 0) {
+					ShowResourceDictionary(content.AppendLine().Append("<changes>").AppendLine().Append(note), changes);
+				}
+			}
+			return tip;
+
+			void ShowResourceDictionary(TextBlock t, ResourceDictionary p) {
+				foreach (var key in p.Keys) {
+					var v = p[key];
+					t.AppendLine().Append(key.ToString()).Append(": ");
+					if (v == null) {
+						t.Append("null");
+						continue;
+					}
+					if (v is bool b) {
+						t.Append(b ? "true" : "false");
+					}
+					else if (v is SolidColorBrush sc) {
+						t.Append(sc.Color.ToHexString());
+					}
+					else if (v is Color c) {
+						t.Append(c.ToHexString());
+					}
+					else if (v is double d) {
+						t.Append(d.ToString());
+					}
+					else if (v is TextDecorationCollection td) {
+						if (td.Count == 1) {
+							t.Append(td[0].Location.ToString());
+						}
+						else {
+							t.Append("TextDecorations");
+						}
+					}
+					else if (v is Typeface f) {
+						t.Append(f.FontFamily.ToString());
+					}
+					else {
+						t.Append(v.ToString());
+					}
+				}
 			}
 		}
 
@@ -638,6 +696,14 @@ namespace Codist.Options
 						if (t == null || level < 2 || item.IsOfType(t.Classification)) {
 							t = item;
 							level = 2;
+						}
+						if (t != null && level < 3) {
+							var p = FormatStore.GetCachedEditorProperty(item);
+							if (p.ForegroundBrushEmpty == false
+								&& p.ForegroundBrushSame(FormatStore.EditorDefaultTextProperties.ForegroundBrush) == false) {
+								t = item;
+								level = 3;
+							}
 						}
 						continue;
 				}
@@ -870,6 +936,7 @@ namespace Codist.Options
 		}
 
 		void RefreshStyleButton(StyleSettingsButton button) {
+			// todo: update tooltip
 			button.Refresh(_FormatCache);
 		}
 		#endregion
@@ -1206,6 +1273,12 @@ namespace Codist.Options
 			});
 		}
 		#endregion
+
+		void WindowIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e) {
+			if (IsVisible == false) {
+				Owner.Activate();
+			}
+		}
 
 		protected override void OnClosed(EventArgs e) {
 			Owner.Activate();

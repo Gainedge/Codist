@@ -66,7 +66,7 @@ namespace Codist
 			public const string VisibleWhitespace = "Visible Whitespace";
 		}
 
-		public const string CodeKeyword = "Keyword";// it is weird that there are two keyword with different cases in the resource dictionary: a Keyword and a PredefinedClassificationTypeNames.Keyword;
+		public const string CodeKeyword = PredefinedClassificationTypeNames.Keyword;
 		public const string CodeComment = PredefinedClassificationTypeNames.Comment;
 		public const string CodeText = "text";
 
@@ -92,13 +92,13 @@ namespace Codist
 		public const string CodeUnnecessary = "unnecessary code";
 		public const string CodeIdentifier = PredefinedClassificationTypeNames.Identifier;
 		public const string CodeLiteral = PredefinedClassificationTypeNames.Literal;
-		public const string CodeNumber = "Number"; // it is weird that there are two keyword with different cases in the resource dictionary: a Number and PredefinedClassificationTypeNames.Number;
+		public const string CodeNumber = PredefinedClassificationTypeNames.Number;
 		public const string CodeOperator = PredefinedClassificationTypeNames.Operator;
 		public const string CodePlainText = "Plain Text";
 		public const string CodePunctuation = "punctuation";
 		public const string CodeBraceMatching = "brace matching";
 		public const string CodeInlineRenameField = "inline rename field";
-		public const string CodeString = "String";// it is weird that there are two keyword with different cases in the resource dictionary: a String and a PredefinedClassificationTypeNames.String;
+		public const string CodeString = PredefinedClassificationTypeNames.String;
 		public const string CodeStringVerbatim = "string - verbatim";
 		public const string CodeSymbolDefinition = PredefinedClassificationTypeNames.SymbolDefinition;
 		public const string CodeSymbolReference = PredefinedClassificationTypeNames.SymbolReference;
@@ -164,6 +164,8 @@ namespace Codist
 		public const string CSharpAbstractMemberName = "C#: Abstract member";
 		public const string CSharpSealedMemberName = "C#: Sealed class or member";
 		public const string CSharpPrivateMemberName = "C#: Private member";
+		public const string CSharpNestedTypeName = "C#: Nested type member";
+		public const string CSharpVariableCapturedExpression = "C#: Variable captured expression";
 		public const string CSharpAttributeName = "C#: Attribute name";
 		public const string CSharpAttributeNotation = "C#: Attribute notation";
 		public const string CSharpLabel = "C#: Label";
@@ -639,6 +641,10 @@ namespace Codist
 		[Description("Declaration of local function, inheriting from method name")]
 		LocalFunctionDeclaration,
 		[Category(Constants.SyntaxCategory.Declaration)]
+		[ClassificationType(ClassificationTypeNames = Constants.CSharpVariableCapturedExpression)]
+		[Description("Declaration of expression which captures external variable")]
+		VariableCapturedExpression,
+		[Category(Constants.SyntaxCategory.Declaration)]
 		[ClassificationType(ClassificationTypeNames = Constants.CSharpDeclarationBrace)]
 		[BaseDefinition(Constants.CodePunctuation)]
 		[Description("Braces {} for declaration, inheriting from Punctuation")]
@@ -696,6 +702,10 @@ namespace Codist
 		[ClassificationType(ClassificationTypeNames = Constants.CSharpSealedMemberName)]
 		[Description("Name of sealed class or sealed member")]
 		SealedClassName,
+		[Category(Constants.SyntaxCategory.TypeDefinition)]
+		[ClassificationType(ClassificationTypeNames = Constants.CSharpNestedTypeName)]
+		[Description("Name of nested type")]
+		NestedType,
 		[Category(Constants.SyntaxCategory.TypeDefinition)]
 		[ClassificationType(ClassificationTypeNames = Constants.CSharpReadOnlyStructName)]
 		[BaseDefinition(Constants.CodeStructName)]

@@ -34,6 +34,7 @@ namespace Codist.Taggers
 			Method = registry.GetClassificationTag(Constants.CSharpMethodName);
 			Namespace = registry.GetClassificationTag(Constants.CSharpNamespaceName);
 			NestedDeclaration = registry.GetClassificationTag(Constants.CSharpMemberDeclarationName);
+			NestedType = registry.GetClassificationTag(Constants.CSharpNestedTypeName);
 			OverrideMember = registry.GetClassificationTag(Constants.CSharpOverrideMemberName);
 			Parameter = registry.GetClassificationTag(Constants.CSharpParameterName);
 			Property = registry.GetClassificationTag(Constants.CSharpPropertyName);
@@ -46,6 +47,7 @@ namespace Codist.Taggers
 			StaticMember = registry.GetClassificationTag(Constants.CSharpStaticMemberName);
 			StructName = registry.GetClassificationTag(Constants.CodeStructName);
 			TypeParameter = registry.GetClassificationTag(Constants.CSharpTypeParameterName);
+			VariableCapturedExpression = registry.GetClassificationTag(Constants.CSharpVariableCapturedExpression);
 			VirtualMember = registry.GetClassificationTag(Constants.CSharpVirtualMemberName);
 			VolatileField = registry.GetClassificationTag(Constants.CSharpVolatileFieldName);
 			XmlDoc = registry.GetClassificationTag(Constants.CSharpXmlDoc);
@@ -105,6 +107,8 @@ namespace Codist.Taggers
 
 		public ClassificationTag NestedDeclaration { get; }
 
+		public ClassificationTag NestedType { get; }
+
 		public ClassificationTag OverrideMember { get; }
 
 		public ClassificationTag Parameter { get; }
@@ -130,6 +134,8 @@ namespace Codist.Taggers
 		public ClassificationTag TypeParameter { get; }
 
 		public ClassificationTag UserSymbol { get; }
+
+		public ClassificationTag VariableCapturedExpression { get; }
 
 		public ClassificationTag VirtualMember { get; }
 

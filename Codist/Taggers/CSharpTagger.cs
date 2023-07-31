@@ -47,11 +47,12 @@ namespace Codist.Taggers
 			}
 		}
 
+		public bool Disabled { get; set; }
 		public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
 
 		public IEnumerable<ITagSpan<IClassificationTag>> GetTags(NormalizedSnapshotSpanCollection spans) {
 			var p = _Parser;
-			if (p == null) {
+			if (p == null || Disabled) {
 				return Enumerable.Empty<ITagSpan<IClassificationTag>>();
 			}
 			if (p.TryGetSemanticState(spans[0].Snapshot, out var r)) {
@@ -475,7 +476,7 @@ namespace Codist.Taggers
 						if (ss != null) {
 							var df = semanticModel.AnalyzeDataFlow(ss);
 							if (df.ReadInside.Any(i => (i as ILocalSymbol)?.IsConst != true && df.VariablesDeclared.Contains(i) == false)) {
-								return CreateClassificationSpan(snapshot, itemSpan, TransientKeywordTagHolder.Bold.Resource);
+								return CreateClassificationSpan(snapshot, itemSpan, CSharpClassifications.Instance.VariableCapturedExpression);
 							}
 						}
 					}
@@ -733,6 +734,9 @@ namespace Codist.Taggers
 						break;
 
 					case SymbolKind.NamedType:
+						if (symbol.ContainingType != null && symbol.Kind == SymbolKind.NamedType) {
+							tags.Add(__Classifications.NestedType);
+						}
 						break;
 
 					default:

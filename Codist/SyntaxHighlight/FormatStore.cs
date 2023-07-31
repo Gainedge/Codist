@@ -22,6 +22,8 @@ namespace Codist.SyntaxHighlight
 
 		static readonly HashSet<Highlighter> __Highlighters = new HashSet<Highlighter>();
 
+		static bool __HighlightEnabled;
+
 		// caches IEditorFormatMap.Key and corresponding StyleBase
 		// when accessed, the key should be provided by IClassificationFormatMap.GetEditorFormatMapKey
 		static Dictionary<string, StyleBase> __SyntaxStyleCache = InitSyntaxStyleCache();
@@ -184,14 +186,34 @@ namespace Codist.SyntaxHighlight
 
 		static Dictionary<string, StyleBase> InitSyntaxStyleCache() {
 			var cache = new Dictionary<string, StyleBase>(100, StringComparer.OrdinalIgnoreCase);
+			__HighlightEnabled = Config.Instance.Features.MatchFlags(Features.SyntaxHighlight);
 			LoadSyntaxStyleCache(cache, Config.Instance);
 			Config.RegisterLoadHandler(ResetStyleCache);
+			Config.RegisterUpdateHandler(FeatureToggle);
 			ThemeHelper.ThemeChanged += (s, args) => {
 				foreach (var item in __Highlighters) {
 					item.Reset();
 				}
 			};
 			return cache;
+		}
+
+		static void FeatureToggle(ConfigUpdatedEventArgs args) {
+			bool enabled;
+			if (args.UpdatedFeature == Features.SyntaxHighlight
+				&& (enabled = Config.Instance.Features.MatchFlags(Features.SyntaxHighlight)) != __HighlightEnabled) {
+				if (__HighlightEnabled = enabled) {
+					foreach (var item in __Highlighters) {
+						item.Apply();
+						item.Refresh();
+					}
+				}
+				else {
+					foreach (var item in __Highlighters) {
+						item.Reset();
+					}
+				}
+			}
 		}
 
 		static Dictionary<IClassificationType, bool> InitFormattableClassificationType() {
@@ -226,7 +248,7 @@ namespace Codist.SyntaxHighlight
 
 		static void ResetStyleCache(Config config) {
 			lock (__SyncRoot) {
-				var cache = new Dictionary<string, StyleBase>(__SyntaxStyleCache.Count, StringComparer.OrdinalIgnoreCase);
+				var cache = new Dictionary<string, StyleBase>(__SyntaxStyleCache.Count);
 				LoadSyntaxStyleCache(cache, config);
 				__SyntaxStyleCache = cache;
 			}
@@ -242,14 +264,17 @@ namespace Codist.SyntaxHighlight
 			InitStyleClassificationCache<SymbolMarkerStyleTypes, SymbolMarkerStyle>(cache, config.SymbolMarkerStyles);
 			var styles = config.Styles;
 			if (styles != null) {
+				var ct = ServicesHelper.Instance.ClassificationFormatMap.GetClassificationFormatMap(Constants.CodeText);
 				foreach (var item in styles) {
 					if (item == null || String.IsNullOrEmpty(item.ClassificationType)) {
 						continue;
 					}
 					var c = __GetClassificationType(item.ClassificationType);
 					if (c != null) {
-						cache[item.ClassificationType] = item;
+						item.Key = ct.GetEditorFormatMapKey(c);
 					}
+					// WARN: compatible with previous versions
+					cache[item.Key] = item;
 				}
 				config.Styles = null;
 			}
@@ -265,6 +290,7 @@ namespace Codist.SyntaxHighlight
 		static void InitStyleClassificationCache<TStyleEnum, TCodeStyle>(Dictionary<string, StyleBase> styleCache, List<TCodeStyle> styles)
 			where TCodeStyle : StyleBase {
 			var cs = typeof(TStyleEnum);
+			var cfm = ServicesHelper.Instance.ClassificationFormatMap.GetClassificationFormatMap(Constants.CodeText);
 			foreach (var f in cs.GetFields(BindingFlags.Public | BindingFlags.Static)) {
 				var styleId = (int)f.GetValue(null);
 				var cso = styles.Find(i => i.Id == styleId);
@@ -278,6 +304,10 @@ namespace Codist.SyntaxHighlight
 					}
 					var ct = __GetClassificationType(n);
 					if (ct != null) {
+						styleCache[cfm.GetEditorFormatMapKey(ct)] = cso;
+					}
+					else {
+						// WARN: compatible with previous versions
 						styleCache[n] = cso;
 					}
 				}
@@ -318,8 +348,8 @@ namespace Codist.SyntaxHighlight
 			readonly IClassificationFormatMap _ClassificationFormatMap;
 			// traces changed IEditorFormatMap items;
 			// key should obtain from IClassificationFormatMap.GetEditorFormatMapKey
-			readonly Dictionary<string, ChangeTrace> _Traces = new Dictionary<string, ChangeTrace>(StringComparer.OrdinalIgnoreCase);
-			readonly Dictionary<IClassificationType, TextFormattingRunProperties> _PropertiesCache = new Dictionary<IClassificationType, TextFormattingRunProperties>();
+			readonly Dictionary<string, ChangeTrace> _Traces = new Dictionary<string, ChangeTrace>();
+			readonly Dictionary<IClassificationType, TextFormattingRunProperties> _PropertiesCache = new Dictionary<IClassificationType, TextFormattingRunProperties>(new ClassificationTypeComparer());
 			readonly Dictionary<string, IClassificationType> _FormatClassificationTypes = new Dictionary<string, IClassificationType>();
 			readonly Stack<string> _Formatters = new Stack<string>();
 			readonly List<string> _ChangedFormatItems = new List<string>(7);
@@ -365,6 +395,18 @@ namespace Codist.SyntaxHighlight
 					: _PropertiesCache[classificationType] = _ClassificationFormatMap.GetTextProperties(classificationType);
 			}
 
+			public bool TryGetChanges(string formatMapKey, out ResourceDictionary original, out ResourceDictionary changes, out string note) {
+				if (_Traces.TryGetValue(formatMapKey, out var trace)) {
+					original = trace.Origin.Copy();
+					changes = trace.Changes.Copy();
+					note = trace.FormatChanges.ToString();
+					return true;
+				}
+				changes = original = null;
+				note = null;
+				return false;
+			}
+
 			void LockEvent(string name) {
 				++_Lock;
 				_Formatters.Push(name);
@@ -392,11 +434,22 @@ namespace Codist.SyntaxHighlight
 				try {
 					var formats = _ClassificationFormatMap.CurrentPriorityOrder;
 					$"Refresh priority {formats.Count}".Log();
+					var semanticBrace = Config.Instance.SpecialHighlightOptions.HasAnyFlag(SpecialHighlightOptions.AllParentheses);
+					var boldBrace = Config.Instance.SpecialHighlightOptions.MatchFlags(SpecialHighlightOptions.SpecialPunctuation);
 					_PropertiesCache.Clear();
 					foreach (var item in formats) {
 						if (item.IsFormattableClassificationType() && _Traces.ContainsKey(GetEditorFormatMapKey(item))) {
 							var p = _ClassificationFormatMap.GetTextProperties(item);
-							_ClassificationFormatMap.SetTextProperties(item, p);
+							$"[{_Category}] refresh classification {item.Classification} ({p.Print()})".Log();
+							// hack: workaround for punctuation format properties that voids settings of semanticBrace or boldBrace
+							if ((semanticBrace && p.ForegroundBrushEmpty == false
+								|| boldBrace && p.BoldEmpty == false)
+								&& item.Classification == Constants.CodePunctuation) {
+								WorkaroundPunctuationStyle(_EditorFormatMap, semanticBrace, boldBrace);
+							}
+							else {
+								_ClassificationFormatMap.SetTextProperties(item, p);
+							}
 							_PropertiesCache[item] = p;
 						}
 					}
@@ -404,6 +457,17 @@ namespace Codist.SyntaxHighlight
 				finally {
 					_ClassificationFormatMap.EndBatchUpdate();
 					UnlockEvent();
+				}
+
+				void WorkaroundPunctuationStyle(IEditorFormatMap map, bool s, bool b) {
+					var m = map.GetProperties(Constants.CodePunctuation);
+					if (s) {
+						m.SetBrush(null);
+					}
+					if (b) {
+						m.SetBold(null);
+					}
+					map.SetProperties(Constants.CodePunctuation, m);
 				}
 			}
 
@@ -425,6 +489,7 @@ namespace Codist.SyntaxHighlight
 					$"[{_Category}] update formats {newStyles.Count}".Log();
 					try {
 						foreach (var item in newStyles) {
+							$"[{_Category}] apply format {item.Key}".Log();
 							_EditorFormatMap.SetProperties(item.Key, item.Value);
 						}
 					}
@@ -454,9 +519,11 @@ namespace Codist.SyntaxHighlight
 				if (eventArgs.UpdatedFeature.MatchFlags(Features.SyntaxHighlight)) {
 					_Context = FormatContext.Config;
 					if (eventArgs.Parameter is string t) {
-						if (Highlight(__GetClassificationType(t), out var newStyle) != FormatChanges.None) {
+						if ((_FormatClassificationTypes.TryGetValue(t, out var ct)
+								|| (ct = __GetClassificationType(t)) != null)
+							&& Highlight(ct, out var newStyle) != FormatChanges.None) {
 							// remove the cache and let subsequent call to GetCachedProperty updates it
-							_PropertiesCache.Remove(__GetClassificationType(t));
+							_PropertiesCache.Remove(ct);
 							_ClassificationFormatMap.BeginBatchUpdate();
 							try {
 								_EditorFormatMap.SetProperties(newStyle.Key, newStyle.Value);
@@ -486,7 +553,9 @@ namespace Codist.SyntaxHighlight
 			}
 
 			void ClassificationFormatMappingChanged(object sender, EventArgs e) {
-				_PendingChange.PendEvent(EventKind.ClassificationFormat);
+				if (_PendingChange.FiringEvent == EventKind.None) {
+					_PendingChange.PendEvent(EventKind.ClassificationFormat);
+				}
 				if (_Lock != 0) {
 					return;
 				}
@@ -549,8 +618,10 @@ namespace Codist.SyntaxHighlight
 			}
 
 			void EditorFormatMappingChanged(object sender, FormatItemsEventArgs e) {
-				_ChangedFormatItems.AddRange(e.ChangedItems);
-				_PendingChange.PendEvent(EventKind.EditorFormat);
+				if (_PendingChange.FiringEvent == EventKind.None) {
+					_ChangedFormatItems.AddRange(e.ChangedItems);
+					_PendingChange.PendEvent(EventKind.EditorFormat);
+				}
 				if (_Lock != 0) {
 					$"[{_Category}] format changed {String.Join(", ", e.ChangedItems)}, blocked by {String.Join(".", _Formatters)}".Log();
 					return;
@@ -1235,6 +1306,17 @@ namespace Codist.SyntaxHighlight
 						}
 						return String.Empty;
 					}
+				}
+			}
+
+			sealed class ClassificationTypeComparer : IEqualityComparer<IClassificationType>
+			{
+				public bool Equals(IClassificationType x, IClassificationType y) {
+					return x.Classification == y.Classification;
+				}
+
+				public int GetHashCode(IClassificationType obj) {
+					return obj.Classification.GetHashCode();
 				}
 			}
 
