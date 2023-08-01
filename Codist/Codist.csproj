@@ -57,7 +57,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <LangVersion>7.3</LangVersion>
+    <LangVersion>latest</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -67,7 +67,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <LangVersion>7.3</LangVersion>
+    <LangVersion>latest</LangVersion>
     <DeployExtension>False</DeployExtension>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
@@ -78,7 +78,7 @@
     <DefineConstants>TRACE;LOG</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <LangVersion>7.3</LangVersion>
+    <LangVersion>latest</LangVersion>
     <DeployExtension>False</DeployExtension>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
@@ -87,6 +87,7 @@
     <Compile Include="AutoBuildVersion\BuildSetting.cs" />
     <Compile Include="AutoBuildVersion\VersionRewriteMode.cs" />
     <Compile Include="AutoBuildVersion\VersionSetting.cs" />
+    <Compile Include="CodeStyleTypes.cs" />
     <Compile Include="Commands\AutoBuildVersionWindow.cs" />
     <Compile Include="Commands\AutoSurroundSelectionCommand.cs" />
     <Compile Include="Commands\OpenOutputFolderCommand.cs" />
@@ -139,6 +140,7 @@
     <Compile Include="Helpers\FileHelper.cs" />
     <Compile Include="Helpers\InstalledFont.cs" />
     <Compile Include="Helpers\LogHelper.cs" />
+    <Compile Include="Semantics\CodeAnalysisHelper.Node.cs" />
     <Compile Include="Semantics\ITextBufferParser.cs" />
     <Compile Include="Semantics\SelectedSyntax.cs" />
     <Compile Include="Semantics\SemanticState.cs" />
@@ -200,22 +202,17 @@
     <Compile Include="Taggers\CommentFormats.cs" />
     <Compile Include="Taggers\CustomTagger.cs" />
     <Compile Include="Taggers\MarkdownFormats.cs" />
-    <Compile Include="Taggers\MarkdownDefinitions.cs" />
     <Compile Include="Taggers\FindResultTagger.cs" />
     <Compile Include="Taggers\MarkdownTagger.cs" />
     <Compile Include="Taggers\CommentTagger.cs" />
-    <Compile Include="Taggers\CommentClassificationDefinitions.cs" />
     <Compile Include="Taggers\CommentLabel.cs" />
     <Compile Include="Taggers\CSharpTagger.cs" />
-    <Compile Include="Taggers\CSharpClassifierDefinition.cs" />
-    <Compile Include="Taggers\CSharpCodeFormats.cs" />
-    <Compile Include="Taggers\HighlighterDefinitions.cs" />
+    <Compile Include="Taggers\CSharpFormats.cs" />
     <Compile Include="Taggers\HighlighterFormats.cs" />
     <Compile Include="Taggers\Interfaces.cs" />
     <Compile Include="Taggers\SymbolMarkManager.cs" />
     <Compile Include="Taggers\CachedTaggerBase.cs" />
     <Compile Include="Taggers\TaggerResult.cs" />
-    <Compile Include="Taggers\XmlClassificationDefinitions.cs" />
     <Compile Include="Taggers\XmlFormats.cs" />
     <Compile Include="Commands\IncrementVsixVersionCommand.cs" />
     <Compile Include="Commands\NaviBarSearchDeclarationCommand.cs" />
@@ -462,7 +459,7 @@
       <Version>16.5.5</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.SDK.EmbedInteropTypes">
-      <Version>15.0.21</Version>
+      <Version>15.0.36</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Shell.15.0">
       <Version>15.9.28307</Version>

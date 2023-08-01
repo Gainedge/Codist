@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows.Controls;
+using CLR;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using R = Codist.Properties.Resources;
@@ -15,14 +16,41 @@ namespace Codist.SmartBars
 
 		protected override void AddCommands() {
 			base.AddCommands();
-			AddCommand(MyToolBar, IconIds.TagBold, R.CMD_MarkBold, ctx => WrapWith(ctx, "**", "**", true));
-			AddCommand(MyToolBar, IconIds.TagItalic, R.CMD_MarkItalic, ctx => WrapWith(ctx, "_", "_", true));
-			AddCommand(MyToolBar, IconIds.TagCode, R.CMD_MarkCode, ctx => WrapWith(ctx, "`", "`", true));
-			AddCommand(MyToolBar, IconIds.TagHyperLink, R.CMD_MarkLink, MakeUrl);
+			AddCommand(MyToolBar, IconIds.TagBold, R.CMD_MarkBold, MarkBold);
+			AddCommand(MyToolBar, IconIds.TagItalic, R.CMD_MarkItalic, MarkItalic);
+			AddCommand(MyToolBar, IconIds.TagCode, R.CMD_MarkCode, MarkCode);
+			AddCommand(MyToolBar, IconIds.TagHyperLink, R.CMD_MarkLink, MarkUrl);
 			AddCommand(MyToolBar, IconIds.TagStrikeThrough, R.CMD_MarkStrikeThrough, ctx => WrapWith(ctx, "~~", "~~", true));
 		}
 
-		void MakeUrl(CommandContext ctx) {
+		void MarkBold(CommandContext ctx) {
+			if (Config.Instance.SmartBarOptions.MatchFlags(SmartBarOptions.UnderscoreBold)) {
+				WrapWith(ctx, "__", "__", true);
+			}
+			else {
+				WrapWith(ctx, "**", "**", true);
+			}
+		}
+
+		void MarkItalic(CommandContext ctx) {
+			if (Config.Instance.SmartBarOptions.MatchFlags(SmartBarOptions.UnderscoreItalic)) {
+				WrapWith(ctx, "_", "_", true);
+			}
+			else {
+				WrapWith(ctx, "*", "*", true);
+			}
+		}
+
+		void MarkCode(CommandContext ctx) {
+			if (ctx.RightClick) {
+				WrapWith(ctx, "``", "``", true);
+			}
+			else {
+				WrapWith(ctx, "`", "`", true);
+			}
+		}
+
+		void MarkUrl(CommandContext ctx) {
 			var t = ctx.View.GetFirstSelectionText();
 			if (MaybeUrl(t)) {
 				foreach (var s in WrapWith(ctx, "[title](", ")", false)) {
