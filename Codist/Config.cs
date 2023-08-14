@@ -15,7 +15,7 @@ namespace Codist
 {
 	sealed class Config
 	{
-		internal const string CurrentVersion = "7.6.0";
+		internal const string CurrentVersion = "7.7.0";
 		const string ThemePrefix = "res:";
 		const int DefaultIconSize = 20;
 		internal const string LightTheme = ThemePrefix + "Light",
@@ -454,6 +454,9 @@ namespace Codist
 			c.SymbolMarkerStyles.AddRange(GetDefaultCodeStyles<SymbolMarkerStyle, SymbolMarkerStyleTypes>());
 			c.MarkerSettings.AddRange(GetDefaultMarkerStyles());
 			c.SymbolReferenceMarkerSettings.Reset();
+			if (Instance != null) {
+				FormatStore.Reset();
+			}
 			return c;
 		}
 

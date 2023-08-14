@@ -24,7 +24,7 @@ namespace Codist.SmartBars
 		const int Selecting = 1, Working = 2;
 		internal const string QuickInfoSuppressionId = nameof(SmartBar);
 
-		/// <summary>The layer for the smart bar.</summary>
+		// The layer for the smart bar.
 		TextViewOverlay _ToolBarLayer;
 		readonly ToolBarTray _ToolBarTray;
 		readonly bool _IsDiffWindow;
@@ -251,7 +251,7 @@ namespace Codist.SmartBars
 		}
 
 		void ViewKeyUp(object sender, KeyEventArgs e) {
-			if (TextEditorHelper.ActiveViewFocused()) {
+			if (TextEditorHelper.ActiveViewFocused() == false) {
 				return;
 			}
 			if (e.Key != Key.LeftShift && e.Key != Key.RightShift) {

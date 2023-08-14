@@ -542,7 +542,7 @@ namespace Codist.Options
 				case SyntaxStyleSource.Markdown: classifications = ToClassificationTypes(Config.Instance.MarkdownStyles); break;
 				case SyntaxStyleSource.Xml: classifications = ToClassificationTypes(Config.Instance.XmlCodeStyles); break;
 				case SyntaxStyleSource.CommentTagger: classifications = ToClassificationTypes(Config.Instance.CommentStyles); break;
-				case SyntaxStyleSource.PriorityOrder: classifications = _FormatCache.ClassificationFormatMap.CurrentPriorityOrder.Where(FormatStore.IsFormattableClassificationType); break;
+				case SyntaxStyleSource.PriorityOrder: classifications = GetClassificationsOrderByPriority(); break;
 				case SyntaxStyleSource.Selection:
 				default:
 					if (_WpfTextView == null) {
@@ -729,6 +729,7 @@ namespace Codist.Options
 			}
 			return r;
 		}
+
 		IEnumerable<IClassificationType> GetClassificationsForSelection() {
 			if (_WpfTextView == null) {
 				return Array.Empty<IClassificationType>();
@@ -749,6 +750,16 @@ namespace Codist.Options
 				.Union(classifications.SelectMany(i => i.GetBaseTypes()), TextEditorHelper.GetClassificationTypeComparer())
 				.Where(t => t.IsFormattableClassificationType() && t.IsOfType("(TRANSIENT)") == false) // remove transient classification types
 				.ToList();
+		}
+
+		IEnumerable<IClassificationType> GetClassificationsOrderByPriority() {
+			var p = _FormatCache.ClassificationFormatMap.CurrentPriorityOrder;
+			IClassificationType t;
+			for (int i = p.Count - 1; i >= 0; i--) {
+				if ((t = p[i]).IsFormattableClassificationType()) {
+					yield return t;
+				}
+			}
 		}
 
 		void FilterSettingsList(object sender, EventArgs args) {
@@ -1336,7 +1347,12 @@ namespace Codist.Options
 				};
 				Background = new SolidColorBrush(cache.ViewBackground);
 				SetStyle(FormatStore.GetOrCreateStyle(ct, cache.ClassificationFormatMap));
-				PreviewLabelStyle(_Preview, t);
+				try {
+					PreviewLabelStyle(_Preview, t);
+				}
+				catch (Exception ex) {
+					MessageWindow.Error(ex, "Set Preview style error for " + _Preview.Text);
+				}
 				this.ReferenceStyle(VsResourceKeys.ButtonStyleKey);
 				Click += clickHandler;
 			}
@@ -1393,7 +1409,7 @@ namespace Codist.Options
 					}
 				}
 				if (format.FontRenderingEmSizeEmpty == false) {
-					preview.FontSize = format.FontRenderingEmSize;
+					preview.FontSize = Math.Max(1, format.FontRenderingEmSize);
 				}
 				if (format.TextDecorationsEmpty == false) {
 					preview.TextDecorations = format.TextDecorations;
