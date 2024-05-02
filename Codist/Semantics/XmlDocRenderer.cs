@@ -264,7 +264,7 @@ namespace Codist
 								list = list == null
 									? new ListContext(e.Attribute("type")?.Value)
 									: new ListContext(e.Attribute("type")?.Value, list);
-								InternalRender(e, inlines, list);
+								RenderBlockContent(inlines, list, e, BLOCK_OTHER);
 								list = list.Parent;
 								break;
 							case "para":
@@ -342,7 +342,7 @@ namespace Codist
 								StyleInner(e, inlines, new Underline());
 								break;
 							case "a":
-								var a = e.Attribute("href");
+								var a = e.Attribute("href")?.Value;
 								if (a != null && IsUrl(a)) {
 									CreateLink(inlines, e, a);
 								}
@@ -360,7 +360,8 @@ namespace Codist
 											Height = 1,
 											Background = ThemeHelper.DocumentTextBrush,
 											Margin = WpfHelper.MiddleVerticalMargin,
-											Opacity = 0.5
+											Opacity = 0.5,
+											MinWidth = 100
 										}.Bind(FrameworkElement.WidthProperty, new Binding {
 											RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor, typeof(ThemedTipText), 1),
 											Path = new PropertyPath("ActualWidth")
@@ -413,8 +414,8 @@ namespace Codist
 			}
 		}
 
-		static bool IsUrl(XAttribute a) {
-			return a.Value.StartsWith("http://", StringComparison.Ordinal) || a.Value.StartsWith("https://", StringComparison.Ordinal);
+		static bool IsUrl(string text) {
+			return text.StartsWith("http://", StringComparison.Ordinal) || text.StartsWith("https://", StringComparison.Ordinal);
 		}
 
 		static string UnindentTextBlock(string text) {
@@ -468,13 +469,13 @@ namespace Codist
 			}
 		}
 
-		void CreateLink(InlineCollection inlines, XElement e, XAttribute a) {
+		void CreateLink(InlineCollection inlines, XElement e, string url) {
 			var link = new Hyperlink {
-				NavigateUri = new Uri(a.Value),
-				ToolTip = e.Attribute("title") != null ? $"{e.Attribute("title").Value}{Environment.NewLine}{a.Value}" : a.Value
+				NavigateUri = new Uri(url),
+				ToolTip = e.Attribute("title") != null ? $"{e.Attribute("title").Value}{Environment.NewLine}{url}" : url
 			}.ClickToNavigate();
 			if (e.IsEmpty) {
-				link.Inlines.Add(a.Value);
+				link.Inlines.Add(url);
 				inlines.Add(link);
 			}
 			else {
@@ -483,17 +484,17 @@ namespace Codist
 		}
 
 		void RenderSee(InlineCollection inlines, XElement e) {
-			var see = e.Attribute("cref") ?? e.Attribute("href");
+			var see = (e.Attribute("cref") ?? e.Attribute("href"))?.Value;
 			if (see != null) {
 				if (IsUrl(see)) {
 					CreateLink(inlines, e, see);
 				}
 				else {
-					RenderXmlDocSymbol(see.Value, inlines, SymbolKind.Alias);
+					RenderXmlDocSymbol(see, inlines, SymbolKind.Alias);
 				}
 			}
-			else if ((see = e.Attribute("langword")) != null) {
-				RenderXmlDocSymbol(see.Value, inlines, SymbolKind.DynamicType);
+			else if ((see = e.Attribute("langword")?.Value) != null) {
+				RenderXmlDocSymbol(see, inlines, SymbolKind.DynamicType);
 			}
 		}
 

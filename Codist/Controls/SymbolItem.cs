@@ -28,7 +28,7 @@ namespace Codist.Controls
 		public SymbolUsageKind Usage { get; set; }
 
 		public int ImageId => _ImageId != 0 ? _ImageId : (_ImageId = Symbol != null ? Symbol.GetImageId() : SyntaxNode != null ? SyntaxNode.GetImageId() : -1);
-		public UIElement Icon => _Icon ?? (_Icon = Container?.IconProvider?.Invoke(this) ?? ThemeHelper.GetImage(ImageId != -1 ? ImageId : 0));
+		public UIElement Icon => _Icon ?? (_Icon = Container?.IconProvider?.Invoke(this) ?? VsImageHelper.GetImage(ImageId != -1 ? ImageId : 0));
 		public UIElement ExtIcon => Container?.ExtIconProvider?.Invoke(this);
 		public string Hint {
 			get => _Hint ?? (_Hint = Symbol != null && Container != null && Symbol.Kind == SymbolKind.Field ? GetSymbolConstantValue(Symbol, Container.ContainerType == SymbolListType.EnumFlags) : String.Empty);
@@ -183,9 +183,26 @@ namespace Codist.Controls
 				t.Margin = new Thickness(10 * IndentLevel, 0, 0, 0);
 			}
 			if (includeType && symbol.ContainingType != null) {
-				t.Append(symbol.ContainingType.Name + symbol.ContainingType.GetParameterString() + ".", ThemeHelper.SystemGrayTextBrush);
+				t.Append($"{symbol.ContainingType.Name}{symbol.ContainingType.GetParameterString()}.", ThemeHelper.SystemGrayTextBrush);
+			}
+			if (symbol.Kind == SymbolKind.Method) {
+				var m = symbol as IMethodSymbol;
+				var exp = m.GetSpecialMethodName();
+				if (exp != null) {
+					switch (m.MethodKind) {
+						case MethodKind.UserDefinedOperator:
+							t.Append(exp, SymbolFormatter.Instance.Method);
+							goto PARAMETER;
+						case MethodKind.Conversion:
+							t.Append(exp, SymbolFormatter.Instance.Keyword)
+								.Append(" ")
+								.AddSymbol(m.ReturnType, false, SymbolFormatter.Instance);
+							goto PARAMETER;
+					}
+				}
 			}
 			t.Append(symbol.GetOriginalName(), SymbolFormatter.Instance.GetBrush(symbol));
+			PARAMETER:
 			if (includeParameter) {
 				t.Append(symbol.GetParameterString(), ThemeHelper.SystemGrayTextBrush);
 			}

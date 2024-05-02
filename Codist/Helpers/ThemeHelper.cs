@@ -1,11 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Windows.Controls;
 using Codist.SyntaxHighlight;
 using Microsoft.VisualStudio;
-using Microsoft.VisualStudio.Imaging;
-using Microsoft.VisualStudio.Imaging.Interop;
 using Microsoft.VisualStudio.PlatformUI;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
@@ -19,11 +15,6 @@ namespace Codist
 {
 	static class ThemeHelper
 	{
-		internal const int DefaultIconSize = 16;
-		internal const int MiddleIconSize = 24;
-		internal const int LargeIconSize = 32;
-		internal const int XLargeIconSize = 48;
-
 		static readonly IClassificationFormatMap __ToolTipFormatMap = ServicesHelper.Instance.ClassificationFormatMap.GetClassificationFormatMap("tooltip");
 
 		static Guid __CurrentThemeId;
@@ -48,7 +39,7 @@ namespace Codist
 		public static GdiColor DocumentTextColor { get; private set; }
 		public static WpfBrush DocumentTextBrush { get; private set; }
 		public static WpfBrush FileTabProvisionalSelectionBrush { get; private set; }
-		public static GdiColor ToolWindowBackgroundColor { get; private set; }
+		public static WpfColor ToolWindowBackgroundColor { get; private set; }
 		public static WpfColor TitleBackgroundColor { get; private set; }
 		public static WpfBrush TitleTextBrush { get; private set; }
 		public static WpfBrush ToolTipBackgroundBrush { get; private set; }
@@ -76,13 +67,13 @@ namespace Codist
 		static KeyValuePair<Guid, string> GetCurrentThemeInfo() {
 			ThreadHelper.ThrowIfNotOnUIThread();
 			var i = ServicesHelper.Get<Interop.IVsColorThemeService, Interop.SVsColorThemeService>();
-			if (i != null) {
-				var t = i.CurrentTheme;
-				$"Current theme: {t.Name} ({t.ThemeId})".Log();
-				return new KeyValuePair<Guid, string>(t.ThemeId, t.Name);
+			if (i == null) {
+				"Failed to cast IVsColorThemeService.".Log();
+				return CompatibleGetThemeInfo();
 			}
-			"Failed to cast IVsColorThemeService.".Log();
-			return CompatibleGetThemeInfo();
+			var t = i.CurrentTheme;
+			$"Current theme: {t.Name} ({t.ThemeId})".Log();
+			return new KeyValuePair<Guid, string>(t.ThemeId, t.Name);
 		}
 
 		// in VS 2022, SVsColorThemeService somehow can't be cast to IVsColorThemeService,
@@ -157,38 +148,6 @@ namespace Codist
 			fontSize = 0;
 		}
 
-		#region CrispImage
-		/// <summary>
-		/// Gets a themed <see cref="Image"/> from a value defined in <see cref="KnownImageIds"/>
-		/// </summary>
-		/// <param name="imageId">The image id.</param>
-		public static CrispImage GetImage(int imageId, double size = 0) {
-			var moniker = new ImageMoniker {
-				Guid = KnownImageIds.ImageCatalogGuid,
-				Id = imageId
-			};
-			if (size < 1) {
-				size = DefaultIconSize;
-			}
-			return new CrispImage {
-				Moniker = moniker,
-				Height = size,
-				Width = size,
-			};
-		}
-		public static CrispImage GetImage(string monikerName, int size = 0) {
-			return GetImage(KnownMonikerNameMap.Map.TryGetValue(monikerName, out int i) ? i : KnownImageIds.Blank, size);
-		}
-		public static void SetBackgroundForCrispImage(this System.Windows.DependencyObject target, WpfColor color) {
-			ImageThemingUtilities.SetImageBackgroundColor(target, color);
-		}
-
-		public static TControl ReferenceCrispImageBackground<TControl>(this TControl target, ThemeResourceKey colorKey) where TControl : System.Windows.FrameworkElement {
-			target.SetResourceReference(ImageThemingUtilities.ImageBackgroundColorProperty, colorKey);
-			return target;
-		}
-		#endregion
-
 		#region Cache
 		static void RefreshThemeCache() {
 			DocumentPageColor = CommonDocumentColors.PageColorKey.GetGdiColor();
@@ -196,7 +155,7 @@ namespace Codist
 			DocumentTextColor = CommonDocumentColors.PageTextColorKey.GetGdiColor();
 			DocumentTextBrush = new WpfBrush(DocumentTextColor.ToWpfColor());
 			FileTabProvisionalSelectionBrush = EnvironmentColors.FileTabProvisionalSelectedActiveBrushKey.GetWpfBrush();
-			ToolWindowBackgroundColor = EnvironmentColors.ToolWindowBackgroundColorKey.GetGdiColor();
+			ToolWindowBackgroundColor = EnvironmentColors.ToolWindowBackgroundColorKey.GetWpfColor();
 			TitleBackgroundColor = EnvironmentColors.MainWindowActiveCaptionColorKey.GetWpfColor();
 			TitleTextBrush = EnvironmentColors.MainWindowActiveCaptionTextBrushKey.GetWpfBrush();
 			ToolTipBackgroundBrush = EnvironmentColors.ToolTipBrushKey.GetWpfBrush();
@@ -216,6 +175,7 @@ namespace Codist
 			SystemThreeDFaceColor = EnvironmentColors.SystemThreeDFaceColorKey.GetWpfColor();
 			SystemGrayTextBrush = EnvironmentColors.SystemGrayTextBrushKey.GetWpfBrush();
 			UpdateToolTipFormatMap(null, EventArgs.Empty);
+			"Theme cache refreshed".Log();
 		}
 
 		static void UpdateToolTipFormatMap(object sender, EventArgs e) {
@@ -223,24 +183,8 @@ namespace Codist
 			ToolTipTextBrush = formatMap.ForegroundBrush as WpfBrush;
 			ToolTipFont = formatMap.Typeface.FontFamily;
 			ToolTipFontSize = formatMap.FontRenderingEmSize;
-			QuickInfoLargeIconSize = LargeIconSize * ToolTipFontSize / 12;
+			QuickInfoLargeIconSize = VsImageHelper.LargeIconSize * ToolTipFontSize / 12;
 		}
 		#endregion
-
-		static class KnownMonikerNameMap
-		{
-			internal static readonly Dictionary<string, int> Map = CreateMap();
-
-			static Dictionary<string, int> CreateMap() {
-				var d = new Dictionary<string, int>(3760);
-				var intType = typeof(int);
-				foreach (var item in typeof(KnownImageIds).GetFields()) {
-					if (item.FieldType == intType) {
-						d.Add(item.Name, (int)item.GetValue(null));
-					}
-				}
-				return d;
-			}
-		}
 	}
 }

@@ -208,7 +208,7 @@ namespace Codist.QuickInfo
 					_symbol.GoToDefinition();
 				}
 				catch (Exception ex) {
-					MessageWindow.Error(ex);
+					MessageWindow.Error(ex, null, null, this);
 				}
 			}
 
@@ -342,7 +342,7 @@ namespace Codist.QuickInfo
 				return ServicesHelper.Instance.ViewTagAggregatorFactory.CreateTagAggregator<IErrorTag>(_Session.TextView);
 			}
 
-			public CrispImage GetIconForErrorText(TextBlock textBlock) {
+			public FrameworkElement GetIconForErrorText(TextBlock textBlock) {
 				var f = textBlock.Inlines.FirstInline;
 				var tt = ((f as Hyperlink)?.Inlines.FirstInline as Run)?.Text;
 				if (tt == null) {
@@ -351,7 +351,7 @@ namespace Codist.QuickInfo
 						return null;
 					}
 					if (tt == "SPELL") {
-						return ThemeHelper.GetImage(IconIds.StatusSpell);
+						return VsImageHelper.GetImage(IconIds.StatusSpell);
 					}
 				}
 				if (tt.IndexOf("vsspell", StringComparison.InvariantCultureIgnoreCase) >= 0) {
@@ -420,7 +420,7 @@ namespace Codist.QuickInfo
 						? OverrideXmlDocGetSignature(p)
 						: null;
 					_Override.ErrorTags?.Clear();
-					MakeTextualContentSelectableWithIcon(p);
+					MakeTextualContentSelectableWithIcon(GetItems(p));
 					if (_Override.Session.Options == QuickInfoSessionOptions.TrackMouse) {
 						if (p.GetParent<FrameworkElement>(e => e.GetType().Name == "WpfToolTipControl") is ContentControl tip
 							&& tip.Content is FrameworkElement c) {
@@ -449,7 +449,7 @@ namespace Codist.QuickInfo
 					}
 				}
 				catch (Exception ex) {
-					Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, (Action<Exception>)((e) => MessageWindow.Error(e.ToString(), R.T_SuperQuickInfo)), ex);
+					Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, (Action<(Exception error, UIOverride src)>)((e) => MessageWindow.Error(e.error, null, R.T_SuperQuickInfo, e.src)), (ex, this));
 					return;
 				}
 			EXIT:
@@ -458,11 +458,10 @@ namespace Codist.QuickInfo
 				this.GetParent<Border>().Collapse();
 			}
 
-			void MakeTextualContentSelectableWithIcon(Panel p) {
-				var items = GetItems(p);
+			void MakeTextualContentSelectableWithIcon(IList items) {
 				for (int i = 0; i < items.Count; i++) {
 					if (items[i] is DependencyObject qi
-						&& ((qi as FrameworkElement)?.IsCodistQuickInfoItem()) != true) {
+						&& (qi as FrameworkElement)?.IsCodistQuickInfoItem() != true) {
 						if (qi is TextBlock t) {
 							OverrideTextBlock(t);
 							continue;
@@ -472,7 +471,11 @@ namespace Codist.QuickInfo
 							items[i] = new ThemedTipText {
 								Text = vi.TextSnapshot.GetText(),
 								Margin = WpfHelper.MiddleBottomMargin
-							}.SetGlyph(ThemeHelper.GetImage(IconIds.Info));
+							}.SetGlyph(VsImageHelper.GetImage(IconIds.Info));
+							continue;
+						}
+						if (qi is ItemsControl ic) {
+							MakeTextualContentSelectableWithIcon(ic.Items);
 							continue;
 						}
 						foreach (var tb in qi.GetDescendantChildren((Predicate<TextBlock>)null, WorkaroundForTypeScriptQuickInfo)) {
@@ -483,7 +486,7 @@ namespace Codist.QuickInfo
 								item.Content = new ThemedTipText {
 									Text = v.TextSnapshot.GetText(),
 									Margin = WpfHelper.MiddleBottomMargin
-								}.SetGlyph(ThemeHelper.GetImage(IconIds.Info));
+								}.SetGlyph(VsImageHelper.GetImage(IconIds.Info));
 							}
 						}
 					}
@@ -548,7 +551,7 @@ namespace Codist.QuickInfo
 
 			Grid ShowAlternativeSignature() {
 				var s = _Override.ClickAndGoSymbol;
-				var icon = ThemeHelper.GetImage(s.GetImageId(), ThemeHelper.QuickInfoLargeIconSize)
+				var icon = VsImageHelper.GetImage(s.GetImageId(), ThemeHelper.QuickInfoLargeIconSize)
 					.AsSymbolLink(Keyboard.Modifiers == ModifierKeys.Control ? s.OriginalDefinition : s);
 				icon.VerticalAlignment = VerticalAlignment.Top;
 				var signature = SymbolFormatter.Instance.ShowSignature(s);
@@ -610,11 +613,11 @@ namespace Codist.QuickInfo
 				// 6. exception
 				// 7. captured variables
 				if (_Override.OverrideBuiltInXmlDoc) {
-					var items = doc.IsItemsHost ? (IList)doc.GetParent<ItemsControl>().Items : doc.Children;
 					var v16orLater = CodistPackage.VsVersion.Major >= 16;
+					var items = doc.IsItemsHost ? (IList)doc.GetParent<ItemsControl>().Items : doc.Children;
 					ClearDefaultDocumentationItems(doc, v16orLater, items);
 					if (_Override.DocElement != null) {
-						OverrideDocElement(items);
+						OverrideDocElement(items, v16orLater);
 					}
 					if (_Override.ExceptionDoc != null) {
 						OverrideExceptionDocElement(doc, v16orLater, items);
@@ -641,10 +644,10 @@ namespace Codist.QuickInfo
 				}
 			}
 
-			void OverrideDocElement(IList items) {
+			void OverrideDocElement(IList items, bool v16orLater) {
 				try {
 					var d = _Override.DocElement;
-					if (items.Count > 1 && items[1] is TextBlock) {
+					if (items.Count > 1 && (items[1] is TextBlock || v16orLater && items[1] is StackPanel)) {
 						items.RemoveAt(1);
 						items.Insert(1, d);
 					}
@@ -678,8 +681,8 @@ namespace Codist.QuickInfo
 			static CrispImage CreateEnlargedIcon(CrispImage icon) {
 				var bgIcon = new CrispImage {
 					Moniker = icon.Moniker,
-					Width = ThemeHelper.XLargeIconSize,
-					Height = ThemeHelper.XLargeIconSize
+					Width = VsImageHelper.XLargeIconSize,
+					Height = VsImageHelper.XLargeIconSize
 				};
 				bgIcon.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
 				return bgIcon;
@@ -690,7 +693,7 @@ namespace Codist.QuickInfo
 					&& TextEditorWrapper.CreateFor(t) != null
 					&& t.Inlines.FirstInline is InlineUIContainer == false) {
 					t.TextWrapping = TextWrapping.Wrap;
-					CrispImage icon = _Override.GetIconForErrorText(t);
+					var icon = _Override.GetIconForErrorText(t);
 					if (icon != null) {
 						t.SetGlyph(icon);
 					}
@@ -698,7 +701,7 @@ namespace Codist.QuickInfo
 			}
 		}
 
-		class QuickInfoControl : DockPanel
+		sealed class QuickInfoControl : DockPanel
 		{
 			public QuickInfoControl() {
 				Margin = WpfHelper.MiddleVerticalMargin;
@@ -722,15 +725,15 @@ namespace Codist.QuickInfo
 				_TagHolder?.Clear();
 			}
 
-			public CrispImage GetErrorIcon(string code, ITagAggregator<IErrorTag> tagger, SnapshotSpan span) {
+			public FrameworkElement GetErrorIcon(string code, ITagAggregator<IErrorTag> tagger, SnapshotSpan span) {
 				if (GetTags(tagger, span).TryGetValue(code, out var error)) {
 					if (code[0] == 'C' && code[1] == 'S' && error == PredefinedErrorTypeNames.Warning) {
 						return CodeAnalysisHelper.GetWarningLevel(ToErrorCode(code, 2)) < 3
-							? ThemeHelper.GetImage(IconIds.SevereWarning)
-							: ThemeHelper.GetImage(IconIds.Warning);
+							? VsImageHelper.GetImage(IconIds.SevereWarning)
+							: VsImageHelper.GetImage(IconIds.Warning);
 					}
 					var iconId = GetIconIdForErrorType(error);
-					return iconId != 0 ? ThemeHelper.GetImage(iconId).SetValue(ToolTipService.SetToolTip, error) : null;
+					return iconId != 0 ? VsImageHelper.GetImage(iconId).SetValue(ToolTipService.SetToolTip, error) : null;
 				}
 				return null;
 			}
@@ -767,10 +770,12 @@ namespace Codist.QuickInfo
 				foreach (var tag in tagger.GetTags(span)) {
 					var content = tag.Tag.ToolTipContent;
 					if (content is ContainerElement ce) {
-						foreach (var cte in ce.Elements.Cast<ClassifiedTextElement>()) {
-							var firstRun = cte.Runs.First();
-							if (firstRun != null) {
-								_TagHolder[firstRun.Text] = tag.Tag.ErrorType;
+						foreach (var item in ce.Elements) {
+							if (item is ClassifiedTextElement cte) {
+								var firstRun = cte.Runs.First();
+								if (firstRun != null) {
+									_TagHolder[firstRun.Text] = tag.Tag.ErrorType;
+								}
 							}
 						}
 					}

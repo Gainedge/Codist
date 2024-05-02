@@ -22,11 +22,11 @@ namespace Codist.Controls
 		}
 
 		public ThemedButton(int imageId, object toolTip, Action onClickHandler)
-			: this(ThemeHelper.GetImage(imageId), toolTip, onClickHandler) { }
+			: this(VsImageHelper.GetImage(imageId), toolTip, onClickHandler) { }
 		public ThemedButton(int imageId, string text, object toolTip, Action onClickHandler)
 			: this(new StackPanel {
 				Orientation = Orientation.Horizontal,
-				Children = { ThemeHelper.GetImage(imageId).WrapMargin(WpfHelper.GlyphMargin), new TextBlock { Text = text } }
+				Children = { VsImageHelper.GetImage(imageId).WrapMargin(WpfHelper.GlyphMargin), new TextBlock { Text = text } }
 			}, toolTip, onClickHandler) { }
 
 		public ThemedButton(object content, object toolTip, Action onClickHandler)
@@ -48,6 +48,11 @@ namespace Codist.Controls
 		}
 
 		internal void PerformClick() {
+			OnClick();
+		}
+
+		internal void Press() {
+			IsPressed = !IsPressed;
 			OnClick();
 		}
 
@@ -76,10 +81,10 @@ namespace Codist.Controls
 				(object)new StackPanel {
 					Orientation = Orientation.Horizontal,
 					Children = {
-						ThemeHelper.GetImage(imageId).WrapMargin(WpfHelper.SmallHorizontalMargin),
+						VsImageHelper.GetImage(imageId).WrapMargin(WpfHelper.SmallHorizontalMargin),
 						content
 					}
-				} : ThemeHelper.GetImage(imageId).WrapMargin(WpfHelper.SmallHorizontalMargin);
+				} : VsImageHelper.GetImage(imageId).WrapMargin(WpfHelper.SmallHorizontalMargin);
 			Header = content;
 			this.ReferenceStyle(typeof(ThemedImageButton))
 				.ReferenceCrispImageBackground(EnvironmentColors.MainWindowActiveCaptionColorKey);
@@ -116,11 +121,10 @@ namespace Codist.Controls
 		public ThemedToggleButton(int imageId, string toolTip) {
 			Content = new StackPanel {
 				Children = {
-					ThemeHelper.GetImage(imageId)
+					VsImageHelper.GetImage(imageId)
 				}
 			};
 			ToolTip = toolTip;
-			ToolTipService.SetPlacement(this, PlacementMode.Left);
 			this.ReferenceCrispImageBackground(EnvironmentColors.MainWindowActiveCaptionColorKey);
 		}
 
@@ -163,12 +167,17 @@ namespace Codist.Controls
 			this.ReferenceProperty(BorderBrushProperty, CommonControlsColors.TextBoxBorderBrushKey);
 		}
 
+		public ThemedControlGroup(params Control[] controls) : this() {
+			AddRange(controls);
+		}
+
 		public ThemedControlGroup AddRange(params Control[] controls) {
 			foreach (var item in controls) {
 				item.Padding = WpfHelper.NoMargin;
 				item.Margin = WpfHelper.NoMargin;
 				item.BorderThickness = WpfHelper.NoMargin;
 				item.MinHeight = 10;
+				item.SetValue(ToolTipService.PlacementProperty, PlacementMode.Left);
 				_ControlPanel.Add(item);
 			}
 			return this;

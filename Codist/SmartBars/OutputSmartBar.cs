@@ -15,6 +15,8 @@ namespace Codist.SmartBars
 		public OutputSmartBar(IWpfTextView textView, Microsoft.VisualStudio.Text.Operations.ITextSearchService2 textSearchService) : base(textView, textSearchService) {
 		}
 
+		protected override BarType Type => BarType.Output;
+
 		ToolBar MyToolBar => ToolBar;
 
 		protected override void AddCommands() {
@@ -25,7 +27,7 @@ namespace Codist.SmartBars
 				t = TryGetPathFromView(View, out p);
 			}
 			catch (Exception ex) {
-				MessageWindow.Error(ex);
+				MessageWindow.Error(ex, null, null, this);
 				return;
 			}
 			switch (p) {

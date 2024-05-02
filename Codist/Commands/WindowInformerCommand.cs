@@ -472,7 +472,14 @@ namespace Codist.Commands
 			Section section = new Section {
 				Margin = __SectionIndent,
 				Blocks = {
-					new Paragraph(new Run(title) { FontSize = 18, FontWeight = FontWeights.Bold, Foreground = SymbolFormatter.Instance.Class }) { TextIndent = -5, Margin = WpfHelper.SmallMargin }
+					new Paragraph(new Run(title) {
+						FontSize = 18,
+						FontWeight = FontWeights.Bold,
+						Foreground = SymbolFormatter.Instance.Class
+					}) {
+						TextIndent = -5,
+						Margin = WpfHelper.SmallMargin
+					}
 				}
 			};
 			blocks.Add(section);
@@ -482,7 +489,14 @@ namespace Codist.Commands
 			Section section = new Section {
 				Margin = __SectionIndent,
 				Blocks = {
-					new Paragraph(new Run(title) { FontSize = fontSize, FontWeight = FontWeights.Bold, Foreground = SymbolFormatter.Instance.Class }) { TextIndent = -10, Margin = WpfHelper.SmallMargin }
+					new Paragraph(new Run(title) {
+						FontSize = fontSize,
+						FontWeight = FontWeights.Bold,
+						Foreground = SymbolFormatter.Instance.Class
+					}) {
+						TextIndent = -10,
+						Margin = WpfHelper.SmallMargin
+					}
 				}
 			};
 			blocks.Add(section);
@@ -491,7 +505,7 @@ namespace Codist.Commands
 		static Section NewIndentSection(Section block, string title) {
 			Append(block, title);
 			Section section = new Section {
-				Margin = new Thickness(block.Margin.Left + 10, 0, 0, 0),
+				Margin = new Thickness(block.Margin.Left, 0, 0, 0),
 			};
 			block.Blocks.Add(section);
 			return section;
@@ -501,7 +515,7 @@ namespace Codist.Commands
 				Margin = __ParagraphIndent,
 				TextIndent = -10,
 				Inlines = {
-					new Run(name) { Foreground = SymbolFormatter.Instance.Property },
+					name.Render(SymbolFormatter.Instance.Property),
 					new Run(" = "),
 				}
 			};
@@ -525,49 +539,54 @@ namespace Codist.Commands
 				Margin = __ParagraphIndent,
 				TextIndent = indent - 10,
 				Inlines = {
-					new Run(text) { Foreground = SymbolFormatter.Instance.Property }
+					text.Render(SymbolFormatter.Instance.Property)
 				}
 			});
 		}
 		static void AppendValueRun(InlineCollection inlines, object value) {
 			if (value is Array a) {
-				inlines.Add(new Run("[") { Foreground = SymbolFormatter.SemiTransparent.PlainText });
+				inlines.Add("[".Render(SymbolFormatter.SemiTransparent.PlainText));
 				for (int i = 0; i < a.Length; i++) {
 					if (i > 0) {
-						inlines.Add(new Run(", ") { Foreground = SymbolFormatter.SemiTransparent.PlainText });
+						inlines.Add(", ".Render(SymbolFormatter.SemiTransparent.PlainText));
 					}
 					inlines.Add(CreateRun(a.GetValue(i)));
 				}
-				inlines.Add(new Run("]") { Foreground = SymbolFormatter.SemiTransparent.PlainText });
+				inlines.Add("]".Render(SymbolFormatter.SemiTransparent.PlainText));
 			}
 			else {
 				inlines.Add(CreateRun(value));
 			}
 		}
+
+		[SuppressMessage("Usage", Suppression.VSTHRD010, Justification = Suppression.CheckedInCaller)]
 		static Run CreateRun(object value) {
 			var f = SymbolFormatter.Instance;
 			if (value == null) {
-				return new Run("null") { Foreground = f.Keyword };
+				return "null".Render(f.Keyword);
 			}
 			if (value is Type type) {
 				return new TypeRun(type, f);
 			}
 			type = value.GetType();
 			if (type.IsEnum) {
-				return new Run(value.ToString()) { Foreground = f.EnumField };
+				return value.ToString().Render(f.EnumField);
 			}
 			switch (Type.GetTypeCode(type)) {
 				case TypeCode.Object:
 					if (type.Name == "__ComObject" && type.Namespace == "System") {
-						return new Run(ReflectionHelper.GetTypeNameFromComObject(value) ?? "System.__ComObject") { Foreground = f.Class };
+						return (ReflectionHelper.GetTypeNameFromComObject(value) ?? "System.__ComObject").Render(f.Class);
+					}
+					if (value is Project p) {
+						return new TypeRun(type, p.Name, f);
 					}
 					var toString = type.GetMethod("ToString", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public, null, Type.EmptyTypes, null);
 					if (toString?.DeclaringType != typeof(object)) {
 						goto default;
 					}
 					return new TypeRun(type, f);
-				case TypeCode.Boolean: return new Run((bool)value ? "true" : "false") { Foreground = f.Keyword };
-				case TypeCode.Char: return new Run(value.ToString()) { Foreground = f.Text };
+				case TypeCode.Boolean: return ((bool)value ? "true" : "false").Render(f.Keyword);
+				case TypeCode.Char: return value.ToString().Render(f.Text);
 				case TypeCode.SByte:
 				case TypeCode.Byte:
 				case TypeCode.Int16:
@@ -578,19 +597,23 @@ namespace Codist.Commands
 				case TypeCode.UInt64:
 				case TypeCode.Single:
 				case TypeCode.Double:
-				case TypeCode.Decimal: return new Run(value.ToString()) { Foreground = f.Number };
+				case TypeCode.Decimal: return value.ToString().Render(f.Number);
 				case TypeCode.String:
 					var s = value.ToString();
 					return s.Length > 0
-						? new Run(s) { Foreground = f.Text }
-						: new Run("\"\"") { Foreground = SymbolFormatter.SemiTransparent.PlainText };
+						? s.Render(f.Text)
+						: "\"\"".Render(SymbolFormatter.SemiTransparent.PlainText);
 				default:
 					return new Run(value.ToString());
 			}
 		}
 		static string GetTypeName(Type type) {
-			return (type.DeclaringType != null ? $"{GetTypeName(type.DeclaringType)}+{type.Name}" : type.Name)
-				+ (type.IsGenericType ? $"<{String.Join(",", type.GenericTypeArguments.Select(GetTypeName))}>" : String.Empty);
+			return (type.DeclaringType != null
+				? $"{GetTypeName(type.DeclaringType)}+{type.Name}"
+				: type.Name)
+				+ (type.IsGenericType
+					? $"<{String.Join(",", type.GenericTypeArguments.Select(GetTypeName))}>"
+					: String.Empty);
 		}
 		static Brush GetTypeBrush(SymbolFormatter f, Type type) {
 			return type.IsClass ? f.Class
@@ -604,7 +627,10 @@ namespace Codist.Commands
 		{
 			readonly Type _Type;
 
-			public TypeRun(Type type, SymbolFormatter formatter) : base(GetTypeName(type)) {
+			public TypeRun(Type type, SymbolFormatter formatter) : this(type, GetTypeName(type), formatter) {
+			}
+
+			public TypeRun(Type type, string alias, SymbolFormatter formatter) : base(alias) {
 				_Type = type;
 				Foreground = GetTypeBrush(formatter, type);
 				ToolTip = String.Empty;

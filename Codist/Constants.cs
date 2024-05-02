@@ -25,6 +25,7 @@ namespace Codist
 			public const string Markdown = "Markdown";
 			public const string VsMarkdown = "vs-markdown";
 			public const string Xml = "XML";
+			public const string Xaml = "XAML";
 			public const string Projection = "projection";
 			public const string FindResults = "FindResults";
 			public const string Output = "Output";
@@ -42,9 +43,11 @@ namespace Codist
 			public const string TypeDefinition = "Type Definition";
 			public const string Markup = nameof(Markup);
 			public const string Member = nameof(Member);
+			public const string Xaml = "XAML";
 			public const string Xml = "XML";
 			public const string Highlight = nameof(Highlight);
 			public const string Heading = nameof(Heading);
+			public const string Block = nameof(Block);
 			public const string Task = nameof(Task);
 			public const string GeneralTask = "General Task";
 			public const string Source = nameof(Source);
@@ -205,6 +208,18 @@ namespace Codist
 		public const string CppUserDefinedLiteralString = "cppUserDefinedLiteralString"; // not mapped
 		public const string CppValueType = "cppValueType";
 
+		public const string XamlAttributeName = "XAML Attribute";
+		public const string XamlAttributeQuotes = "XAML Attribute Quotes";
+		public const string XamlAttributeValue = "XAML Attribute Value";
+		public const string XamlCData = "XAML CData Section";
+		public const string XamlComment = "XAML Comment";
+		public const string XamlDelimiter = "XAML Delimiter";
+		public const string XamlName = "XAML Name";
+		public const string XamlProcessingInstruction = "XAML Processing Instruction";
+		public const string XamlText = "XAML Text";
+		public const string XamlMarkupExtensionClass = "XAML Markup Extension Class";
+		public const string XamlMarkupExtensionParameterName = "XAML Markup Extension Parameter Name";
+		public const string XamlMarkupExtensionParameterValue = "XAML Markup Extension Parameter Value";
 		public const string XmlAttributeName = "XML Attribute";
 		public const string XmlAttributeQuotes = "XML Attribute Quotes";
 		public const string XmlAttributeValue = "XML Attribute Value";
@@ -222,6 +237,10 @@ namespace Codist
 		public const string MarkdownHeading4 = "Markdown: Heading 4";
 		public const string MarkdownHeading5 = "Markdown: Heading 5";
 		public const string MarkdownHeading6 = "Markdown: Heading 6";
+		public const string MarkdownQuotation = "Markdown: Quotation";
+		public const string MarkdownOrderedList = "Markdown: Ordered List";
+		public const string MarkdownUnorderedList = "Markdown: Unordered List";
+		public const string MarkdownUnderline = "Markdown: Underline";
 		public const string MarkdownVsBold = "vsMarkdown_bold";
 		public const string MarkdownVsItalic = "vsMarkdown_italic";
 		public const string MarkdownVsStrikethrough = "vsMarkdown_strikethrough";
@@ -230,6 +249,7 @@ namespace Codist
 		public const string MarkdownVsUrl = "vsMarkdown_url";
 
 		internal const string CodistPrefix = "Codist: ";
+		public const string CodistComment = CodistPrefix + "Comment";
 		//! Important
 		//# Notice
 		public const string EmphasisComment = CodistPrefix + "Emphasis";

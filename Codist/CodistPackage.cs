@@ -28,6 +28,7 @@ namespace Codist
 	[ProvideOptionPage(typeof(Options.WebSearchPage), Constants.NameOfMe, "Web Search", 200, 308, true, Sort = 70)]
 	[ProvideOptionPage(typeof(Options.WrapTextPage), Constants.NameOfMe, "Smart Bar\\Wrap Text", 200, 310, true, Sort = 80)]
 	[ProvideOptionPage(typeof(Options.ExtensionDeveloperPage), Constants.NameOfMe, "Extension development", 200, 309, true, Sort = 90)]
+	[ProvideOptionPage(typeof(Options.AutoSurroundSelectionPage), Constants.NameOfMe, "Auto Pair Punctuation", 200, 311, true, Sort = 100)]
 	[ProvideMenuResource("Menus.ctmenu", 1)]
 	//[ProvideToolWindow(typeof(Commands.SymbolFinderWindow), Style = VsDockStyle.Tabbed, Window = EnvDTE.Constants.vsWindowKindProperties))]
 	[ProvideAutoLoad(UIContextGuids80.NoSolution, PackageAutoLoadFlags.BackgroundLoad)]
@@ -100,21 +101,31 @@ namespace Codist
 			await base.InitializeAsync(cancellationToken, progress);
 
 			SolutionEvents.OnAfterCloseSolution += (s, args) => Taggers.SymbolMarkManager.Clear();
+
+			// implicitly load config here, before switching to the main thread
+			var config = Config.Instance;
+
 			// When initialized asynchronously, the current thread may be a background thread at this point.
 			// Do any initialization that requires the UI thread after switching to the UI thread.
 			await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
+			"Package initialization switched to main thread".Log();
 			//_extenderCookie = DTE.ObjectExtenders.RegisterExtenderProvider(VSConstants.CATID.CSharpFileProperties_string, BuildBots.AutoReplaceExtenderProvider.Name, new BuildBots.AutoReplaceExtenderProvider());
 			Commands.CommandRegistry.Initialize();
 			Display.JumpListEnhancer.Initialize();
-			Display.LayoutOverride.InitializeLayoutOverride();
+			Display.LayoutOverride.Initialize();
+			if (config.DisplayOptimizations != DisplayOptimizations.None) {
+				Display.ResourceMonitor.Reload(config.DisplayOptimizations);
+			}
+			//await Commands.FavoritesWindowCommand.InitializeAsync(this);
 
-			if (Config.Instance.InitStatus != InitStatus.Normal) {
+			if (config.InitStatus != InitStatus.Normal) {
 				InitializeOrUpgradeConfig();
+				"Config upgraded.".Log();
 			}
 			Commands.SyntaxCustomizerWindowCommand.Initialize();
 
-			"Package initialization finished".Log();
+			"Package initialization finished.".Log();
 			//ListEditorCommands();
 		}
 
@@ -181,7 +192,7 @@ namespace Codist
 
 		static class Vs
 		{
-			public static readonly Version Version = Application.Current.MainWindow.GetType().Assembly.GetName().Version;
+			public static readonly Version Version = new Version(Application.Current.MainWindow.GetType().Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>().Version);
 		}
 	}
 #pragma warning restore VSTHRD010 // Invoke single-threaded types on Main thread

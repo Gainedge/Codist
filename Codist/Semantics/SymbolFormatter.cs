@@ -104,7 +104,7 @@ namespace Codist
 				signature.Inlines.AddRange(new object[] {
 					new LineBreak(),
 					new InlineUIContainer (new TextBlock { Margin = WpfHelper.SmallHorizontalMargin, FontSize = ThemeHelper.ToolTipFontSize, FontFamily = ThemeHelper.ToolTipFont }
-						.Append(ThemeHelper.GetImage(IconIds.Obsoleted).WrapMargin(WpfHelper.GlyphMargin))
+						.Append(VsImageHelper.GetImage(IconIds.Obsoleted).WrapMargin(WpfHelper.GlyphMargin))
 						.Append(R.T_Deprecated))
 				});
 			}
@@ -112,31 +112,29 @@ namespace Codist
 
 			#region Containing symbol
 			var cs = s.ContainingSymbol;
+			ThemedTipText b; // text block for symbol
 			if (cs != null) {
 				var showNs = Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.SymbolLocation) == false && cs.Kind == SymbolKind.Namespace;
 				var showContainer = showNs == false && s.Kind != SymbolKind.Namespace && cs.Kind != SymbolKind.Namespace;
-				var csb = new ThemedTipText { FontSize = ThemeHelper.ToolTipFontSize, FontFamily = ThemeHelper.ToolTipFont };
+				b = new ThemedTipText { FontSize = ThemeHelper.ToolTipFontSize, FontFamily = ThemeHelper.ToolTipFont };
 				if (showContainer) {
-					csb.Append(ThemeHelper.GetImage(cs.GetImageId()).WrapMargin(WpfHelper.GlyphMargin));
-				}
-				if (cs is INamedTypeSymbol ct && (ct = ct.ContainingType) != null) {
-					ShowContainingTypes(ct, csb);
+					b.Append(VsImageHelper.GetImage(cs.GetImageId()).WrapMargin(WpfHelper.GlyphMargin));
 				}
 
 				if (showContainer) {
-					csb.AddSymbol(cs, false, this).Append(" ");
+					b.AddSymbol(cs, false, this).Append(" ");
 				}
 
-				p.Add(ShowSymbolDeclaration(s, csb, true, false));
+				p.Add(ShowSymbolDeclaration(s, b, true, false));
 				if (showNs && ((INamespaceSymbol)cs).IsGlobalNamespace == false) {
-					var nsb = new ThemedTipText { FontSize = ThemeHelper.ToolTipFontSize, FontFamily = ThemeHelper.ToolTipFont }.Append(ThemeHelper.GetImage(IconIds.Namespace)
+					b = new ThemedTipText { FontSize = ThemeHelper.ToolTipFontSize, FontFamily = ThemeHelper.ToolTipFont }.Append(VsImageHelper.GetImage(IconIds.Namespace)
 						.WrapMargin(WpfHelper.GlyphMargin));
-					ShowContainingNamespace(symbol, nsb);
-					p.Add(nsb);
+					ShowContainingNamespace(symbol, b);
+					p.Add(b);
 				}
 				else if (s.Kind == SymbolKind.Method
 					&& (m = (IMethodSymbol)s).MethodKind == MethodKind.ReducedExtension) {
-					csb.AddImage(IconIds.ExtensionMethod)
+					b.AddImage(IconIds.ExtensionMethod)
 						.Append(" ")
 						.AddSymbol(m.ReducedFrom.Parameters[0].Type, false, this);
 				}
@@ -153,15 +151,25 @@ namespace Codist
 				}
 			}
 			else if (s.Kind != SymbolKind.Method || ((IMethodSymbol)s).IsTypeSpecialMethod() == false) {
-				p.Add(new ThemedTipText { FontSize = ThemeHelper.ToolTipFontSize, FontFamily = ThemeHelper.ToolTipFont }
-					.Append(ThemeHelper.GetImage(IconIds.Return).WrapMargin(WpfHelper.GlyphMargin))
-					.Append(GetRefType(s), Keyword)
-					.AddSymbol(rt, false, this)
-					.Append(rt.IsAwaitable() ? $" ({R.T_Awaitable})" : String.Empty));
+				b = new ThemedTipText { FontSize = ThemeHelper.ToolTipFontSize, FontFamily = ThemeHelper.ToolTipFont }
+					.Append(VsImageHelper.GetImage(IconIds.Return).WrapMargin(WpfHelper.GlyphMargin));
+				if (rt.TypeKind != TypeKind.Delegate) {
+					b.Append(GetRefType(s), Keyword);
+					b.AddSymbol(rt, false, this)
+						.Append(rt.IsAwaitable() ? $" ({R.T_Awaitable})" : String.Empty);
+				}
+				else {
+					var invoke = ((INamedTypeSymbol)rt).DelegateInvokeMethod;
+					b.Append("delegate ", Keyword)
+						.Append(GetRefType(invoke), Keyword)
+						.AddSymbol(invoke.ReturnType, null, this)
+						.AddParameters(invoke.Parameters, this);
+				}
+				p.Add(b);
 			}
 			#endregion
 
-			#region Generic type parameters
+			#region Generic type constraints
 			switch (s.Kind) {
 				case SymbolKind.NamedType:
 					t = (INamedTypeSymbol)symbol;
@@ -186,7 +194,7 @@ namespace Codist
 				case SymbolKind.Discard:
 					goto END;
 			}
-			if (cs != null && (t = symbol.GetContainingTypes().FirstOrDefault(ct => ct.IsGenericType)) != null) {
+			if (cs != null && (t = symbol.GetContainingTypes().FirstOrDefault(i => i.IsGenericType)) != null) {
 				ShowGenericTypeConstraints(p, t);
 			}
 			#endregion
@@ -202,7 +210,8 @@ namespace Codist
 				Foreground = PlainText,
 				FontFamily = ThemeHelper.ToolTipFont,
 				FontSize = ThemeHelper.ToolTipFontSize
-			}.AddSymbol(symbol, true, this);
+			};
+			Format(signature.Inlines, symbol, null, true, true);
 			TextEditorWrapper.CreateFor(signature);
 			signature.Inlines.FirstInline.FontSize = ThemeHelper.ToolTipFontSize * 1.2;
 
@@ -262,13 +271,18 @@ namespace Codist
 			return signature;
 		}
 
-		void ShowContainingTypes(INamedTypeSymbol type, TextBlock signature) {
-			var n = ImmutableArray.CreateBuilder<INamedTypeSymbol>();
+		void ShowContainingTypes(INamedTypeSymbol type, InlineCollection text) {
+			var n = new Stack<INamedTypeSymbol>();
 			do {
-				n.Add(type);
+				n.Push(type);
+				if (n.Count > 50) {
+					MessageWindow.Error(String.Join(Environment.NewLine, n.Select(i => i.Name)), "Too many containing types");
+					break;
+				}
 			} while ((type = type.ContainingType) != null);
-			for (int i = n.Count - 1; i >= 0; i--) {
-				signature.AddSymbol(n[i], false, this).Append(".");
+			while (n.Count != 0) {
+				FormatTypeName(text, n.Pop(), null, false);
+				text.Add(".");
 			}
 		}
 
@@ -285,6 +299,10 @@ namespace Codist
 			do {
 				n.Add(ns);
 				ns = ns.ContainingNamespace;
+				if (n.Count > 50) {
+					MessageWindow.Error(String.Join(Environment.NewLine, n.Select(i => i.Name)), "Too many containing namespaces");
+					break;
+				}
 			} while (ns?.IsGlobalNamespace == false);
 			for (int i = n.Count - 1; i > 0; i--) {
 				loc.AddSymbol(n[i], false, Namespace).Append(".");
@@ -575,7 +593,7 @@ namespace Codist
 			var tpl = tp.Length;
 			for (int i = 0; i < tpl; i++) {
 				var b = new TextBlock { TextWrapping = TextWrapping.Wrap, Foreground = ThemeHelper.ToolTipTextBrush, FontFamily = ThemeHelper.ToolTipFont, FontSize = ThemeHelper.ToolTipFontSize }
-					.SetGlyph(ThemeHelper.GetImage(IconIds.GenericDefinition));
+					.SetGlyph(VsImageHelper.GetImage(IconIds.GenericDefinition));
 				ShowTypeArgumentInfo(tp[i], ta[i], b);
 				panel.Add(b);
 			}
@@ -591,7 +609,7 @@ namespace Codist
 
 		TextBlock ShowTypeParameterConstraints(ITypeParameterSymbol item) {
 			var b = new TextBlock { TextWrapping = TextWrapping.Wrap, Foreground = ThemeHelper.ToolTipTextBrush, FontFamily = ThemeHelper.ToolTipFont, FontSize = ThemeHelper.ToolTipFontSize }
-				.SetGlyph(ThemeHelper.GetImage(IconIds.GenericDefinition))
+				.SetGlyph(VsImageHelper.GetImage(IconIds.GenericDefinition))
 				.AddSymbol(item, false, TypeParameter)
 				.Append(": ");
 			ShowTypeConstraints(item, b);
@@ -678,7 +696,7 @@ namespace Codist
 			return null;
 		}
 
-		internal void Format(InlineCollection text, ISymbol symbol, string alias, bool bold) {
+		internal void Format(InlineCollection text, ISymbol symbol, string alias, bool bold, bool excludeContainingTypes = false) {
 			switch (symbol.Kind) {
 				case SymbolKind.ArrayType:
 					FormatArrayType(text, (IArrayTypeSymbol)symbol, alias, bold);
@@ -692,6 +710,9 @@ namespace Codist
 					FormatMethodName(text, symbol, alias, bold);
 					return;
 				case SymbolKind.NamedType:
+					if (excludeContainingTypes == false && symbol.ContainingType != null) {
+						ShowContainingTypes(symbol.ContainingType, text);
+					}
 					FormatTypeName(text, symbol, alias, bold);
 					return;
 				case SymbolKind.Namespace:
@@ -766,7 +787,8 @@ namespace Codist
 					inline = symbol.Render("delegate*", true, GetBrushForMethod(method));
 					break;
 				case MethodKind.ExplicitInterfaceImplementation:
-					inline = method.Render(method.ExplicitInterfaceImplementations[0].Name, bold, Method);
+					var implementations = method.ExplicitInterfaceImplementations;
+					inline = method.Render(implementations.Length != 0 ? implementations[0].Name : symbol.Name, bold, Method);
 					break;
 				default:
 					inline = symbol.Render(alias, bold, Method);
@@ -896,18 +918,14 @@ namespace Codist
 				case SyntaxKind.PropertyDeclaration:
 				case SyntaxKind.IndexerDeclaration: return Property;
 				case SyntaxKind.FieldDeclaration: return ((BaseFieldDeclarationSyntax)node).Modifiers.Any(SyntaxKind.ConstKeyword) ? Const : Field;
-				case SyntaxKind.ConstructorDeclaration:
-					return GetBrush(node.Parent);
+				case SyntaxKind.ConstructorDeclaration: return GetBrush(node.Parent);
 				case SyntaxKind.MethodDeclaration:
-				case SyntaxKind.LocalFunctionStatement:
-					return Method;
+				case SyntaxKind.LocalFunctionStatement: return Method;
 				case SyntaxKind.ClassDeclaration:
 				case SyntaxKind.DestructorDeclaration:
-				case CodeAnalysisHelper.RecordDeclaration:
-					return Class;
+				case CodeAnalysisHelper.RecordDeclaration: return Class;
 				case SyntaxKind.StructDeclaration:
-				case CodeAnalysisHelper.RecordStructDeclaration:
-					return Struct;
+				case CodeAnalysisHelper.RecordStructDeclaration: return Struct;
 				case SyntaxKind.InterfaceDeclaration: return Interface;
 				case SyntaxKind.EventDeclaration:
 				case SyntaxKind.EventFieldDeclaration: return Event;
@@ -1004,7 +1022,8 @@ namespace Codist
 				block.Add(": ".Render(PlainText));
 			}
 			block.Add(WpfHelper.Render(item.AttributeConstructor ?? (ISymbol)item.AttributeClass, a.EndsWith("Attribute", StringComparison.Ordinal) ? a.Substring(0, a.Length - 9) : a, Class));
-			if (item.ConstructorArguments.Length == 0 && item.NamedArguments.Length == 0) {
+			var cas = item.ConstructorArguments;
+			if (cas.Length == 0 && item.NamedArguments.Length == 0) {
 				var node = item.ApplicationSyntaxReference?.GetSyntax() as AttributeSyntax;
 				if (node?.ArgumentList?.Arguments.Count > 0) {
 					block.Add(node.ArgumentList.ToString().Render(ThemeHelper.SystemGrayTextBrush));
@@ -1014,11 +1033,15 @@ namespace Codist
 			}
 			block.Add("(".Render(PlainText));
 			int i = 0;
-			foreach (var arg in item.ConstructorArguments) {
-				if (++i > 1) {
-					block.Add(", ".Render(PlainText));
+			if (cas.Length != 0) {
+				var pp = item.AttributeConstructor.Parameters[cas.Length - 1].IsParams;
+				var cl = pp ? cas.Length : -1;
+				foreach (var arg in cas) {
+					if (i != 0) {
+						block.Add(", ".Render(PlainText));
+					}
+					Format(block, arg, ++i == cl);
 				}
-				Format(block, arg);
 			}
 			foreach (var arg in item.NamedArguments) {
 				if (++i > 1) {
@@ -1032,7 +1055,7 @@ namespace Codist
 					block.Add(arg.Key.Render(false, true, null));
 				}
 				block.Add("=".Render(PlainText));
-				Format(block, arg.Value);
+				Format(block, arg.Value, false);
 			}
 			block.Add(")]".Render(PlainText));
 		}
@@ -1068,7 +1091,7 @@ namespace Codist
 			text.Add(">".Render(PlainText));
 		}
 
-		void Format(InlineCollection block, TypedConstant constant) {
+		void Format(InlineCollection block, TypedConstant constant, bool isParams) {
 			if (constant.IsNull) {
 				block.Add("null".Render(Keyword));
 				return;
@@ -1115,8 +1138,10 @@ namespace Codist
 					block.Add(")".Render(PlainText));
 					break;
 				case TypedConstantKind.Array:
-					block.Add("new".Render(Keyword));
-					block.Add("[] { ".Render(PlainText));
+					if (isParams == false) {
+						block.Add("new".Render(Keyword));
+						block.Add("[] { ".Render(PlainText));
+					}
 					bool c = false;
 					foreach (var item in constant.Values) {
 						if (c) {
@@ -1125,9 +1150,12 @@ namespace Codist
 						else {
 							c = true;
 						}
-						Format(block, item);
+						Format(block, item, false);
 					}
-					block.Add(" }".Render(PlainText));
+
+					if (isParams == false) {
+						block.Add(" }".Render(PlainText));
+					}
 					break;
 				default:
 					block.Add(constant.ToCSharpString());
@@ -1255,7 +1283,7 @@ namespace Codist
 				var ctn = item.GetCustomAttribute<ClassificationTypeAttribute>().ClassificationTypeNames;
 				var setFormatBrush = ReflectionHelper.CreateSetPropertyMethod<SymbolFormatter, Brush>(item.Name);
 				r.Add(ctn, (ct, f) => {
-					var brush = (ct == Constants.CodePlainText ? FormatStore.EditorDefaultTextProperties :  FormatStore.GetCachedEditorProperty(ct) ?? FormatStore.EditorDefaultTextProperties).ForegroundBrush;
+					var brush = (ct == Constants.CodePlainText ? FormatStore.EditorDefaultTextProperties :  FormatStore.GetRunPriorities(ct) ?? FormatStore.EditorDefaultTextProperties).ForegroundBrush;
 					if (f._BrushConfigurator != null) {
 						brush = f._BrushConfigurator(brush);
 					}
@@ -1266,7 +1294,7 @@ namespace Codist
 		}
 
 		void FormatMap_FormatMappingChanged(object sender, EventArgs<IReadOnlyList<string>> e) {
-			if (sender != FormatStore.EditorFormatCache) {
+			if (sender is IFormatCache c && c.Category != Constants.CodeText) {
 				return;
 			}
 			foreach (var item in e.Data) {

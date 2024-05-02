@@ -634,7 +634,7 @@ namespace Codist.Options
 		{
 			readonly OptionBox<MarkerOptions> _LineNumber, _Selection, _SpecialComment, _MarkerDeclarationLine, _LongMemberDeclaration, _TypeDeclaration, _MethodDeclaration, _RegionDirective, _CompilerDirective, _SymbolReference, _DisableChangeTracker;
 			readonly OptionBox<MarkerOptions>[] _Options;
-			readonly ColorButton _SymbolReferenceButton, _SymbolWriteButton;
+			readonly ColorButton _SymbolReferenceButton, _SymbolWriteButton, _SymbolDefinitionButton;
 
 			public PageControl(OptionsPage page) : base(page) {
 				var o = Config.Instance.MarkerOptions;
@@ -675,6 +675,10 @@ namespace Codist.Options
 							new StackPanel().MakeHorizontal().Add(
 								new TextBlock { MinWidth = 120, Margin = WpfHelper.SmallHorizontalMargin }.Append(R.OT_WriteSymbolColor),
 								new ColorButton(Margins.SymbolReferenceMarkerStyle.DefaultWriteMarkerColor, R.T_Color, UpdateSymbolWriteColor).Set(ref _SymbolWriteButton)
+								),
+							new StackPanel().MakeHorizontal().Add(
+								new TextBlock { MinWidth = 120, Margin = WpfHelper.SmallHorizontalMargin }.Append(R.OT_SymbolDefinitionColor),
+								new ColorButton(Margins.SymbolReferenceMarkerStyle.DefaultSymbolDefinitionColor, R.T_Color, UpdateSymbolDefinitionColor).Set(ref _SymbolDefinitionButton)
 								)
 						}
 					}.WrapMargin(SubOptionMargin)
@@ -688,12 +692,14 @@ namespace Codist.Options
 					item.WrapMargin(SubOptionMargin);
 				}
 				_MarkerDeclarationLine.BindDependentOptionControls(dubOptions);
-				_SymbolReference.BindDependentOptionControls(_SymbolReferenceButton, _SymbolWriteButton);
+				_SymbolReference.BindDependentOptionControls(_SymbolReferenceButton, _SymbolWriteButton, _SymbolDefinitionButton);
 				_DisableChangeTracker.IsEnabled = CodistPackage.VsVersion.Major >= 17;
 				_SymbolReferenceButton.DefaultColor = () => Margins.SymbolReferenceMarkerStyle.DefaultReferenceMarkerColor;
-				_SymbolReferenceButton.Color = Config.Instance.SymbolReferenceMarkerSettings.ReferenceMarkerBrush.Color;
+				_SymbolReferenceButton.Color = Config.Instance.SymbolReferenceMarkerSettings.ReferenceMarker;
 				_SymbolWriteButton.DefaultColor = () => Margins.SymbolReferenceMarkerStyle.DefaultWriteMarkerColor;
-				_SymbolWriteButton.Color = Config.Instance.SymbolReferenceMarkerSettings.WriteMarkerBrush.Color;
+				_SymbolWriteButton.Color = Config.Instance.SymbolReferenceMarkerSettings.WriteMarker;
+				_SymbolDefinitionButton.DefaultColor = () => Margins.SymbolReferenceMarkerStyle.DefaultSymbolDefinitionColor;
+				_SymbolDefinitionButton.Color = Config.Instance.SymbolReferenceMarkerSettings.SymbolDefinition;
 			}
 
 			protected override void LoadConfig(Config config) {
@@ -727,6 +733,17 @@ namespace Codist.Options
 				Config.Instance.SymbolReferenceMarkerSettings.WriteMarkerColor = color.ToHexString();
 				if (color.A == 0) {
 					_SymbolWriteButton.Color = Margins.SymbolReferenceMarkerStyle.DefaultWriteMarkerColor;
+				}
+				Config.Instance.FireConfigChangedEvent(Features.ScrollbarMarkers);
+			}
+
+			void UpdateSymbolDefinitionColor(Color color) {
+				if (Page.IsConfigUpdating) {
+					return;
+				}
+				Config.Instance.SymbolReferenceMarkerSettings.SymbolDefinitionColor = color.ToHexString();
+				if (color.A == 0) {
+					_SymbolDefinitionButton.Color = Margins.SymbolReferenceMarkerStyle.DefaultSymbolDefinitionColor;
 				}
 				Config.Instance.FireConfigChangedEvent(Features.ScrollbarMarkers);
 			}
@@ -797,7 +814,7 @@ namespace Codist.Options
 		sealed class PageControl : OptionsPageContainer
 		{
 			readonly Controls.IntegerBox _TopSpace, _BottomSpace;
-			readonly OptionBox<DisplayOptimizations> _MainWindow, _CodeWindow, _MenuLayoutOverride, _HideSearchBox, _HideAccountBox, _HideFeedbackButton, _CpuMonitor, _MemoryMonitor, _DriveMonitor, _NetworkMonitor;
+			readonly OptionBox<DisplayOptimizations> _MainWindow, _CodeWindow, _MenuLayoutOverride, _HideSearchBox, _HideAccountBox, _HideFeedbackButton, _HideCodePilotButton, _HideInfoBadgeButton, _CpuMonitor, _MemoryMonitor, _DriveMonitor, _NetworkMonitor;
 			readonly OptionBox<BuildOptions> _BuildTimestamp, _ShowOutputWindowAfterBuild;
 			readonly TextBox _TaskManagerPath, _TaskManagerParameter;
 			readonly Button _BrowseTaskManagerPath;
@@ -876,6 +893,8 @@ namespace Codist.Options
 							Config.Instance.DisplayOptimizations.CreateOptionBox(DisplayOptimizations.HideSearchBox, UpdateHideSearchBoxOption, R.OT_HideSearchBox).Set(ref _HideSearchBox),
 							Config.Instance.DisplayOptimizations.CreateOptionBox(DisplayOptimizations.HideAccountBox, UpdateHideAccountBoxOption, R.OT_HideAccountIcon).Set(ref _HideAccountBox),
 							Config.Instance.DisplayOptimizations.CreateOptionBox(DisplayOptimizations.HideFeedbackBox, UpdateHideFeedbackButtonOption, R.OT_HideFeedbackButton).Set(ref _HideFeedbackButton),
+							Config.Instance.DisplayOptimizations.CreateOptionBox(DisplayOptimizations.HideCopilotButton, UpdateHideCodePilotButtonOption, R.OT_HideCopilotButton).Set(ref _HideCodePilotButton),
+							Config.Instance.DisplayOptimizations.CreateOptionBox(DisplayOptimizations.HideInfoBadgeButton, UpdateHideInfoBadgeButtonOption, R.OT_HideInfoBadgeButton).Set(ref _HideInfoBadgeButton),
 						}
 					}
 					.ForEachChild((CheckBox b) => b.MinWidth = MinColumnWidth)
@@ -897,6 +916,7 @@ namespace Codist.Options
 				};
 
 				_MenuLayoutOverride.IsEnabled = CodistPackage.VsVersion.Major == 15;
+				_HideCodePilotButton.IsEnabled = CodistPackage.VsVersion.Major > 17 || CodistPackage.VsVersion.Major == 17 && CodistPackage.VsVersion.Minor > 9;
 			}
 
 			protected override void LoadConfig(Config config) {
@@ -908,6 +928,8 @@ namespace Codist.Options
 				_HideAccountBox.UpdateWithOption(o);
 				_HideFeedbackButton.UpdateWithOption(o);
 				_HideSearchBox.UpdateWithOption(o);
+				_HideCodePilotButton.UpdateWithOption(o);
+				_HideInfoBadgeButton.UpdateWithOption(o);
 				_BuildTimestamp.UpdateWithOption(config.BuildOptions);
 				_ShowOutputWindowAfterBuild.UpdateWithOption(config.BuildOptions);
 			}
@@ -971,6 +993,14 @@ namespace Codist.Options
 
 			void UpdateHideFeedbackButtonOption(DisplayOptimizations options, bool value) {
 				ToggleTitleBarElement(options, value, DisplayOptimizations.HideFeedbackBox);
+			}
+
+			void UpdateHideCodePilotButtonOption(DisplayOptimizations options, bool value) {
+				ToggleTitleBarElement(options, value, DisplayOptimizations.HideCopilotButton);
+			}
+
+			void UpdateHideInfoBadgeButtonOption(DisplayOptimizations options, bool value) {
+				ToggleTitleBarElement(options, value, DisplayOptimizations.HideInfoBadgeButton);
 			}
 
 			void ToggleTitleBarElement(DisplayOptimizations options, bool value, DisplayOptimizations element) {
@@ -1364,6 +1394,42 @@ namespace Codist.Options
 			void ResetWrapTexts(System.Collections.Generic.List<WrapText> wrapTexts) {
 				_List.Items.Clear();
 				_List.Items.AddRange(wrapTexts);
+			}
+		}
+	}
+
+	[Guid("496442FC-A36A-4C7A-B312-5D84B2631565")]
+	sealed class AutoSurroundSelectionPage : OptionsPage
+	{
+		PageControl _Child;
+
+		protected override Features Feature => Features.AutoSurround;
+		protected override UIElement Child => _Child ?? (_Child = new PageControl(this));
+
+		sealed class PageControl : OptionsPageContainer
+		{
+			readonly OptionBox<AutoSurroundSelectionOptions> _TrimSelection;
+
+			public PageControl(OptionsPage page) : base(page) {
+				AddPage(R.OT_General,
+					new Note(R.OT_AutoSurroundSelectionNote),
+
+					_TrimSelection = Config.Instance.AutoSurroundSelectionOptions.CreateOptionBox(AutoSurroundSelectionOptions.Trim, UpdateConfig, R.OT_TrimBeforeSurround)
+						.SetLazyToolTip(() => R.OT_TrimBeforeSurroundTip)
+					);
+			}
+
+			protected override void LoadConfig(Config config) {
+				var o = config.AutoSurroundSelectionOptions;
+				_TrimSelection.UpdateWithOption(o);
+			}
+
+			void UpdateConfig(AutoSurroundSelectionOptions options, bool set) {
+				if (Page.IsConfigUpdating) {
+					return;
+				}
+				Config.Instance.Set(options, set);
+				Config.Instance.FireConfigChangedEvent(Features.None);
 			}
 		}
 	}

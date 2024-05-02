@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
+using CLR;
 using Microsoft.VisualStudio.PlatformUI;
 using Microsoft.VisualStudio.Shell;
 using R = Codist.Properties.Resources;
@@ -10,15 +12,16 @@ namespace Codist.Controls
 	sealed class MessageWindow : Window
 	{
 		readonly ScrollViewer _Content;
-		readonly StackPanel _ButtonPanel;
+		readonly StackPanel _ExtraControlPanel, _ButtonPanel;
 		readonly Button _DefaultButton;
 		readonly ContentPresenter _Icon;
+		CheckBox _SuppressExceptionBox;
 
 		public MessageWindow() {
 			MinHeight = 100;
 			MinWidth = 200;
 
-			var ss = WpfHelper.GetActiveScreenSize();
+			var screen = WpfHelper.GetActiveScreenSize();
 			ShowInTaskbar = false;
 			ResizeMode = ResizeMode.NoResize;
 			WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -28,10 +31,10 @@ namespace Codist.Controls
 				Margin = WpfHelper.MiddleMargin,
 				Children = {
 					new Grid {
-						MaxHeight = Math.Min(Math.Max(ss.Height / 2, 400), ss.Height),
+						MaxHeight = Math.Min(Math.Max(screen.Height / 2, 400), screen.Height),
 						ColumnDefinitions = {
 							new ColumnDefinition(),
-							new ColumnDefinition { MaxWidth = Math.Min(Math.Max(ss.Width / 2, 800), ss.Width) },
+							new ColumnDefinition { MaxWidth = Math.Min(Math.Max(screen.Width / 2, 800), screen.Width) },
 						},
 						Children = {
 							new ContentPresenter { VerticalAlignment = VerticalAlignment.Top, Margin = WpfHelper.MiddleMargin }.Set(ref _Icon),
@@ -47,14 +50,26 @@ namespace Codist.Controls
 							}.ReferenceProperty(BorderBrushProperty, CommonControlsColors.TextBoxBorderBrushKey).SetValue(Grid.SetColumn, 1),
 						}
 					},
-					new StackPanel {
-						Margin = WpfHelper.MiddleMargin,
-						Orientation = Orientation.Horizontal,
-						HorizontalAlignment = HorizontalAlignment.Right,
+					new Grid {
+						ColumnDefinitions = {
+							new ColumnDefinition(),
+							new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+						},
 						Children = {
-							CreateButton(R.CMD_OK, DefaultButton_Click).Set(ref _DefaultButton)
+							new StackPanel {
+								Margin = WpfHelper.MiddleMargin,
+								VerticalAlignment = VerticalAlignment.Center
+							}.Set(ref _ExtraControlPanel),
+							new StackPanel {
+								Margin = WpfHelper.MiddleMargin,
+								Orientation = Orientation.Horizontal,
+								HorizontalAlignment = HorizontalAlignment.Right,
+								Children = {
+									CreateButton(R.CMD_OK, DefaultButton_Click).Set(ref _DefaultButton)
+								}
+							}.Set(ref _ButtonPanel).SetValue(Grid.SetColumn, 1)
 						}
-					}.Set(ref _ButtonPanel)
+					}
 				}
 			};
 			this.ReferenceProperty(BackgroundProperty, VsBrushes.ToolWindowBackgroundKey);
@@ -92,20 +107,21 @@ namespace Codist.Controls
 					_DefaultButton.IsCancel = true;
 					break;
 			}
-			int img;
-			switch (icon) {
-				case MessageBoxImage.Question: img = IconIds.Question; break;
-				case MessageBoxImage.Error: img = IconIds.Error; break;
-				case MessageBoxImage.Warning: img = IconIds.Stop; break;
-				case MessageBoxImage.Information: img = IconIds.Info; break;
-				default: img = 0; break;
-			}
+			int img = icon.Case(MessageBoxImage.Question, IconIds.Question,
+				MessageBoxImage.Error, IconIds.Error,
+				MessageBoxImage.Warning, IconIds.Stop,
+				MessageBoxImage.Information, IconIds.Info,
+				0);
 			if (img != 0) {
-				_Icon.Content = ThemeHelper.GetImage(img, ThemeHelper.LargeIconSize);
+				_Icon.Content = VsImageHelper.GetImage(img, VsImageHelper.LargeIconSize);
 			}
 			else {
 				_Icon.Visibility = Visibility.Collapsed;
 			}
+		}
+
+		public void AddExtraControl(UIElement control) {
+			_ExtraControlPanel.Children.Add(control);
 		}
 
 		public static bool? Show(object content) {
@@ -120,14 +136,20 @@ namespace Codist.Controls
 		public static bool? Error(string content, string title) {
 			return new MessageWindow(content, title, MessageBoxButton.OK, MessageBoxImage.Error).ShowDialog();
 		}
-		public static bool? Error(Exception content) {
-			return new MessageWindow(content, null, MessageBoxButton.OK, MessageBoxImage.Error).ShowDialog();
-		}
-		public static bool? Error(Exception content, string description) {
-			return new MessageWindow($"{description}{Environment.NewLine}{content}", null, MessageBoxButton.OK, MessageBoxImage.Error).ShowDialog();
-		}
-		public static bool? Error(Exception content, string description, string title) {
-			return new MessageWindow($"{description}{Environment.NewLine}{content}", title, MessageBoxButton.OK, MessageBoxImage.Error).ShowDialog();
+		public static bool? Error(Exception error, string description = null, string title = null, object source = null) {
+			if (ExceptionFilter.IsIgnored(source)) {
+				return false;
+			}
+
+			var content = description != null
+				? GetErrorDescription(description, error)
+				: (UIElement)MakeText(error.ToString());
+			var w = ShowErrorWindow(content, title, source);
+			bool? result = w.ShowDialog();
+			if (result == true && source != null && w._SuppressExceptionBox.IsChecked == true) {
+				ExceptionFilter.Ignore(source);
+			}
+			return result;
 		}
 		public static bool? OkCancel(object content) {
 			return new MessageWindow(content, null, MessageBoxButton.OKCancel, MessageBoxImage.Question).ShowDialog();
@@ -137,6 +159,24 @@ namespace Codist.Controls
 		}
 		public static bool? AskYesNoCancel(object content) {
 			return new MessageWindow(content, null, MessageBoxButton.YesNoCancel, MessageBoxImage.Question).ShowDialog();
+		}
+		static MessageWindow ShowErrorWindow(UIElement errorDescription, string title = null, object source = null) {
+			var w = new MessageWindow(errorDescription, title, MessageBoxButton.OK, MessageBoxImage.Error);
+			if (source != null) {
+				w._ExtraControlPanel.Children.Add(new CheckBox {
+					Content = R.T_DontReportUntilRestart
+				}.Set(ref w._SuppressExceptionBox).ReferenceStyle(VsResourceKeys.CheckBoxStyleKey));
+			}
+			return w;
+		}
+		static StackPanel GetErrorDescription(string description, Exception exception) {
+			return new StackPanel {
+				Children = {
+					MakeText(description).SetProperty(TextBlock.FontSizeProperty, ThemeHelper.ToolTipFontSize * 1.5d),
+					MakeText(exception.Message),
+					MakeText(R.T_StackTrace + Environment.NewLine + exception.StackTrace)
+				}
+			};
 		}
 
 		public object Message {
@@ -155,6 +195,12 @@ namespace Codist.Controls
 					Padding = WpfHelper.MiddleMargin,
 				}.ReferenceProperty(ForegroundProperty, CommonControlsColors.TextBoxTextBrushKey);
 			}
+		}
+
+		static ThemedTipText MakeText(string text) {
+			return new ThemedTipText(text) {
+				Padding = WpfHelper.MiddleMargin,
+			}.ReferenceProperty(ForegroundProperty, CommonControlsColors.TextBoxTextBrushKey);
 		}
 
 		void DefaultButton_Click(object sender, RoutedEventArgs e) {
@@ -177,6 +223,18 @@ namespace Codist.Controls
 				Content = content,
 			}.ReferenceStyle(VsResourceKeys.ButtonStyleKey)
 			.HandleEvent(Button.ClickEvent, clickHandler);
+		}
+
+		static class ExceptionFilter
+		{
+			static readonly HashSet<Type> __IgnoreExceptions = new HashSet<Type>();
+
+			public static bool IsIgnored(object source) {
+				return source != null && __IgnoreExceptions.Contains(source.GetType());
+			}
+			public static void Ignore(object source) {
+				__IgnoreExceptions.Add(source.GetType());
+			}
 		}
 	}
 }

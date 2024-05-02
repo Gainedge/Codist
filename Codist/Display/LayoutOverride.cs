@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Windows;
 using System.Windows.Controls;
+using CLR;
+using Microsoft.VisualStudio.PlatformUI;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Events;
-using Microsoft.VisualStudio.PlatformUI;
-using CLR;
+using SysTasks = System.Threading.Tasks;
 
 namespace Codist.Display
 {
@@ -16,7 +17,7 @@ namespace Codist.Display
 		static Border __TitleBlock;
 		static readonly string __RootSuffix = GetRootSuffix();
 		static readonly string __DefaultTitle = "Visual Studio" + __RootSuffix;
-		static bool __LayoutElementNotFound;
+		static int __Retrial;
 
 		static string GetRootSuffix() {
 			var args = Environment.GetCommandLineArgs();
@@ -28,34 +29,38 @@ namespace Codist.Display
 			return null;
 		}
 
-		public static void ToggleUIElement(DisplayOptimizations element, bool show) {
+		public static bool ToggleUIElement(DisplayOptimizations element, bool show) {
 			ThreadHelper.ThrowIfNotOnUIThread();
 			var w = Application.Current.MainWindow;
 			var g = w.GetFirstVisualChild<Grid>(i => i.Name == "RootGrid");
 			if (g is null || g.Children.Count < 2) {
-				return;
+				return false;
 			}
-			string boxName;
+			Predicate<FrameworkElement> controlMatcher;
 			switch (element) {
-				case DisplayOptimizations.HideSearchBox: boxName = CodistPackage.VsVersion.Major == 15 ? "PART__SearchBox" : "SearchBox"; break;
-				case DisplayOptimizations.HideAccountBox: boxName = "IDCardGrid"; break;
-				case DisplayOptimizations.HideFeedbackBox: boxName = "FeedbackButton"; break;
-				default: return;
+				case DisplayOptimizations.HideSearchBox: controlMatcher = CodistPackage.VsVersion.Major == 15 ? ControlNameMatcher.PART__SearchBox.Match : ControlNameMatcher.SearchBox.Match; break;
+				case DisplayOptimizations.HideAccountBox: controlMatcher = ControlNameMatcher.IDCardGrid.Match; break;
+				case DisplayOptimizations.HideFeedbackBox: controlMatcher = ControlNameMatcher.FeedbackButton.Match; break;
+				case DisplayOptimizations.HideCopilotButton: controlMatcher = ControlTypeMatcher.CopilotBadgeControl.Match; break;
+				case DisplayOptimizations.HideInfoBadgeButton: controlMatcher = ControlTypeMatcher.InfoBadgeControl.Match; break;
+				default: return false;
 			}
 			var t = CodistPackage.VsVersion.Major == 15
-				? g.GetFirstVisualChild<FrameworkElement>(i => i.Name == boxName)
+				? g.GetFirstVisualChild(controlMatcher)
 					?.GetParent<ContentPresenter>(i => System.Windows.Media.VisualTreeHelper.GetParent(i) is StackPanel)
-				: g.GetFirstVisualChild<FrameworkElement>(i => i.Name == boxName)
+				: g.GetFirstVisualChild(controlMatcher)
 					?.GetParent<ContentPresenter>(i => i.Name == "DataTemplatePresenter");
 			if (t != null) {
 				t.ToggleVisibility(show);
 			}
 			else if (element != DisplayOptimizations.HideSearchBox
-				|| g.GetFirstVisualChild<UserControl>(i => i.GetType().Name == "PackageAllInOneSearchButtonPresenter")
+				|| g.GetFirstVisualChild<UserControl>(ControlTypeMatcher.PackageAllInOneSearchButtonPresenter.Match)
 					?.GetParent<ContentPresenter>(i => i.Name == "DataTemplatePresenter")
+					?.GetParent<FrameworkElement>(i => i.Name == "PART_TitleBarLeftFrameControlContainer")
 					?.ToggleVisibility(show) == null) {
-				__LayoutElementNotFound = true;
+				return false;
 			}
+			return true;
 		}
 
 		public static void CompactMenu() {
@@ -151,7 +156,7 @@ namespace Codist.Display
 			__TitleBlock = null;
 		}
 
-		public static void InitializeLayoutOverride() {
+		public static void Initialize() {
 			var options = Config.Instance.DisplayOptimizations;
 			if (options == DisplayOptimizations.None) {
 				return;
@@ -159,15 +164,14 @@ namespace Codist.Display
 			if (options.MatchFlags(DisplayOptimizations.CompactMenu)) {
 				CompactMenu();
 			}
-			InitHideElements(options);
 			if (options.MatchFlags(DisplayOptimizations.MainWindow)) {
 				WpfHelper.SetUITextRenderOptions(Application.Current.MainWindow, true);
 			}
-			if (__LayoutElementNotFound && options.HasAnyFlag(DisplayOptimizations.HideSearchBox | DisplayOptimizations.HideFeedbackBox | DisplayOptimizations.HideAccountBox)) {
-				// hack: the UI elements to hide may not be added to app window when this method is executed
-				//    the solution load event is exploited to compensate that
-				SolutionEvents.OnAfterBackgroundSolutionLoadComplete += OverrideLayoutAfterSolutionLoad;
+
+			if (options.HasAnyFlag(DisplayOptimizations.HideUIElements)) {
+				InitHideElements(options);
 			}
+			nameof(LayoutOverride).LogInitialized();
 		}
 
 		public static void Reload(DisplayOptimizations options) {
@@ -180,23 +184,32 @@ namespace Codist.Display
 			ToggleUIElement(DisplayOptimizations.HideSearchBox, !options.MatchFlags(DisplayOptimizations.HideSearchBox));
 			ToggleUIElement(DisplayOptimizations.HideAccountBox, !options.MatchFlags(DisplayOptimizations.HideAccountBox));
 			ToggleUIElement(DisplayOptimizations.HideFeedbackBox, !options.MatchFlags(DisplayOptimizations.HideFeedbackBox));
+			ToggleUIElement(DisplayOptimizations.HideCopilotButton, !options.MatchFlags(DisplayOptimizations.HideCopilotButton));
 			WpfHelper.SetUITextRenderOptions(Application.Current.MainWindow, options.MatchFlags(DisplayOptimizations.MainWindow));
 		}
 
-		static void OverrideLayoutAfterSolutionLoad(object sender, EventArgs e) {
-			SolutionEvents.OnAfterBackgroundSolutionLoadComplete -= OverrideLayoutAfterSolutionLoad;
-			InitHideElements(Config.Instance.DisplayOptimizations);
-		}
-
 		static void InitHideElements(DisplayOptimizations options) {
+			var done = true;
 			if (options.MatchFlags(DisplayOptimizations.HideSearchBox)) {
-				ToggleUIElement(DisplayOptimizations.HideSearchBox, false);
+				done &= ToggleUIElement(DisplayOptimizations.HideSearchBox, false);
 			}
 			if (options.MatchFlags(DisplayOptimizations.HideAccountBox)) {
-				ToggleUIElement(DisplayOptimizations.HideAccountBox, false);
+				done &= ToggleUIElement(DisplayOptimizations.HideAccountBox, false);
 			}
 			if (options.MatchFlags(DisplayOptimizations.HideFeedbackBox)) {
-				ToggleUIElement(DisplayOptimizations.HideFeedbackBox, false);
+				done &= ToggleUIElement(DisplayOptimizations.HideFeedbackBox, false);
+			}
+			if (options.MatchFlags(DisplayOptimizations.HideCopilotButton) && CodistPackage.VsVersion.Major > 16) {
+				done &= ToggleUIElement(DisplayOptimizations.HideCopilotButton, false);
+			}
+
+			if (done == false && ++__Retrial < 10) {
+				_ = ThreadHelper.JoinableTaskFactory.RunAsync(async () => {
+					"Retry UI Layout override".Log();
+					await SysTasks.Task.Delay(3000);
+					await SyncHelper.SwitchToMainThreadAsync();
+					InitHideElements(Config.Instance.DisplayOptimizations);
+				});
 			}
 		}
 
@@ -224,6 +237,36 @@ namespace Codist.Display
 			}
 			public InteractiveControlContainer(UIElement content) {
 				Content = content;
+			}
+		}
+
+		readonly struct ControlNameMatcher
+		{
+			internal static readonly ControlNameMatcher PART__SearchBox = new ControlNameMatcher("PART__SearchBox");
+			internal static readonly ControlNameMatcher SearchBox = new ControlNameMatcher("SearchBox");
+			internal static readonly ControlNameMatcher IDCardGrid = new ControlNameMatcher("IDCardGrid");
+			internal static readonly ControlNameMatcher FeedbackButton = new ControlNameMatcher("FeedbackButton");
+
+			readonly string _Name;
+			ControlNameMatcher(string name) {
+				_Name = name;
+			}
+			public bool Match(FrameworkElement control) {
+				return control.Name == _Name;
+			}
+		}
+		readonly struct ControlTypeMatcher
+		{
+			internal static readonly ControlTypeMatcher PackageAllInOneSearchButtonPresenter = new ControlTypeMatcher("PackageAllInOneSearchButtonPresenter");
+			internal static readonly ControlTypeMatcher CopilotBadgeControl = new ControlTypeMatcher("CopilotBadgeControl");
+			internal static readonly ControlTypeMatcher InfoBadgeControl = new ControlTypeMatcher("InfoBadgeControl");
+
+			readonly string _Name;
+			ControlTypeMatcher(string name) {
+				_Name = name;
+			}
+			public bool Match(FrameworkElement control) {
+				return control.GetType().Name == _Name;
 			}
 		}
 	}

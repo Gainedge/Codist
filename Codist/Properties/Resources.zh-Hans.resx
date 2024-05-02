@@ -915,7 +915,7 @@ Shift：粘贴并选中下一项（整个单词）</value>
     <value>提供高级语法突出显示和注释标记器</value>
   </data>
   <data name="OT_DonateLinkTip" xml:space="preserve">
-    <value>建议的捐赠金额为 49 人民币，但是，您可以根据您的经济状况，爱捐多少就捐多少</value>
+    <value>建议的捐赠金额为人民币 49 元，但是，您可以根据您的经济状况，爱捐多少就捐多少</value>
   </data>
   <data name="OT_FeatureChangesTip" xml:space="preserve">
     <value>更改将应用到新打开的文档窗口上，当前打开的文档窗口将不受影响</value>
@@ -1604,11 +1604,11 @@ Ctrl+1, Ctrl+3: Edit.SearchDeclarationInProject</value>
   <data name="OT_BranceBraces" xml:space="preserve">
     <value>与分支相关的括号</value>
   </data>
-  <data name="OT_BoldBraces" xml:space="preserve">
-    <value>将以下括号变成粗体</value>
+  <data name="OT_BoldPunctuations" xml:space="preserve">
+    <value>使用粗体</value>
   </data>
-  <data name="OT_BoldBracesNote" xml:space="preserve">
-    <value>当下列复选框被选中时，相关的括号将以其对应的关键字语法颜色着色</value>
+  <data name="OT_BoldPunctuationsNote" xml:space="preserve">
+    <value>将语义相关的标点符号和运算符标记为粗体</value>
   </data>
   <data name="OT_ApplyToNonPrivateField" xml:space="preserve">
     <value>应用到非私有的字段</value>
@@ -1695,7 +1695,9 @@ Ctrl+1, Ctrl+3: Edit.SearchDeclarationInProject</value>
     <value> 派生接口</value>
   </data>
   <data name="CMD_EditMatches" xml:space="preserve">
-    <value>编辑所有匹配的文本</value>
+    <value>编辑所有匹配的文本
+Ctrl：匹配大小写
+Shift：匹配整个单词</value>
   </data>
   <data name="CMD_EncapsulateField" xml:space="preserve">
     <value>封装字段...</value>
@@ -1991,7 +1993,7 @@ Ctrl+1, Ctrl+3: Edit.SearchDeclarationInProject</value>
     <value>属性</value>
   </data>
   <data name="OT_CapturingLambda" xml:space="preserve">
-    <value>突出显示捕获变量的 lambda 表达式</value>
+    <value>突出显示捕获变量的 lambda 表达式或本地函数</value>
   </data>
   <data name="CMD_QuickAction" xml:space="preserve">
     <value>快速操作和重构...</value>
@@ -2613,7 +2615,7 @@ Ctrl: 仅直接继承的接口</value>
     <value>复制列表内容</value>
   </data>
   <data name="T_AutoSurround" xml:space="preserve">
-    <value>自动包围符号</value>
+    <value>配对符号包围选区</value>
   </data>
   <data name="OT_AutoSurround" xml:space="preserve">
     <value>自动插入配对的引号或括号以包围选中内容</value>
@@ -2629,5 +2631,109 @@ Ctrl: 仅直接继承的接口</value>
   </data>
   <data name="OT_PreferUnderscoreTip" xml:space="preserve">
     <value>插入成对的 _下划线_，而不是 *星号*</value>
+  </data>
+  <data name="CMD_DeleteAStatement" xml:space="preserve">
+    <value>删除 &lt;A&gt; 语句</value>
+  </data>
+  <data name="CMD_DeleteField" xml:space="preserve">
+    <value>删除字段</value>
+  </data>
+  <data name="CMD_DeleteStatement" xml:space="preserve">
+    <value>删除语句</value>
+  </data>
+  <data name="CMD_DeleteSwitchSection" xml:space="preserve">
+    <value>删除 Switch 条件</value>
+  </data>
+  <data name="CMD_SortLines" xml:space="preserve">
+    <value>Sort Lines</value>
+  </data>
+  <data name="T_FailedToSaveStyleFile" xml:space="preserve">
+    <value>在保存语法样式配置文件时出错:</value>
+  </data>
+  <data name="CMD_FilterToHeading1" xml:space="preserve">
+    <value>筛选到标题 1</value>
+  </data>
+  <data name="CMD_FilterToHeading2" xml:space="preserve">
+    <value>筛选到标题 2</value>
+  </data>
+  <data name="CMD_FilterToHeading3" xml:space="preserve">
+    <value>筛选到标题 3</value>
+  </data>
+  <data name="CMD_FilterToHeading4" xml:space="preserve">
+    <value>筛选到标题 4</value>
+  </data>
+  <data name="CMD_FilterToHeading5" xml:space="preserve">
+    <value>筛选到标题 5</value>
+  </data>
+  <data name="T_StackTrace" xml:space="preserve">
+    <value>堆栈跟踪:</value>
+  </data>
+  <data name="T_DontReportUntilRestart" xml:space="preserve">
+    <value>在 Visual Studio 重启之前不要再报告此错误</value>
+  </data>
+  <data name="CMD_MakeStatic" xml:space="preserve">
+    <value>改成静态</value>
+  </data>
+  <data name="OT_AutoSurroundSelectionNote" xml:space="preserve">
+    <value>本页面更改自动插入配对符号包围选中内容的行为</value>
+  </data>
+  <data name="OT_TrimBeforeSurround" xml:space="preserve">
+    <value>插入配对符号前删除首尾空白字符</value>
+  </data>
+  <data name="OT_TrimBeforeSurroundTip" xml:space="preserve">
+    <value>在插入配对符号之前，删除选中内容首尾的空格和制表符</value>
+  </data>
+  <data name="CMD_SealRecord" xml:space="preserve">
+    <value>将记录密封</value>
+  </data>
+  <data name="OT_PunctuationsAndOperators" xml:space="preserve">
+    <value>标点符号和运算符</value>
+  </data>
+  <data name="OT_SemanticPunctuations" xml:space="preserve">
+    <value>使用相关语义突出显示</value>
+  </data>
+  <data name="OT_SemanticPunctuationsNote" xml:space="preserve">
+    <value>使用和资源、控制流、类型转换、成员声明等语法显示设置，突出显示相关的符号和运算符</value>
+  </data>
+  <data name="CMD_Heading1" xml:space="preserve">
+    <value>标记标题 1</value>
+  </data>
+  <data name="CMD_Heading2" xml:space="preserve">
+    <value>标记标题 2</value>
+  </data>
+  <data name="CMD_Heading3" xml:space="preserve">
+    <value>标记标题 3</value>
+  </data>
+  <data name="CMD_UnorderedList" xml:space="preserve">
+    <value>标记无序列表</value>
+  </data>
+  <data name="CMD_MarkHighlight" xml:space="preserve">
+    <value>切换高亮标记
+Ctrl: 切换标记并选择下一处</value>
+  </data>
+  <data name="CMD_MarkUnderline" xml:space="preserve">
+    <value>切换下划线标记
+Ctrl: 切换标记并选择下一处</value>
+  </data>
+  <data name="T_RepeatCommandOnSelection" xml:space="preserve">
+    <value>右键点击: 在后续的文本选择操作中重复此命令（按 Esc 键或其它命令退出）</value>
+  </data>
+  <data name="CMD_MarkQuotation" xml:space="preserve">
+    <value>标记为引文</value>
+  </data>
+  <data name="T_Headings" xml:space="preserve">
+    <value>标题</value>
+  </data>
+  <data name="OT_HideCopilotButton" xml:space="preserve">
+    <value>隐藏 Github Copilot 按钮</value>
+  </data>
+  <data name="OT_HideInfoBadgeButton" xml:space="preserve">
+    <value>隐藏版本信息按钮</value>
+  </data>
+  <data name="OT_SymbolDefinitionColor" xml:space="preserve">
+    <value>符号定义标记:</value>
+  </data>
+  <data name="CMD_InvertBrightness" xml:space="preserve">
+    <value>切换色彩明暗度</value>
   </data>
 </root>

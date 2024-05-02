@@ -52,15 +52,15 @@ namespace Codist
 			}
 			return block;
 		}
-		public static TextBlock SetGlyph(this TextBlock block, Image image) {
+		public static TextBlock SetGlyph(this TextBlock block, FrameworkElement glyph) {
 			var first = block.Inlines.FirstInline;
-			image.Margin = GlyphMargin;
-			var glyph = new InlineUIContainer(image) { BaselineAlignment = BaselineAlignment.TextTop };
+			glyph.Margin = GlyphMargin;
+			var container = new InlineUIContainer(glyph) { BaselineAlignment = BaselineAlignment.TextTop };
 			if (first != null) {
-				block.Inlines.InsertBefore(first, glyph);
+				block.Inlines.InsertBefore(first, container);
 			}
 			else {
-				block.Inlines.Add(glyph);
+				block.Inlines.Add(container);
 			}
 			return block;
 		}
@@ -76,19 +76,9 @@ namespace Codist
 			}
 			return block;
 		}
-		public static TTextBlock AppendLine<TTextBlock>(this TTextBlock block, bool withMargin)
-			where TTextBlock : TextBlock {
-			if (withMargin) {
-				block.Inlines.AppendLineWithMargin();
-			}
-			else {
-				block.Inlines.Add(new LineBreak());
-			}
-			return block;
-		}
 		public static InlineCollection AppendLineWithMargin(this InlineCollection inlines) {
 			inlines.Add(new LineBreak());
-			inlines.Add(new InlineUIContainer(new Border { Width = 1, Height = 3 }));
+			inlines.Add(new InlineUIContainer(new FrameworkElement { Width = 1, Height = 5 }));
 			inlines.Add(new LineBreak());
 			return inlines;
 		}

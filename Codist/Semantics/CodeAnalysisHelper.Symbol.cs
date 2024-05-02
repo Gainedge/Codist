@@ -10,8 +10,6 @@ using CLR;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.FindSymbols;
-using Microsoft.VisualStudio.Imaging;
 using Microsoft.VisualStudio.Utilities;
 
 namespace Codist
@@ -97,8 +95,9 @@ namespace Codist
 			}
 			return semanticModel.Compilation.GetSpecialType(type);
 		}
+		static readonly string[] __SystemNamespace = new[] { "System" };
 		public static INamedTypeSymbol GetSystemTypeSymbol(this SemanticModel semanticModel, string typeName) {
-			return semanticModel.GetTypeSymbol(typeName, nameof(System));
+			return semanticModel.GetTypeSymbol(typeName, __SystemNamespace);
 		}
 		public static INamedTypeSymbol GetTypeSymbol(this SemanticModel semanticModel, string name, params string[] namespaces) {
 			return GetNamespaceSymbol(semanticModel, namespaces)?.GetTypeMembers(name).FirstOrDefault();
@@ -144,6 +143,12 @@ namespace Codist
 			}
 			return symbol as IMethodSymbol;
 		}
+
+		public static ImmutableArray<ISymbol> GetCapturedVariables(this SemanticModel semanticModel, SyntaxNode range) {
+			var f = semanticModel.AnalyzeDataFlow(range);
+			var c = f.CapturedInside;
+			return c.Length != 0 ? c.RemoveRange(f.VariablesDeclared) : c;
+		}
 		#endregion
 
 		#region Assembly and namespace
@@ -186,6 +191,12 @@ namespace Codist
 					?? symbol.ContainingAssembly?.Name;
 		}
 
+		public static bool IsExplicitNamespace(this INamespaceSymbol ns) {
+			return ns?.IsGlobalNamespace == false;
+		}
+		#endregion
+
+		#region Symbol information
 		public static string GetOriginalName(this ISymbol symbol) {
 			switch (symbol.Kind) {
 				case SymbolKind.Method:
@@ -228,9 +239,7 @@ namespace Codist
 				? ps.Name.Replace("[]", String.Empty)
 				: ps.Name;
 		}
-		#endregion
 
-		#region Symbol information
 		public static string GetAbstractionModifier(this ISymbol symbol) {
 			if (symbol.IsAbstract) {
 				if (symbol.Kind == SymbolKind.NamedType && ((INamedTypeSymbol)symbol).TypeKind == TypeKind.Interface) {
@@ -334,12 +343,42 @@ namespace Codist
 					return ((IAliasSymbol)symbol).Target.GetUnderlyingSymbol();
 				case SymbolKind.Discard:
 					return ((IDiscardSymbol)symbol).Type.GetUnderlyingSymbol();
+				case SymbolKind.Method:
+					return ((IMethodSymbol)symbol).MethodKind == MethodKind.BuiltinOperator
+						? symbol.ContainingType.GetMembers(symbol.Name).FirstOrDefault()
+						: symbol;
 			}
 			return symbol;
 		}
 
 		public static ISymbol GetAliasTarget(this ISymbol symbol) {
 			return symbol.Kind == SymbolKind.Alias ? ((IAliasSymbol)symbol).Target : symbol;
+		}
+
+		public static IMethodSymbol AsMethod(this ISymbol symbol) {
+			switch (symbol.Kind) {
+				case SymbolKind.Method: return (IMethodSymbol)symbol;
+				case SymbolKind.Event: return ((IEventSymbol)symbol).RaiseMethod;
+				case SymbolKind.NamedType:
+					var t = (INamedTypeSymbol)symbol;
+					return t.TypeKind == TypeKind.Delegate ? t.DelegateInvokeMethod : null;
+				default: return null;
+			}
+		}
+
+		public static IReadOnlyList<ISymbol> GetExplicitInterfaceImplementations(this ISymbol symbol) {
+			switch (symbol.Kind) {
+				case SymbolKind.Method:
+					if (((IMethodSymbol)symbol).MethodKind == MethodKind.ExplicitInterfaceImplementation) {
+						return ((IMethodSymbol)symbol).ExplicitInterfaceImplementations;
+					}
+					break;
+				case SymbolKind.Property:
+					return ((IPropertySymbol)symbol).ExplicitInterfaceImplementations;
+				case SymbolKind.Event:
+					return ((IEventSymbol)symbol).ExplicitInterfaceImplementations;
+			}
+			return Array.Empty<ISymbol>();
 		}
 
 		public static IEnumerable<INamedTypeSymbol> GetContainingTypes(this ISymbol symbol) {
@@ -385,194 +424,6 @@ namespace Codist
 				: type;
 		}
 
-		public static int GetImageId(this ISymbol symbol) {
-			switch (symbol.Kind) {
-				case SymbolKind.Assembly: return KnownImageIds.Assembly;
-				case SymbolKind.DynamicType: return KnownImageIds.Dynamic;
-				case SymbolKind.Event: return GetEventImageId((IEventSymbol)symbol);
-				case SymbolKind.Field: return GetFieldImageId((IFieldSymbol)symbol);
-				case SymbolKind.Label: return KnownImageIds.Label;
-				case SymbolKind.Local: return IconIds.LocalVariable;
-				case SymbolKind.Method: return GetMethodImageId((IMethodSymbol)symbol);
-				case SymbolKind.NamedType: return GetTypeImageId((INamedTypeSymbol)symbol);
-				case SymbolKind.Namespace: return IconIds.Namespace;
-				case SymbolKind.Parameter: return IconIds.Argument;
-				case SymbolKind.Property: return GetPropertyImageId((IPropertySymbol)symbol);
-				case FunctionPointerType: return IconIds.FunctionPointer;
-				case SymbolKind.Discard: return IconIds.Discard;
-				default: return KnownImageIds.Item;
-			}
-
-			int GetEventImageId(IEventSymbol ev) {
-				switch (ev.DeclaredAccessibility) {
-					case Accessibility.Public: return KnownImageIds.EventPublic;
-					case Accessibility.Protected:
-					case Accessibility.ProtectedOrInternal:
-						return KnownImageIds.EventProtected;
-					case Accessibility.Private:
-						return ev.ExplicitInterfaceImplementations.Length != 0
-							? IconIds.ExplicitInterfaceEvent
-							: KnownImageIds.EventPrivate;
-					case Accessibility.ProtectedAndInternal:
-					case Accessibility.Internal: return KnownImageIds.EventInternal;
-					default: return IconIds.Event;
-				}
-			}
-
-			int GetFieldImageId(IFieldSymbol f) {
-				if (f.IsConst) {
-					if (f.ContainingType.TypeKind == TypeKind.Enum) {
-						return IconIds.EnumField;
-					}
-					switch (f.DeclaredAccessibility) {
-						case Accessibility.Public: return KnownImageIds.ConstantPublic;
-						case Accessibility.Protected:
-						case Accessibility.ProtectedOrInternal:
-							return KnownImageIds.ConstantProtected;
-						case Accessibility.Private: return KnownImageIds.ConstantPrivate;
-						case Accessibility.ProtectedAndInternal:
-						case Accessibility.Internal: return KnownImageIds.ConstantInternal;
-						default: return KnownImageIds.Constant;
-					}
-				}
-				switch (f.DeclaredAccessibility) {
-					case Accessibility.Public: return KnownImageIds.FieldPublic;
-					case Accessibility.Protected:
-					case Accessibility.ProtectedOrInternal:
-						return KnownImageIds.FieldProtected;
-					case Accessibility.Private: return KnownImageIds.FieldPrivate;
-					case Accessibility.ProtectedAndInternal:
-					case Accessibility.Internal: return KnownImageIds.FieldInternal;
-					default: return IconIds.Field;
-				}
-			}
-
-			int GetMethodImageId(IMethodSymbol m) {
-				switch (m.MethodKind) {
-					case MethodKind.Constructor:
-					case MethodKind.StaticConstructor:
-						switch (m.DeclaredAccessibility) {
-							case Accessibility.Public: return IconIds.PublicConstructor;
-							case Accessibility.Protected:
-							case Accessibility.ProtectedOrInternal:
-								return IconIds.ProtectedConstructor;
-							case Accessibility.Private: return IconIds.PrivateConstructor;
-							case Accessibility.ProtectedAndInternal:
-							case Accessibility.Internal: return IconIds.InternalConstructor;
-							default: return IconIds.Constructor;
-						}
-					case MethodKind.Destructor:
-						return IconIds.Destructor;
-					case MethodKind.UserDefinedOperator:
-						switch (m.DeclaredAccessibility) {
-							case Accessibility.Public: return KnownImageIds.OperatorPublic;
-							case Accessibility.Protected:
-							case Accessibility.ProtectedOrInternal:
-								return KnownImageIds.OperatorProtected;
-							case Accessibility.Private: return KnownImageIds.OperatorPrivate;
-							case Accessibility.ProtectedAndInternal:
-							case Accessibility.Internal: return KnownImageIds.OperatorInternal;
-							default: return KnownImageIds.Operator;
-						}
-					case MethodKind.Conversion:
-						return m.MetadataName == "op_Explicit"
-							? IconIds.ExplicitConversion
-							: IconIds.ImplicitConversion;
-				}
-				switch (m.DeclaredAccessibility) {
-					case Accessibility.Public: return KnownImageIds.MethodPublic;
-					case Accessibility.Protected:
-					case Accessibility.ProtectedOrInternal:
-						return KnownImageIds.MethodProtected;
-					case Accessibility.Private:
-						return m.ExplicitInterfaceImplementations.Length != 0
-							? IconIds.ExplicitInterfaceMethod
-							: KnownImageIds.MethodPrivate;
-					case Accessibility.ProtectedAndInternal:
-					case Accessibility.Internal: return KnownImageIds.MethodInternal;
-					default: return IconIds.Method;
-				}
-			}
-
-			int GetTypeImageId(INamedTypeSymbol t) {
-				switch (t.TypeKind) {
-					case TypeKind.Class:
-						switch (t.DeclaredAccessibility) {
-							case Accessibility.Public: return KnownImageIds.ClassPublic;
-							case Accessibility.Protected:
-							case Accessibility.ProtectedOrInternal:
-								return KnownImageIds.ClassProtected;
-							case Accessibility.Private: return KnownImageIds.ClassPrivate;
-							case Accessibility.ProtectedAndInternal:
-							case Accessibility.Internal: return KnownImageIds.ClassInternal;
-							default: return IconIds.Class;
-						}
-					case TypeKind.Delegate:
-						switch (t.DeclaredAccessibility) {
-							case Accessibility.Public: return KnownImageIds.DelegatePublic;
-							case Accessibility.Protected:
-							case Accessibility.ProtectedOrInternal:
-								return KnownImageIds.DelegateProtected;
-							case Accessibility.Private: return KnownImageIds.DelegatePrivate;
-							case Accessibility.ProtectedAndInternal:
-							case Accessibility.Internal: return KnownImageIds.DelegateInternal;
-							default: return IconIds.Delegate;
-						}
-					case TypeKind.Enum:
-						switch (t.DeclaredAccessibility) {
-							case Accessibility.Public: return KnownImageIds.EnumerationPublic;
-							case Accessibility.Protected:
-							case Accessibility.ProtectedOrInternal:
-								return KnownImageIds.EnumerationProtected;
-							case Accessibility.Private: return KnownImageIds.EnumerationPrivate;
-							case Accessibility.ProtectedAndInternal:
-							case Accessibility.Internal: return KnownImageIds.EnumerationInternal;
-							default: return IconIds.Enum;
-						}
-					case TypeKind.Interface:
-						switch (t.DeclaredAccessibility) {
-							case Accessibility.Public: return KnownImageIds.InterfacePublic;
-							case Accessibility.Protected:
-							case Accessibility.ProtectedOrInternal:
-								return KnownImageIds.InterfaceProtected;
-							case Accessibility.Private: return KnownImageIds.InterfacePrivate;
-							case Accessibility.ProtectedAndInternal:
-							case Accessibility.Internal: return KnownImageIds.InterfaceInternal;
-							default: return IconIds.Interface;
-						}
-					case TypeKind.Struct:
-						switch (t.DeclaredAccessibility) {
-							case Accessibility.Public: return KnownImageIds.StructurePublic;
-							case Accessibility.Protected:
-							case Accessibility.ProtectedOrInternal:
-								return KnownImageIds.StructureProtected;
-							case Accessibility.Private: return KnownImageIds.StructurePrivate;
-							case Accessibility.ProtectedAndInternal:
-							case Accessibility.Internal: return KnownImageIds.StructureInternal;
-							default: return IconIds.Structure;
-						}
-					case TypeKind.TypeParameter:
-					default: return KnownImageIds.Type;
-				}
-			}
-
-			int GetPropertyImageId(IPropertySymbol p) {
-				switch (p.DeclaredAccessibility) {
-					case Accessibility.Public: return KnownImageIds.PropertyPublic;
-					case Accessibility.Protected:
-					case Accessibility.ProtectedOrInternal:
-						return KnownImageIds.PropertyProtected;
-					case Accessibility.Private:
-						return p.ExplicitInterfaceImplementations.Length != 0
-							? IconIds.ExplicitInterfaceProperty
-							: KnownImageIds.PropertyPrivate;
-					case Accessibility.ProtectedAndInternal:
-					case Accessibility.Internal: return KnownImageIds.PropertyInternal;
-					default: return KnownImageIds.Property;
-				}
-			}
-		}
-
 		public static ImmutableArray<ITypeParameterSymbol> GetTypeParameters(this ISymbol symbol) {
 			switch (symbol.Kind) {
 				case SymbolKind.Method: return ((IMethodSymbol)symbol).TypeParameters;
@@ -615,6 +466,19 @@ namespace Codist
 					return (symbol = symbol.AsMethod()) != null
 						? ((IMethodSymbol)symbol).ReturnType
 						: null;
+			}
+			return null;
+		}
+
+		public static ITypeSymbol GetNullableValueType(this ITypeSymbol type) {
+			if (type.IsValueType
+				&& type is INamedTypeSymbol nt
+				&& nt.IsGenericType
+				&& type.Name == nameof(Nullable)
+				&& type.ContainingNamespace?.Name == "System"
+				&& type.ContainingNamespace.ContainingNamespace.IsExplicitNamespace()
+				&& nt.TypeArguments.Length == 1) {
+				return nt.TypeArguments[0];
 			}
 			return null;
 		}
@@ -752,12 +616,12 @@ namespace Codist
 		public static bool MatchNamespaces(this ITypeSymbol typeSymbol, params string[] namespaces) {
 			var ns = typeSymbol.ContainingNamespace;
 			foreach (var item in namespaces) {
-				if (ns == null || ns.IsGlobalNamespace || ns.Name != item) {
+				if (ns.IsExplicitNamespace() == false || ns.Name != item) {
 					return false;
 				}
 				ns = ns.ContainingNamespace;
 			}
-			return ns == null || ns.IsGlobalNamespace;
+			return ns.IsExplicitNamespace() == false;
 		}
 
 		public static INamespaceSymbol GetCompilationNamespace(this INamespaceSymbol namespaceSymbol, SemanticModel semanticModel) {
@@ -859,6 +723,45 @@ namespace Codist
 				case SpecialType.System_Single: return "float";
 				case SpecialType.System_Double: return "double";
 				case SpecialType.System_String: return "string";
+			}
+			return null;
+		}
+
+		public static string GetSpecialMethodName(this IMethodSymbol m) {
+			switch (m.MethodKind) {
+				case MethodKind.UserDefinedOperator:
+					switch (m.Name) {
+						case WellKnownMemberNames.EqualityOperatorName: return "==";
+						case WellKnownMemberNames.InequalityOperatorName: return "!=";
+						case WellKnownMemberNames.AdditionOperatorName: return "+";
+						case WellKnownMemberNames.BitwiseAndOperatorName: return "&";
+						case WellKnownMemberNames.BitwiseOrOperatorName: return "|";
+						case WellKnownMemberNames.DecrementOperatorName: return "--";
+						case WellKnownMemberNames.DivisionOperatorName: return "/";
+						case WellKnownMemberNames.ExclusiveOrOperatorName: return "^";
+						case WellKnownMemberNames.GreaterThanOperatorName: return ">";
+						case WellKnownMemberNames.GreaterThanOrEqualOperatorName: return ">=";
+						case WellKnownMemberNames.IncrementOperatorName: return "++";
+						case WellKnownMemberNames.LeftShiftOperatorName: return "<<";
+						case WellKnownMemberNames.LessThanOperatorName: return "<";
+						case WellKnownMemberNames.LessThanOrEqualOperatorName: return "<=";
+						case WellKnownMemberNames.LogicalAndOperatorName: return "&&";
+						case WellKnownMemberNames.LogicalNotOperatorName: return "!";
+						case WellKnownMemberNames.LogicalOrOperatorName: return "||";
+						case WellKnownMemberNames.ModulusOperatorName: return "%";
+						case WellKnownMemberNames.MultiplyOperatorName: return "*";
+						case WellKnownMemberNames.RightShiftOperatorName: return ">>";
+						case WellKnownMemberNames.SubtractionOperatorName: return "-";
+						case WellKnownMemberNames.UnsignedLeftShiftOperatorName: return "<<<";
+						case WellKnownMemberNames.UnsignedRightShiftOperatorName: return ">>>";
+					}
+					break;
+				case MethodKind.Conversion:
+					switch (m.Name) {
+						case WellKnownMemberNames.ImplicitConversionName: return "implicit";
+						case WellKnownMemberNames.ExplicitConversionName: return "explicit";
+					}
+					break;
 			}
 			return null;
 		}
@@ -1035,7 +938,13 @@ namespace Codist
 		public static bool IsDisposable(this ISymbol symbol) {
 			return symbol.Name == nameof(IDisposable)
 				&& (symbol = symbol.ContainingNamespace)?.Name == nameof(System)
-				&& symbol.ContainingNamespace?.IsGlobalNamespace != false;
+				&& symbol.ContainingNamespace.IsExplicitNamespace() == false;
+		}
+
+		public static bool IsAsyncDisposable(this ISymbol symbol) {
+			return symbol.Name == "IAsyncDisposable"
+				&& (symbol = symbol.ContainingNamespace)?.Name == nameof(System)
+				&& symbol.ContainingNamespace.IsExplicitNamespace() == false;
 		}
 
 		public static bool IsObsolete(this ISymbol symbol) {
@@ -1047,6 +956,34 @@ namespace Codist
 				case SymbolKind.Event:
 					return symbol.GetAttributes()
 						.Any(a => a.AttributeClass.MatchTypeName(nameof(ObsoleteAttribute), "System"));
+			}
+			return false;
+		}
+
+		public static bool IsQualifiable(this ISymbol symbol) {
+			switch (symbol.Kind) {
+				case SymbolKind.ArrayType:
+				case SymbolKind.Event:
+				case SymbolKind.Field:
+				case SymbolKind.Method:
+				case SymbolKind.Property:
+				case SymbolKind.NamedType:
+				case SymbolKind.Namespace:
+				case SymbolKind.PointerType:
+				case FunctionPointerType:
+					return true;
+			}
+			return false;
+		}
+
+		public static bool IsMemberOrType(this ISymbol symbol) {
+			switch (symbol.Kind) {
+				case SymbolKind.Event:
+				case SymbolKind.Field:
+				case SymbolKind.Method:
+				case SymbolKind.Property:
+				case SymbolKind.NamedType:
+					return true;
 			}
 			return false;
 		}
@@ -1088,73 +1025,6 @@ namespace Codist
 				: (AssemblySource)NonPublicOrFutureAccessors.GetAssemblySourceType(assembly);
 		}
 		#endregion
-
-		public static bool IsQualifiable(this ISymbol symbol) {
-			switch (symbol.Kind) {
-				case SymbolKind.ArrayType:
-				case SymbolKind.Event:
-				case SymbolKind.Field:
-				case SymbolKind.Method:
-				case SymbolKind.Property:
-				case SymbolKind.NamedType:
-				case SymbolKind.Namespace:
-				case SymbolKind.PointerType:
-				case FunctionPointerType:
-					return true;
-			}
-			return false;
-		}
-
-		public static bool IsMemberOrType(this ISymbol symbol) {
-			switch (symbol.Kind) {
-				case SymbolKind.Event:
-				case SymbolKind.Field:
-				case SymbolKind.Method:
-				case SymbolKind.Property:
-				case SymbolKind.NamedType:
-					return true;
-			}
-			return false;
-		}
-
-		public static ITypeSymbol GetNullableValueType(this ITypeSymbol type) {
-			if (type.IsValueType
-				&& type is INamedTypeSymbol nt
-				&& nt.IsGenericType
-				&& type.Name == nameof(Nullable)
-				&& type.ContainingNamespace?.Name == "System"
-				&& type.ContainingNamespace.ContainingNamespace?.IsGlobalNamespace == true
-				&& nt.TypeArguments.Length == 1) {
-				return nt.TypeArguments[0];
-			}
-			return null;
-		}
-
-		public static IReadOnlyList<ISymbol> GetExplicitInterfaceImplementations(this ISymbol symbol) {
-			switch (symbol.Kind) {
-				case SymbolKind.Method:
-					if (((IMethodSymbol)symbol).MethodKind == MethodKind.ExplicitInterfaceImplementation) {
-						return ((IMethodSymbol)symbol).ExplicitInterfaceImplementations;
-					}
-					break;
-				case SymbolKind.Property:
-					return ((IPropertySymbol)symbol).ExplicitInterfaceImplementations;
-				case SymbolKind.Event:
-					return ((IEventSymbol)symbol).ExplicitInterfaceImplementations;
-			}
-			return Array.Empty<ISymbol>();
-		}
-
-		public static IMethodSymbol AsMethod(this ISymbol symbol) {
-			switch (symbol.Kind) {
-				case SymbolKind.Method: return (IMethodSymbol)symbol;
-				case SymbolKind.Event: return ((IEventSymbol)symbol).RaiseMethod;
-				case SymbolKind.NamedType:
-					var t = (INamedTypeSymbol)symbol;
-					return t.TypeKind == TypeKind.Delegate ? t.DelegateInvokeMethod : null;
-				default: return null;
-			}
-		}
 
 		public static Task<Project> GetProjectAsync(this ISymbol symbol, Solution solution, CancellationToken cancellationToken = default) {
 			var asm = symbol.ContainingAssembly;
@@ -1228,15 +1098,21 @@ namespace Codist
 		}
 
 		public static ImmutableArray<SyntaxReference> GetSourceReferences(this ISymbol symbol) {
+			var source = symbol.DeclaringSyntaxReferences;
 			if (symbol is IMethodSymbol m) {
 				if (m.PartialDefinitionPart != null) {
-					return symbol.DeclaringSyntaxReferences.AddRange(m.PartialDefinitionPart.DeclaringSyntaxReferences);
+					source = source.AddRange(m.PartialDefinitionPart.DeclaringSyntaxReferences);
 				}
 				if (m.PartialImplementationPart != null) {
-					return symbol.DeclaringSyntaxReferences.AddRange(m.PartialImplementationPart.DeclaringSyntaxReferences);
+					source = source.AddRange(m.PartialImplementationPart.DeclaringSyntaxReferences);
+				}
+				if (m.MethodKind == MethodKind.Constructor
+					&& source.Length == 0
+					&& (symbol = m.ContainingType) != null) {
+					source = source.AddRange(symbol.DeclaringSyntaxReferences);
 				}
 			}
-			return symbol.DeclaringSyntaxReferences;
+			return source;
 		}
 
 		public static Location ToLocation(this SyntaxReference syntaxReference) {
@@ -1621,13 +1497,13 @@ namespace Codist
 		}
 
 		public static IEqualityComparer<ISymbol> GetSymbolNameComparer() {
-			return SymbolNameComparer.Instance;
+			return Comparers.SymbolNameComparer;
 		}
 		public static Func<ISymbol, bool> GetSpecificSymbolComparer(ISymbol symbol) {
 			return new SpecificSymbolEqualityComparer(symbol).Equals;
 		}
 		public static IEqualityComparer<INamedTypeSymbol> GetNamedTypeComparer() {
-			return NamedTypeComparer.Instance;
+			return Comparers.NamedTypeComparer;
 		}
 		#endregion
 
@@ -1737,41 +1613,11 @@ namespace Codist
 				return HasSameName(_Specified, other);
 			}
 		}
-		sealed class SymbolNameComparer : IEqualityComparer<ISymbol>
+		static partial class Comparers
 		{
-			internal static readonly SymbolNameComparer Instance = new SymbolNameComparer();
+			internal static readonly GenericEqualityComparer<ISymbol> SymbolNameComparer = new GenericEqualityComparer<ISymbol>(HasSameName, o => o.Name.GetHashCode());
 
-			public bool Equals(ISymbol x, ISymbol y) {
-				return HasSameName(x,y);
-			}
-
-			public int GetHashCode(ISymbol obj) {
-				return obj.Name.GetHashCode();
-			}
-		}
-		sealed class NamedTypeComparer : IEqualityComparer<INamedTypeSymbol>
-		{
-			internal static readonly NamedTypeComparer Instance = new NamedTypeComparer();
-
-			public bool Equals(INamedTypeSymbol x, INamedTypeSymbol y) {
-				return x.MatchWith(y);
-			}
-			public int GetHashCode(INamedTypeSymbol obj) {
-				return obj.GetHashCodeForMatch();
-			}
-		}
-
-		sealed class SymbolCallerInfoComparer : IEqualityComparer<SymbolCallerInfo>
-		{
-			internal static readonly SymbolCallerInfoComparer Instance = new SymbolCallerInfoComparer();
-
-			public bool Equals(SymbolCallerInfo x, SymbolCallerInfo y) {
-				return x.CallingSymbol == y.CallingSymbol;
-			}
-
-			public int GetHashCode(SymbolCallerInfo obj) {
-				return obj.CallingSymbol.GetHashCode();
-			}
+			internal static readonly GenericEqualityComparer<INamedTypeSymbol> NamedTypeComparer = new GenericEqualityComparer<INamedTypeSymbol>(MatchWith, o => o.GetHashCodeForMatch());
 		}
 	}
 }

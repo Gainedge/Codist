@@ -14,12 +14,12 @@ namespace Codist
 		public const int StaticMember = KnownImageIds.Link;
 		public const int InstanceMember = KnownImageIds.BuildQueue;
 		public const int DefaultInterfaceImplementation = KnownImageIds.AddInterface;
-		public const int ReadonlyField = KnownImageIds.EncapsulateField;
-		public const int ReadonlyProperty = KnownImageIds.MoveProperty;
-		public const int ReadonlyMethod = KnownImageIds.MoveMethod;
-		public const int ReadonlyType = KnownImageIds.TextBlock;
+		public const int ReadonlyField = KnownImageIds.Field | KnownImageIds.OverlayLock << OverlayShift | FullOverlayMask;
+		public const int ReadonlyProperty = KnownImageIds.Property | KnownImageIds.OverlayLock << OverlayShift | FullOverlayMask;
+		public const int ReadonlyMethod = KnownImageIds.Method | KnownImageIds.OverlayLock << OverlayShift | FullOverlayMask;
+		public const int ReadonlyType = KnownImageIds.Type | KnownImageIds.OverlayLock << OverlayShift | FullOverlayMask;
 		public const int RefMember = KnownImageIds.DraggedCurrentInstructionPointer;
-		public const int InitonlyProperty = KnownImageIds.NewProperty;
+		public const int InitonlyProperty = KnownImageIds.Property | KnownImageIds.New << OverlayShift;
 		public const int AutoProperty = KnownImageIds.PropertyShortcut;
 		public const int VolatileField = KnownImageIds.SetProactiveCaching;
 		public const int AbstractClass = KnownImageIds.AbstractClass;
@@ -28,7 +28,6 @@ namespace Codist
 		public const int SealedEvent = KnownImageIds.EventSealed;
 		public const int SealedProperty = KnownImageIds.PropertySealed;
 		public const int RequiredMember = KnownImageIds.StatusRequired;
-		public const int Destructor = KnownImageIds.DeleteEntity;
 		public const int PublicConstructor = KnownImageIds.TypePublic;
 		public const int ProtectedConstructor = KnownImageIds.TypeProtected;
 		public const int InternalConstructor = KnownImageIds.TypeInternal;
@@ -51,6 +50,7 @@ namespace Codist
 		public const int Event = KnownImageIds.Event;
 		public const int Method = KnownImageIds.Method;
 		public const int Constructor = KnownImageIds.Type;
+		public const int Destructor = KnownImageIds.Type | KnownImageIds.OverlayOffline << OverlayShift | FullOverlayMask;
 		public const int EnumField = KnownImageIds.EnumerationItemPublic;
 		public const int GenericDefinition = KnownImageIds.Template;
 		public const int Region = KnownImageIds.Numeric;
@@ -104,12 +104,15 @@ namespace Codist
 		public const int FileLocations = KnownImageIds.DocumentCollection;
 		public const int GlobalNamespace = KnownImageIds.Home;
 		public const int Module = KnownImageIds.Module;
-		public const int Headings = KnownImageIds.PageHeader;
+		public const int Headings = KnownImageIds.Flag;
 		public const int Heading1 = KnownImageIds.FlagDarkRed;
-		public const int Heading2 = KnownImageIds.FlagDarkPurple;
-		public const int Heading3 = KnownImageIds.FlagDarkBlue;
-		public const int Heading4 = KnownImageIds.Flag;
-		public const int Heading5 = KnownImageIds.FlagOutline;
+		public const int Heading2 = KnownImageIds.FlagRed;
+		public const int Heading3 = KnownImageIds.FlagGreen;
+		public const int Heading4 = KnownImageIds.FlagTurquoise;
+		public const int Heading5 = KnownImageIds.FlagPurple;
+		public const int Quotation = KnownImageIds.TextArea;
+		public const int UnorderedList = KnownImageIds.BulletList;
+		public const int OrderedList = KnownImageIds.OrderedList;
 		public const int ReferencedXmlDoc = KnownImageIds.GoToNextComment;
 		public const int ExceptionXmlDoc = KnownImageIds.ExceptionPublic;
 		public const int RemarksXmlDoc = KnownImageIds.CommentGroup;
@@ -121,11 +124,11 @@ namespace Codist
 		public const int RefVariables = KnownImageIds.GlobalVariable;
 		public const int TypeAndDelegate = KnownImageIds.EntityContainer;
 		public const int ReturnValue = KnownImageIds.ReturnValue;
-		public const int AnonymousType = KnownImageIds.UserDataType;
+		public const int AnonymousType = KnownImageIds.GroupByType;
 		public const int ParameterCandidate = KnownImageIds.ParameterWarning;
-		public const int SymbolCandidate = KnownImageIds.CodeInformation;
+		public const int SymbolCandidate = KnownImageIds.Field | KnownImageIds.OverlayWarning << OverlayShift | FullOverlayMask;
 		public const int InterfaceImplementation = KnownImageIds.ImplementInterface;
-		public const int Disposable = KnownImageIds.ReferenceWarning;
+		public const int Disposable = KnownImageIds.InterfacePublic | KnownImageIds.OverlayWarning << OverlayShift | FullOverlayMask;
 		public const int Discard = KnownImageIds.HiddenFile;
 		public const int BaseTypes = KnownImageIds.ParentChild;
 		public const int MethodOverloads = KnownImageIds.MethodSet;
@@ -147,12 +150,13 @@ namespace Codist
 		public const int DeleteType = KnownImageIds.ClassMissing;
 		public const int DeleteProperty = KnownImageIds.PropertyMissing;
 		public const int DeleteEvent = KnownImageIds.EventMissing;
+		public const int DeleteField = KnownImageIds.FieldMissing;
 		public const int DeleteCondition = KnownImageIds.DeleteClause;
 		public const int MergeCondition = KnownImageIds.GroupByClause;
 		public const int NestCondition = KnownImageIds.AddChildNode;
 		public const int SplitCondition = KnownImageIds.UngroupClause;
 		public const int MultiLine = KnownImageIds.WordWrap;
-		public const int MultiLineList = KnownImageIds.BulletList;
+		public const int MultiLineList = KnownImageIds.DataList;
 		public const int InterpolatedString = KnownImageIds.Quote;
 		public const int SwapOperands = KnownImageIds.SwitchSourceOrTarget;
 		public const int ToggleValue = KnownImageIds.ToggleButton;
@@ -167,6 +171,7 @@ namespace Codist
 		public const int TagUnderline = KnownImageIds.Underline;
 		public const int TagHyperLink = KnownImageIds.HyperLink;
 		public const int TagStrikeThrough = KnownImageIds.StrikeThrough;
+		public const int TagHighlight = KnownImageIds.Highlighter;
 		public const int Marks = KnownImageIds.FlagGroup;
 		public const int MarkSymbol = KnownImageIds.Flag;
 		public const int UnmarkSymbol = KnownImageIds.FlagOutline;
@@ -186,6 +191,7 @@ namespace Codist
 		public const int QuickAction = KnownImageIds.IntellisenseLightBulb;
 		public const int SelectCode = KnownImageIds.BlockSelection;
 		public const int SelectBlock = KnownImageIds.MatchBrace;
+		public const int SelectText = KnownImageIds.RectangleSelection;
 		public const int SelectAll = KnownImageIds.SelectAll;
 		public const int Open = KnownImageIds.Open;
 		public const int OpenFolder = KnownImageIds.OpenFolder;
@@ -213,6 +219,7 @@ namespace Codist
 		public const int NewGuid = KnownImageIds.NewNamedSet;
 		public const int IncrementNumber = KnownImageIds.Counter;
 		public const int JoinLines = KnownImageIds.Join;
+		public const int SortLines = KnownImageIds.SortAscending;
 		public const int Unindent = KnownImageIds.DecreaseIndent;
 		public const int Indent = KnownImageIds.IncreaseIndent;
 		public const int StageSelectedRange = KnownImageIds.Add;
@@ -248,6 +255,7 @@ namespace Codist
 		public const int Opacity = KnownImageIds.FillOpacity;
 		public const int CustomizeStyle = KnownImageIds.StyleBlock;
 		public const int PickColor = KnownImageIds.ColorDialog;
+		public const int Brightness = KnownImageIds.Brightness;
 		public const int Reset = KnownImageIds.EmptyBucket;
 		public const int ResetTheme = KnownImageIds.CleanData;
 		public const int Cpu = KnownImageIds.Processor;
@@ -275,6 +283,24 @@ namespace Codist
 		public const int AttachEvent = KnownImageIds.AddEvent;
 		public const int DetachEvent = KnownImageIds.EventMissing;
 		public const int TriggerEvent = KnownImageIds.Event;
+		#endregion
+		#region Overlay
+		const int OverlayShift = 16,
+			ImageMask = (1 << OverlayShift) - 1,
+			FullOverlayMask = 1 << (OverlayShift * 2 - 1),
+			OverlayMask = ImageMask ^ 1 << (OverlayShift - 1);
+		public static bool HasOverlay(this int iconId) {
+			return (uint)iconId > 1 << OverlayShift;
+		}
+		public static int MakeOverlayImage(int iconId, int overlayId, bool fullOverlay) {
+			return iconId | (overlayId & OverlayMask) << OverlayShift | (fullOverlay ? FullOverlayMask : 0);
+		}
+		public static bool IsOverlay(this int overlayId) {
+			return (overlayId & 1 << (OverlayShift - 1)) != 0;
+		}
+		public static (int, int, bool) DeconstructIconOverlay(this int iconId) {
+			return (iconId & ImageMask, (iconId >> OverlayShift) & OverlayMask, (iconId & FullOverlayMask) != 0);
+		}
 		#endregion
 	}
 }

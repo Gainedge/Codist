@@ -19,7 +19,7 @@ namespace Codist.Controls
 		public CSharpSymbolContextMenu(ISymbol symbol, SyntaxNode node, SemanticContext semanticContext) {
 			Resources = SharedDictionaryManager.ContextMenu;
 			Foreground = ThemeHelper.ToolWindowTextBrush;
-			this.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
+this.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
 			_Host = new UIHost(symbol, node, semanticContext);
 		}
 
@@ -366,11 +366,11 @@ namespace Codist.Controls
 			bool _Handled;
 
 			public CustomMenuItem(int imageId, string title) {
-				Icon = ThemeHelper.GetImage(_ImageId = imageId);
+				Icon = VsImageHelper.GetImage(_ImageId = imageId);
 				Header = new ThemedMenuText { Text = title };
 			}
 			public CustomMenuItem(int imageId, string title, string titleSubstitution) {
-				Icon = ThemeHelper.GetImage(_ImageId = imageId);
+				Icon = VsImageHelper.GetImage(_ImageId = imageId);
 
 				var i = title.IndexOf('<');
 				if (i < -1) {
@@ -422,7 +422,12 @@ namespace Codist.Controls
 			void HandleExecuteEvent(RoutedEventArgs e) {
 				var h = _ClickHandler;
 				if (h != null && _Handled == false) {
-					h.Invoke(this, e);
+					try {
+						h.Invoke(this, e);
+					}
+					catch (Exception ex) {
+						MessageWindow.Error(ex, "Error when executing command: " + ((ThemedMenuText)Header).GetText(), null, this);
+					}
 					_Handled = true;
 				}
 			}
@@ -647,7 +652,7 @@ namespace Codist.Controls
 				var loc = _Node.SyntaxTree.FilePath;
 				foreach (var sr in _Node.FindReferencingSymbols(_SemanticContext.SemanticModel, true)) {
 					var s = sr.Key;
-					var sl = s.DeclaringSyntaxReferences[0];
+					var sl = s.GetSourceReferences()[0];
 					SymbolItem i;
 					if (sl.SyntaxTree.FilePath != loc) {
 						i = m.Add(sl.ToLocation());
@@ -665,7 +670,7 @@ namespace Codist.Controls
 					++c;
 				}
 				var symbol = _Symbol;
-				m.Title.SetGlyph(ThemeHelper.GetImage(symbol.GetImageId()))
+				m.Title.SetGlyph(VsImageHelper.GetImage(symbol.GetImageId()))
 					.AddSymbol(symbol, null, true, SymbolFormatter.Instance)
 					.Append(R.T_ReferencedSymbols)
 					.Append(c.ToString());

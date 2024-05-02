@@ -66,6 +66,7 @@ namespace Codist.Options
 		readonly UiLock _Lock = new UiLock();
 		IWpfTextView _WpfTextView;
 		string _CurrentViewCategory;
+		string _ThemeFolder;
 		IFormatCache _FormatCache;
 		TextFormattingRunProperties _DefaultFormat;
 		StyleSettingsButton _SelectedStyleButton;
@@ -171,18 +172,19 @@ namespace Codist.Options
 											Child = new StackPanel {
 												Orientation = Orientation.Horizontal,
 												Children = {
-													ThemeHelper.GetImage(IconIds.Filter).WrapMargin(WpfHelper.GlyphMargin),
+													VsImageHelper.GetImage(IconIds.Filter)
+														.ReferenceCrispImageBackground(EnvironmentColors.ToolWindowBackgroundColorKey)
+														.WrapMargin(WpfHelper.GlyphMargin),
 													new ThemedTextBox {
 														Width = 120,
 														Margin = WpfHelper.SmallMargin,
 														ToolTip = R.OT_FilterStyleNamesTip
 													}.Set(ref _SettingsFilterBox),
-													new ThemedControlGroup { Margin = WpfHelper.SmallVerticalMargin }
-														.AddRange(
-															new ThemedToggleButton(IconIds.FilterCustomized, R.OT_ShowCustomizedStylesTip).Set(ref _OverriddenStyleFilterButton),
-															new ThemedImageButton(IconIds.Add, R.CMD_Add).SetValue(ToolTipService.SetPlacement, PlacementMode.Left).Set(ref _AddTagButton),
-															new ThemedImageButton(IconIds.Remove, R.CMD_Remove).SetValue(ToolTipService.SetPlacement, PlacementMode.Left).Set(ref _RemoveTagButton),
-															new ThemedButton(ThemeHelper.GetImage(IconIds.ClearFilter), R.CMD_ClearFilter).SetValue(ToolTipService.SetPlacement, PlacementMode.Left).Set(ref _ClearFilterButton)),
+													new ThemedControlGroup(new ThemedToggleButton(IconIds.FilterCustomized, R.OT_ShowCustomizedStylesTip)
+														.Set(ref _OverriddenStyleFilterButton),
+															new ThemedImageButton(IconIds.Add, R.CMD_Add).Set(ref _AddTagButton),
+															new ThemedImageButton(IconIds.Remove, R.CMD_Remove).Set(ref _RemoveTagButton),
+															new ThemedButton(VsImageHelper.GetImage(IconIds.ClearFilter), R.CMD_ClearFilter).Set(ref _ClearFilterButton)) { Margin = WpfHelper.SmallVerticalMargin },
 												}
 											}
 										}.SetValue(Grid.SetColumn, 1)
@@ -366,6 +368,7 @@ namespace Codist.Options
 			FormatStore.EditorBackgroundChanged += FormatStore_EditorBackgroundChanged;
 			FormatStore.ClassificationFormatMapChanged += RefreshList;
 			IsVisibleChanged += WindowIsVisibleChanged;
+			_ThemeFolder = Config.Instance.SyntaxHighlightThemeFolder;
 			Config.Instance.BeginUpdate();
 		}
 
@@ -564,7 +567,7 @@ namespace Codist.Options
 			var cts = new HashSet<IClassificationType>();
 			_SelectedStyleButton = null;
 			foreach (var c in classifications) {
-				if (c is TextEditorHelper.ClassificationCategory) {
+				if (c.IsClassificationCategory()) {
 					l.Add(new Label {
 						Content = c.Classification,
 						Padding = WpfHelper.SmallMargin,
@@ -637,14 +640,19 @@ namespace Codist.Options
 						t.Append("null");
 						continue;
 					}
-					if (v is bool b) {
-						t.Append(b ? "true" : "false");
+					if (v is bool bo) {
+						t.Append(bo ? "true" : "false");
 					}
 					else if (v is SolidColorBrush sc) {
-						t.Append(sc.Color.ToHexString());
+						t.Append(CreatePreviewBox(new SolidColorBrush(sc.Color)))
+							.Append(sc.Color.ToHexString());
 					}
 					else if (v is Color c) {
-						t.Append(c.ToHexString());
+						t.Append(CreatePreviewBox(new SolidColorBrush(c)))
+							.Append(c.ToHexString());
+					}
+					else if (v is Brush b) {
+						t.Append(CreatePreviewBox(b)).Append(v.ToString());
 					}
 					else if (v is double d) {
 						t.Append(d.ToString());
@@ -665,9 +673,20 @@ namespace Codist.Options
 					}
 				}
 			}
+
+			Border CreatePreviewBox(Brush brush) {
+				return new Border {
+					BorderThickness = WpfHelper.TinyMargin,
+					BorderBrush = ThemeHelper.ToolTipTextBrush,
+					Width = VsImageHelper.DefaultIconSize,
+					Height = VsImageHelper.DefaultIconSize,
+					Background = brush,
+					Margin = WpfHelper.GlyphMargin
+				};
+			}
 		}
 
-		static string GetHeuristicActiveClassification(IEnumerable<IClassificationType> classifications) {
+		string GetHeuristicActiveClassification(IEnumerable<IClassificationType> classifications) {
 			IClassificationType t = null;
 			int level = 0;
 			foreach (var item in classifications) {
@@ -698,7 +717,7 @@ namespace Codist.Options
 							level = 2;
 						}
 						if (t != null && level < 3) {
-							var p = FormatStore.GetCachedEditorProperty(item);
+							var p = _FormatCache.GetCachedProperty(item);
 							if (p.ForegroundBrushEmpty == false
 								&& p.ForegroundBrushSame(FormatStore.EditorDefaultTextProperties.ForegroundBrush) == false) {
 								t = item;
@@ -947,8 +966,10 @@ namespace Codist.Options
 		}
 
 		void RefreshStyleButton(StyleSettingsButton button) {
-			// todo: update tooltip
 			button.Refresh(_FormatCache);
+			if (button.HasDummyToolTip() == false) {
+				button.SetLazyToolTip(ShowStyleSettingsButtonToolTip);
+			}
 		}
 		#endregion
 
@@ -1240,13 +1261,20 @@ namespace Codist.Options
 				DefaultExt = "styles",
 				Filter = R.T_HighlightSettingFileFilter
 			};
-			if (d.ShowDialog() == true) {
+			if (String.IsNullOrEmpty(_ThemeFolder) == false) {
 				try {
+					d.InitialDirectory = _ThemeFolder;
+				}
+				catch (System.Security.SecurityException) { }
+			}
+			try {
+				if (d.ShowDialog() == true) {
 					LoadTheme(d.FileName);
+					_ThemeFolder = System.IO.Path.GetDirectoryName(d.FileName);
 				}
-				catch (Exception ex) {
-					MessageWindow.Error(ex.Message, R.T_FailedToLoadStyleFile);
-				}
+			}
+			catch (Exception ex) {
+				MessageWindow.Error(ex.Message, R.T_FailedToLoadStyleFile);
 			}
 		}
 		void ExportTheme() {
@@ -1256,8 +1284,20 @@ namespace Codist.Options
 				DefaultExt = "styles",
 				Filter = R.T_HighlightSettingFileFilter
 			};
-			if (d.ShowDialog() == true) {
-				Config.Instance.SaveConfig(d.FileName, true);
+			if (String.IsNullOrEmpty(_ThemeFolder) == false) {
+				try {
+					d.InitialDirectory = _ThemeFolder;
+				}
+				catch (System.Security.SecurityException) { }
+			}
+			try {
+				if (d.ShowDialog() == true) {
+					Config.Instance.SaveConfig(d.FileName, true);
+					_ThemeFolder = System.IO.Path.GetDirectoryName(d.FileName);
+				}
+			}
+			catch (Exception ex) {
+				MessageWindow.Error(ex.Message, R.T_FailedToSaveStyleFile);
 			}
 		}
 		void ResetTheme() {
@@ -1306,6 +1346,10 @@ namespace Codist.Options
 		}
 		void Ok() {
 			IsClosing = true;
+			if (_ThemeFolder != Config.Instance.SyntaxHighlightThemeFolder) {
+				Config.Instance.SyntaxHighlightThemeFolder = _ThemeFolder;
+				Config.Instance.FireConfigChangedEvent(Features.None);
+			}
 			Config.Instance.EndUpdate(true);
 			Close();
 		}
@@ -1351,7 +1395,7 @@ namespace Codist.Options
 					PreviewLabelStyle(_Preview, t);
 				}
 				catch (Exception ex) {
-					MessageWindow.Error(ex, "Set Preview style error for " + _Preview.Text);
+					MessageWindow.Error(ex, "Set Preview style error for " + _Preview.Text, null, this);
 				}
 				this.ReferenceStyle(VsResourceKeys.ButtonStyleKey);
 				Click += clickHandler;
@@ -1382,7 +1426,7 @@ namespace Codist.Options
 
 			void SetStyle(StyleBase style) {
 				_Style = style;
-				_StyleSetIndicator.Child = ThemeHelper.GetImage(style.IsSet ? IconIds.CustomizeStyle : IconIds.None);
+				_StyleSetIndicator.Child = VsImageHelper.GetImage(style.IsSet ? IconIds.CustomizeStyle : IconIds.None);
 			}
 
 			static TextBlock PreviewLabelStyle(TextBlock preview, TextFormattingRunProperties format) {
@@ -1647,21 +1691,17 @@ namespace Codist.Options
 
 		sealed class CSharpAdditionalHighlightConfigPage : ContentControl
 		{
-			readonly OptionBox<SpecialHighlightOptions> _MarkSpecialPunctuationBox, _HighlightDeclarationBracesBox, _HighlightParameterBracesBox, _HighlightCastParenthesesBox, _HighlightBranchBracesBox, _HighlightLoopBracesBox, _HighlightResourceBracesBox,
+			readonly OptionBox<SpecialHighlightOptions> _BoldSemanticPunctuationBox, _SemanticPunctuationBox,
 				_HighlightLocalFunctionDeclarationBox, _HighlightNonPrivateFieldDeclarationBox, _HighlightConstructorAsTypeBox, _HighlightCapturingLambdaBox;
 
 			public CSharpAdditionalHighlightConfigPage() {
 				var o = Config.Instance.SpecialHighlightOptions;
 				Content = new StackPanel { Margin = WpfHelper.SmallMargin }.Add(i => new Border { Padding = WpfHelper.SmallMargin, Child = i }, new UIElement[] {
-						new TitleBox(R.OT_BracesAndParentheses),
-						(_MarkSpecialPunctuationBox = o.CreateOptionBox(SpecialHighlightOptions.SpecialPunctuation, UpdateConfig, R.OT_BoldBraces)),
-						new DescriptionBox(R.OT_BoldBracesNote),
-						(_HighlightDeclarationBracesBox = o.CreateOptionBox(SpecialHighlightOptions.DeclarationBrace, UpdateConfig, R.OT_DeclarationBraces)),
-						(_HighlightParameterBracesBox = o.CreateOptionBox(SpecialHighlightOptions.ParameterBrace, UpdateConfig, R.OT_MethodParameterBraces)),
-						(_HighlightCastParenthesesBox = o.CreateOptionBox(SpecialHighlightOptions.CastBrace, UpdateConfig, R.OT_TypeCastBraces)),
-						(_HighlightBranchBracesBox = o.CreateOptionBox(SpecialHighlightOptions.BranchBrace, UpdateConfig, R.OT_BranceBraces)),
-						(_HighlightLoopBracesBox = o.CreateOptionBox(SpecialHighlightOptions.LoopBrace, UpdateConfig, R.OT_LoopBraces)),
-						(_HighlightResourceBracesBox = o.CreateOptionBox(SpecialHighlightOptions.ResourceBrace, UpdateConfig, R.OT_ResourceBraces)),
+						new TitleBox(R.OT_PunctuationsAndOperators),
+						(_SemanticPunctuationBox = o.CreateOptionBox(SpecialHighlightOptions.SemanticPunctuation, UpdateConfig, R.OT_SemanticPunctuations)),
+						new DescriptionBox(R.OT_SemanticPunctuationsNote),
+						(_BoldSemanticPunctuationBox = o.CreateOptionBox(SpecialHighlightOptions.BoldSemanticPunctuation, UpdateConfig, R.OT_BoldPunctuations)),
+						new DescriptionBox(R.OT_BoldPunctuationsNote),
 
 						new TitleBox(R.OT_MemberStyles),
 						(_HighlightLocalFunctionDeclarationBox = o.CreateOptionBox(SpecialHighlightOptions.LocalFunctionDeclaration, UpdateConfig, R.OT_ApplyToLocalFunction)),
@@ -1669,15 +1709,16 @@ namespace Codist.Options
 						(_HighlightConstructorAsTypeBox = o.CreateOptionBox(SpecialHighlightOptions.UseTypeStyleOnConstructor, UpdateConfig, R.OT_StyleConstructorAsType)),
 						(_HighlightCapturingLambdaBox = o.CreateOptionBox(SpecialHighlightOptions.CapturingLambdaExpression, UpdateConfig, R.OT_CapturingLambda)),
 					});
-				foreach (var item in new[] { _HighlightDeclarationBracesBox, _HighlightParameterBracesBox, _HighlightCastParenthesesBox, _HighlightBranchBracesBox, _HighlightLoopBracesBox, _HighlightResourceBracesBox }) {
-					item.WrapMargin(__SubOptionMargin);
+				foreach (var item in new[] {
+					_BoldSemanticPunctuationBox,
+					_SemanticPunctuationBox,
+					_HighlightLocalFunctionDeclarationBox,
+					_HighlightNonPrivateFieldDeclarationBox,
+					_HighlightConstructorAsTypeBox,
+					_HighlightCapturingLambdaBox
+				}) {
 					item.ReferenceStyle(VsResourceKeys.CheckBoxStyleKey);
 				}
-				_MarkSpecialPunctuationBox.ReferenceStyle(VsResourceKeys.CheckBoxStyleKey);
-				_HighlightLocalFunctionDeclarationBox.ReferenceStyle(VsResourceKeys.CheckBoxStyleKey);
-				_HighlightNonPrivateFieldDeclarationBox.ReferenceStyle(VsResourceKeys.CheckBoxStyleKey);
-				_HighlightConstructorAsTypeBox.ReferenceStyle(VsResourceKeys.CheckBoxStyleKey);
-				_HighlightCapturingLambdaBox.ReferenceStyle(VsResourceKeys.CheckBoxStyleKey);
 			}
 
 			void UpdateConfig(SpecialHighlightOptions options, bool set) {

@@ -30,9 +30,9 @@ namespace Codist.SyntaxHighlight
 
 		static readonly Dictionary<IClassificationType, List<IClassificationType>> __ClassificationTypeStore = InitClassificationTypes(__SyntaxStyleCache.Keys);
 
-		static readonly Dictionary<IClassificationType, bool> __UnsupportedClassificationType = InitFormattableClassificationType();
+		static readonly Dictionary<IClassificationType, bool> __ClassificationTypeFormattabilities = InitFormattableClassificationType();
 
-		static readonly Highlighter __EditorHighlighter = Highlight(Constants.CodeText);
+		static readonly IClassificationFormatMap __DefaultClassificationFormatMap = ServicesHelper.Instance.ClassificationFormatMap.GetClassificationFormatMap(Constants.CodeText);
 		#endregion
 
 		/// <summary>
@@ -40,9 +40,9 @@ namespace Codist.SyntaxHighlight
 		/// </summary>
 		internal static bool IdentifySymbolSource { get; private set; }
 
-		internal static TextFormattingRunProperties EditorDefaultTextProperties => __EditorHighlighter.DefaultTextProperties;
+		internal static IClassificationFormatMap DefaultClassificationFormatMap => __DefaultClassificationFormatMap;
 
-		internal static IFormatCache EditorFormatCache => __EditorHighlighter;
+		internal static TextFormattingRunProperties EditorDefaultTextProperties => __DefaultClassificationFormatMap.DefaultTextProperties;
 
 		/// <summary>
 		/// Event for editor background color changes.
@@ -85,6 +85,7 @@ namespace Codist.SyntaxHighlight
 				//   we can avoid redundantly applying highlight styles to the same kinds of views
 				//   by caching applied categories
 				$"[{category}] highlighter created".Log();
+				ServicesHelper.Instance.ClassificationTypeExporter.UpdateClassificationFormatMap(category);
 				highlighter.SubscribeConfigUpdateHandler();
 				highlighter.SubscribeFormatMappingChanges();
 				highlighter.DetectThemeColorCompatibilityWithBackground();
@@ -107,9 +108,9 @@ namespace Codist.SyntaxHighlight
 
 		public static bool IsFormattableClassificationType(this IClassificationType type) {
 			return type != null
-				&& (__UnsupportedClassificationType.TryGetValue(type, out var f)
+				&& (__ClassificationTypeFormattabilities.TryGetValue(type, out var f)
 					? f
-					: (__UnsupportedClassificationType[type] = IsFormattable(type)));
+					: (__ClassificationTypeFormattabilities[type] = IsFormattable(type)));
 		}
 
 		/// <summary>
@@ -156,17 +157,10 @@ namespace Codist.SyntaxHighlight
 				}
 			}
 		}
-
-		/// <summary>
-		/// Gets cached <see cref="TextFormattingRunProperties"/> from code editor.
-		/// </summary>
-		public static TextFormattingRunProperties GetCachedEditorProperty(IClassificationType classificationType) {
-			return __EditorHighlighter.GetCachedProperty(classificationType);
-		}
-		public static TextFormattingRunProperties GetCachedEditorProperty(string classificationType) {
+		public static TextFormattingRunProperties GetRunPriorities(string classificationType) {
 			var ct = __GetClassificationType(classificationType);
 			return ct != null
-				? GetCachedEditorProperty(ct)
+				? __DefaultClassificationFormatMap.GetRunProperties(__DefaultClassificationFormatMap.GetEditorFormatMapKey(ct))
 				: null;
 		}
 
@@ -240,9 +234,10 @@ namespace Codist.SyntaxHighlight
 				&& c.EndsWith("{LegacyMarker}", StringComparison.Ordinal) == false
 				&& c != "quickinfo-bold"
 				&& c != "sighelp-documentation"
-				&& c != "Formal Language Priority"
-				&& c != "Natural Language Priority"
+				&& c != "formal language"
+				&& c != "natural language"
 				&& c != "mismatched brace"
+				&& c != Constants.CodeIdentifier // hack: workaround a VS bug that identifier takes abnormal precedency
 				&& c.StartsWith("brace matching", StringComparison.Ordinal) == false;
 		}
 
@@ -278,10 +273,10 @@ namespace Codist.SyntaxHighlight
 				}
 				config.Styles = null;
 			}
-			UpdateIdentifySymbolSource(cache);
+			UpdateHighlightOptions(cache);
 		}
 
-		static void UpdateIdentifySymbolSource(Dictionary<string, StyleBase> cache) {
+		static void UpdateHighlightOptions(Dictionary<string, StyleBase> cache) {
 			StyleBase style;
 			IdentifySymbolSource = cache.TryGetValue(Constants.CSharpMetadataSymbol, out style) && style.IsSet
 				|| cache.TryGetValue(Constants.CSharpUserSymbol, out style) && style.IsSet;
@@ -416,6 +411,7 @@ namespace Codist.SyntaxHighlight
 				_Formatters.Pop();
 				if (--_Lock == 0 && _PendingChange.PendingEvents != EventKind.None) {
 					_PendingChange.FireEvents(this);
+					UpdateHighlightOptions(__SyntaxStyleCache);
 					_ChangedFormatItems.Clear();
 				}
 			}
@@ -434,40 +430,24 @@ namespace Codist.SyntaxHighlight
 				try {
 					var formats = _ClassificationFormatMap.CurrentPriorityOrder;
 					$"Refresh priority {formats.Count}".Log();
-					var semanticBrace = Config.Instance.SpecialHighlightOptions.HasAnyFlag(SpecialHighlightOptions.AllParentheses);
-					var boldBrace = Config.Instance.SpecialHighlightOptions.MatchFlags(SpecialHighlightOptions.SpecialPunctuation);
 					_PropertiesCache.Clear();
 					foreach (var item in formats) {
-						if (item.IsFormattableClassificationType() && _Traces.ContainsKey(GetEditorFormatMapKey(item))) {
+						if (item.IsFormattableClassificationType()) {
 							var p = _ClassificationFormatMap.GetTextProperties(item);
+							// C/C++ styles can somehow get reverted, here we forcefully reinforce our highlights 
+							if (Highlight(item, out var newStyle) != FormatChanges.None) {
+								p = newStyle.Value.MergeFormatProperties(p);
+							}
 							$"[{_Category}] refresh classification {item.Classification} ({p.Print()})".Log();
-							// hack: workaround for punctuation format properties that voids settings of semanticBrace or boldBrace
-							if ((semanticBrace && p.ForegroundBrushEmpty == false
-								|| boldBrace && p.BoldEmpty == false)
-								&& item.Classification == Constants.CodePunctuation) {
-								WorkaroundPunctuationStyle(_EditorFormatMap, semanticBrace, boldBrace);
-							}
-							else {
-								_ClassificationFormatMap.SetTextProperties(item, p);
-							}
+							_ClassificationFormatMap.SetTextProperties(item, p);
 							_PropertiesCache[item] = p;
 						}
 					}
 				}
 				finally {
 					_ClassificationFormatMap.EndBatchUpdate();
+					_PendingChange.PendingEvents = _PendingChange.PendingEvents.SetFlags(EventKind.Refresh, false);
 					UnlockEvent();
-				}
-
-				void WorkaroundPunctuationStyle(IEditorFormatMap map, bool s, bool b) {
-					var m = map.GetProperties(Constants.CodePunctuation);
-					if (s) {
-						m.SetBrush(null);
-					}
-					if (b) {
-						m.SetBold(null);
-					}
-					map.SetProperties(Constants.CodePunctuation, m);
 				}
 			}
 
@@ -482,21 +462,26 @@ namespace Codist.SyntaxHighlight
 					}
 				}
 
-				if (newStyles.Count != 0) {
-					_PropertiesCache.Clear();
-					LockEvent(nameof(Apply));
-					_EditorFormatMap.BeginBatchUpdate();
-					$"[{_Category}] update formats {newStyles.Count}".Log();
-					try {
-						foreach (var item in newStyles) {
-							$"[{_Category}] apply format {item.Key}".Log();
-							_EditorFormatMap.SetProperties(item.Key, item.Value);
-						}
+				if (newStyles.Count == 0) {
+					return;
+				}
+				if (_EditorFormatMap.IsInBatchUpdate) {
+					_PendingChange.PendEvent(EventKind.Apply);
+					return;
+				}
+				_PropertiesCache.Clear();
+				LockEvent(nameof(Apply));
+				_EditorFormatMap.BeginBatchUpdate();
+				$"[{_Category}] update formats {newStyles.Count}".Log();
+				try {
+					foreach (var item in newStyles) {
+						$"[{_Category}] apply format {item.Key}".Log();
+						_EditorFormatMap.SetProperties(item.Key, item.Value);
 					}
-					finally {
-						_EditorFormatMap.EndBatchUpdate();
-						UnlockEvent();
-					}
+				}
+				finally {
+					_EditorFormatMap.EndBatchUpdate();
+					UnlockEvent();
 				}
 			}
 
@@ -657,7 +642,6 @@ namespace Codist.SyntaxHighlight
 				foreach (var item in changedItems) {
 					HighlightRecursive(__GetClassificationType(item), dedup, newStyles);
 				}
-
 				if (bgChanged || fsChanged) {
 					foreach (var item in __SyntaxStyleCache) {
 						if (bgChanged && item.Value.BackColor.A > 0
@@ -739,6 +723,24 @@ namespace Codist.SyntaxHighlight
 					}
 					if (style.HasLineColor) {
 						style.LineColor = style.LineColor.InvertBrightness();
+					}
+				}
+
+				var qi = Config.Instance.QuickInfo;
+				if (qi.BackColor.A != 0) {
+					qi.BackColor = qi.BackColor.InvertBrightness();
+					Config.Instance.FireConfigChangedEvent(Features.SuperQuickInfo);
+				}
+				var sm = Config.Instance.SymbolReferenceMarkerSettings;
+				if (sm.ReferenceMarker.A != 0 || sm.WriteMarker.A != 0 || sm.SymbolDefinition.A != 0) {
+					if (sm.ReferenceMarker.A != 0) {
+						sm.ReferenceMarker = sm.ReferenceMarker.InvertBrightness();
+					}
+					if (sm.WriteMarker.A != 0) {
+						sm.WriteMarker = sm.WriteMarker.InvertBrightness();
+					}
+					if (sm.SymbolDefinition.A != 0) {
+						sm.SymbolDefinition = sm.SymbolDefinition.InvertBrightness();
 					}
 				}
 			}
@@ -951,6 +953,10 @@ namespace Codist.SyntaxHighlight
 					if (PendingEvents.MatchFlags(EventKind.ClassificationFormat)) {
 						FiringEvent = EventKind.ClassificationFormat;
 						ClassificationFormatMapChanged?.Invoke(highlighter, new EventArgs<IEnumerable<IClassificationType>>(highlighter.GetChangedClassificationTypes()));
+					}
+					if (PendingEvents.MatchFlags(EventKind.Apply)) {
+						FiringEvent = EventKind.Apply;
+						highlighter.Apply();
 					}
 					if (PendingEvents.MatchFlags(EventKind.Refresh)) {
 						FiringEvent = EventKind.Refresh;
@@ -1185,7 +1191,7 @@ namespace Codist.SyntaxHighlight
 						ct = style.MakeTypeface();
 						if (ct != null
 							&& AreTypefaceEqual(current.GetTypeface(), ct) == false
-							&& AreTypefaceEqual(current.GetTypeface(), highlighter._DefaultTypeface) == false) {
+							&& AreTypefaceEqual(ct, highlighter._DefaultTypeface) == false) {
 							_FormatChanges |= FormatChanges.Typeface;
 							Changes.SetTypeface(ct);
 							current.SetTypeface(ct);
@@ -1353,7 +1359,8 @@ namespace Codist.SyntaxHighlight
 				ClassificationFormat = 1 << 1,
 				Background = 1 << 2,
 				DefaultText = 1 << 3,
-				Refresh = 1 << 4
+				Apply = 1 << 4,
+				Refresh = 1 << 5
 			}
 		}
 	}

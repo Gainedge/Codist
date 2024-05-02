@@ -20,30 +20,33 @@ namespace Codist.Taggers
 			if (Config.Instance.Features.MatchFlags(Features.SyntaxHighlight) == false
 				|| CommentTagger.IsCommentTaggable(buffer) == false
 				|| buffer.MayBeEditor() == false && textView.TextBuffer.ContentType.IsOfType("RoslynPreviewContentType") == false
+				|| textView.Roles.Contains("STICKYSCROLL_TEXT_VIEW")
 				) {
 				return null;
 			}
-			var vp = textView.Properties;
-			CommentTagger codeTagger;
-			var tags = vp.GetOrCreateSingletonProperty(() => new TaggerResult());
-			var agg = vp.GetOrCreateSingletonProperty("TagAggregator", () => ServicesHelper.Instance.BufferTagAggregatorFactory.CreateTagAggregator<IClassificationTag>(buffer));
-			codeTagger = vp.GetOrCreateSingletonProperty(nameof(CommentTagger), () => CommentTagger.Create(ServicesHelper.Instance.ClassificationTypeRegistry, textView, buffer));
+			if (textView.TryGetProperty<TaggerResult>(out var tags)) {
+				return null;
+			}
+			else {
+				tags = textView.CreateProperty<TaggerResult>();
+			}
+			if (textView.TryGetProperty(out CommentTagger t)) {
+				return t as ITagger<T>;
+			}
+			t = textView.GetOrCreateSingletonProperty(() => CommentTagger.Create(ServicesHelper.Instance.ClassificationTypeRegistry, textView, buffer));
 			textView.Closed -= TextViewClosed;
 			textView.Closed += TextViewClosed;
-			return codeTagger as ITagger<T>;
+			return t as ITagger<T>;
 		}
 
 		void TextViewClosed(object sender, EventArgs args) {
 			var textView = sender as ITextView;
 			textView.Closed -= TextViewClosed;
-			textView.Properties.GetProperty<ITagAggregator<IClassificationTag>>("TagAggregator")?.Dispose();
-			if (textView.Properties.TryGetProperty<CommentTagger>(nameof(CommentTagger), out var ct)) {
+			if (textView.TryGetProperty(out CommentTagger ct)) {
 				ct.Dispose();
-				textView.Properties.RemoveProperty(nameof(CommentTagger));
+				textView.RemoveProperty<CommentTagger>();
 			}
-			textView.Properties.RemoveProperty("TagAggregator");
-			textView.Properties.RemoveProperty(nameof(CommentTagger));
-			textView.Properties.RemoveProperty(typeof(TaggerResult));
+			textView.RemoveProperty<TaggerResult>();
 		}
 	}
 
@@ -52,12 +55,12 @@ namespace Codist.Taggers
 	[TagType(typeof(IClassificationTag))]
 	sealed class CSharpTaggerProvider : IViewTaggerProvider
 	{
-		static readonly string[] __TaggableRoles = new[] { PredefinedTextViewRoles.Document, PredefinedTextViewRoles.EmbeddedPeekTextView };
+		static readonly string[] __TaggableRoles = new[] { PredefinedTextViewRoles.Document, PredefinedTextViewRoles.EmbeddedPeekTextView, PredefinedTextViewRoles.PreviewTextView };
 
 		// note: we could have used WeakDictionary to hold our references,
 		//   and release references when the view is finalized
 		//   unfortunately memory leak in VS sometimes prevents IWpfTextView from being released properly,
-		//   thus the WeakDictionary can't be used
+		//   thus the WeakDictionary won't help
 		readonly Dictionary<ITextView, Dictionary<ITextBuffer, CSharpTagger>> _Taggers = new Dictionary<ITextView, Dictionary<ITextBuffer, CSharpTagger>>();
 
 		// note: cache the latest used tagger to improve performance
@@ -79,7 +82,7 @@ namespace Codist.Taggers
 
 		void FeatureToggle(ConfigUpdatedEventArgs args) {
 			bool enabled;
-			if (args.UpdatedFeature == Features.SyntaxHighlight
+			if (args.UpdatedFeature.MatchFlags(Features.SyntaxHighlight)
 				&& (enabled = Config.Instance.Features.MatchFlags(Features.SyntaxHighlight)) != _Enabled) {
 				_Enabled = enabled;
 				foreach (var item in _Taggers) {

@@ -541,7 +541,7 @@ Use space to separate keywords.</value>
     <value>Donate via PayPal</value>
   </data>
   <data name="OT_DonateLinkTip" xml:space="preserve">
-    <value>Recommended donation value is $19.99. But you can modify the amount to any value if you like</value>
+    <value>Recommended donation value is $19.99</value>
   </data>
   <data name="OT_FeatureChangesTip" xml:space="preserve">
     <value>Changes will take place on NEWLY OPENED document windows. Currently opened document windows WILL NOT BE AFFECTED</value>
@@ -1523,11 +1523,11 @@ Ctrl+1, Ctrl+3: Edit.SearchDeclarationInProject</value>
   <data name="OT_ApplyToNonPrivateField" xml:space="preserve">
     <value>Apply to non-private fields</value>
   </data>
-  <data name="OT_BoldBraces" xml:space="preserve">
-    <value>Apply bold style to following braces</value>
+  <data name="OT_BoldPunctuations" xml:space="preserve">
+    <value>Use bold style</value>
   </data>
-  <data name="OT_BoldBracesNote" xml:space="preserve">
-    <value>When the following checkboxes are checked, braces and parentheses will be highlighted by their semantic syntax styles</value>
+  <data name="OT_BoldPunctuationsNote" xml:space="preserve">
+    <value>Make semantic related punctuations and operators bold</value>
   </data>
   <data name="OT_BracesAndParentheses" xml:space="preserve">
     <value>Braces and Parentheses</value>
@@ -1704,7 +1704,9 @@ Ctrl+1, Ctrl+3: Edit.SearchDeclarationInProject</value>
     <value> derived interfaces</value>
   </data>
   <data name="CMD_EditMatches" xml:space="preserve">
-    <value>Edit All Matching</value>
+    <value>Edit All Matching
+Ctrl: Match case
+Shift: Match whole word</value>
   </data>
   <data name="CMD_EncapsulateField" xml:space="preserve">
     <value>Encapsulate field...</value>
@@ -1838,7 +1840,7 @@ ALL existing items will be REPLACE by default items.</value>
     <value>Wrap Text</value>
   </data>
   <data name="OT_WrapTextNote" xml:space="preserve">
-    <value>This page defines text items wrapping selection which can be accessed by right clicking the "Wrap select with text" button on Smart Bar</value>
+    <value>This page defines text items wrapping selection which can be accessed by right clicking the "Wrap selection with text" button on Smart Bar</value>
   </data>
   <data name="OT_WrapTextPattern" xml:space="preserve">
     <value>Wrap text pattern</value>
@@ -2006,7 +2008,7 @@ ALL existing items will be REPLACE by default items.</value>
     <value>Properties</value>
   </data>
   <data name="OT_CapturingLambda" xml:space="preserve">
-    <value>Highlight lambda expressions that capture variables</value>
+    <value>Highlight lambda expressions or local functions that capture variables</value>
   </data>
   <data name="CMD_QuickAction" xml:space="preserve">
     <value>Quick Actions and Refactoring...</value>
@@ -2643,5 +2645,109 @@ Ctrl: Directly inherited interfaces only</value>
   </data>
   <data name="OT_PreferUnderscoreTip" xml:space="preserve">
     <value>Insert _underscore_ pairs instead of *asterisk* pairs</value>
+  </data>
+  <data name="CMD_DeleteAStatement" xml:space="preserve">
+    <value>Delete &lt;A&gt; Statement</value>
+  </data>
+  <data name="CMD_DeleteField" xml:space="preserve">
+    <value>Delete Field</value>
+  </data>
+  <data name="CMD_DeleteStatement" xml:space="preserve">
+    <value>Delete Statement</value>
+  </data>
+  <data name="CMD_DeleteSwitchSection" xml:space="preserve">
+    <value>Delete Switch Section</value>
+  </data>
+  <data name="CMD_SortLines" xml:space="preserve">
+    <value>Sort Lines</value>
+  </data>
+  <data name="T_FailedToSaveStyleFile" xml:space="preserve">
+    <value>Error occured while saving style file:</value>
+  </data>
+  <data name="CMD_FilterToHeading1" xml:space="preserve">
+    <value>Filter to heading 1</value>
+  </data>
+  <data name="CMD_FilterToHeading2" xml:space="preserve">
+    <value>Filter to heading 2</value>
+  </data>
+  <data name="CMD_FilterToHeading3" xml:space="preserve">
+    <value>Filter to heading 3</value>
+  </data>
+  <data name="CMD_FilterToHeading4" xml:space="preserve">
+    <value>Filter to heading 4</value>
+  </data>
+  <data name="CMD_FilterToHeading5" xml:space="preserve">
+    <value>Filter to heading 5</value>
+  </data>
+  <data name="T_StackTrace" xml:space="preserve">
+    <value>Stack trace:</value>
+  </data>
+  <data name="T_DontReportUntilRestart" xml:space="preserve">
+    <value>Don't report this error until VS restarts</value>
+  </data>
+  <data name="CMD_MakeStatic" xml:space="preserve">
+    <value>Make Static</value>
+  </data>
+  <data name="OT_AutoSurroundSelectionNote" xml:space="preserve">
+    <value>This page changes the behavior of the auto surround feature, which automatically insert paired punctuations around selections when typing the leading punctuation</value>
+  </data>
+  <data name="OT_TrimBeforeSurround" xml:space="preserve">
+    <value>Trim whitespace before surrounding punctuations</value>
+  </data>
+  <data name="OT_TrimBeforeSurroundTip" xml:space="preserve">
+    <value>Before inserting paired punctuations, trim space and tab characters around selection</value>
+  </data>
+  <data name="CMD_SealRecord" xml:space="preserve">
+    <value>Seal Record</value>
+  </data>
+  <data name="OT_PunctuationsAndOperators" xml:space="preserve">
+    <value>Punctuations and Operators</value>
+  </data>
+  <data name="OT_SemanticPunctuations" xml:space="preserve">
+    <value>Highlight with semantic syntax styles</value>
+  </data>
+  <data name="OT_SemanticPunctuationsNote" xml:space="preserve">
+    <value>Highlight resource, control flow, type cast, declaration and etc. related punctuations and operators with corresponding syntax highlight styles</value>
+  </data>
+  <data name="CMD_Heading1" xml:space="preserve">
+    <value>Mark Heading 1</value>
+  </data>
+  <data name="CMD_Heading2" xml:space="preserve">
+    <value>Mark Heading 2</value>
+  </data>
+  <data name="CMD_Heading3" xml:space="preserve">
+    <value>Mark Heading 3</value>
+  </data>
+  <data name="CMD_UnorderedList" xml:space="preserve">
+    <value>Mark Unordered List</value>
+  </data>
+  <data name="CMD_MarkHighlight" xml:space="preserve">
+    <value>Toggle Highlight Mark
+Ctrl: toggle and select next.</value>
+  </data>
+  <data name="CMD_MarkUnderline" xml:space="preserve">
+    <value>Toggle Underline Mark
+Ctrl: toggle and select next.</value>
+  </data>
+  <data name="T_RepeatCommandOnSelection" xml:space="preserve">
+    <value>Right click: repeat command on subsequent selection (Esc to cancel)</value>
+  </data>
+  <data name="CMD_MarkQuotation" xml:space="preserve">
+    <value>Mark Quotation</value>
+  </data>
+  <data name="T_Headings" xml:space="preserve">
+    <value>Headings</value>
+  </data>
+  <data name="OT_HideCopilotButton" xml:space="preserve">
+    <value>Hide Github Copilot button</value>
+  </data>
+  <data name="OT_HideInfoBadgeButton" xml:space="preserve">
+    <value>Hide version info badge button</value>
+  </data>
+  <data name="OT_SymbolDefinitionColor" xml:space="preserve">
+    <value>Symbol definition:</value>
+  </data>
+  <data name="CMD_InvertBrightness" xml:space="preserve">
+    <value>Invert brightness</value>
   </data>
 </root>

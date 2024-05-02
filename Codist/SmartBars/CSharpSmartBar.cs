@@ -10,6 +10,7 @@ using Codist.Controls;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text.Tagging;
@@ -36,6 +37,8 @@ namespace Codist.SmartBars
 			_SymbolListContainer = TextViewOverlay.GetOrCreate(view);
 			view.Closed += View_Closed;
 		}
+
+		protected override BarType Type => BarType.CSharp;
 
 		ToolBar MyToolBar => ToolBar2;
 
@@ -140,13 +143,20 @@ namespace Codist.SmartBars
 								goto case SyntaxKind.IdentifierToken;
 							}
 							if (View.Selection.StreamSelectionSpan.Length < 4
-								&& (tokenKind >= SyntaxKind.TildeToken && tokenKind <= SyntaxKind.PercentEqualsToken
+								&& (tokenKind.IsBetween(SyntaxKind.TildeToken, SyntaxKind.PercentEqualsToken)
 									|| tokenKind.CeqAny(SyntaxKind.IsKeyword, SyntaxKind.AsKeyword))
 								&& SelectionIs<SyntaxNode>()) {
 								AddCommand(MyToolBar, IconIds.SelectBlock, R.CMD_SelectBlock, SelectNodeAsKind<SyntaxNode>);
 							}
-							else if (tokenKind >= SyntaxKind.NumericLiteralToken && tokenKind <= SyntaxKind.StringLiteralToken) {
+							else if (tokenKind.IsBetween(SyntaxKind.NumericLiteralToken, SyntaxKind.StringLiteralToken)
+								|| tokenKind.CeqAny(CodeAnalysisHelper.SingleLineRawStringLiteralToken, CodeAnalysisHelper.MultiLineRawStringLiteralToken)) {
+								if (token.Span.Length > View.Selection.StreamSelectionSpan.Length) {
+									AddCommand(MyToolBar, IconIds.SelectText, R.CMD_SelectBlock, SelectNodeAsKind<SyntaxNode>);
+								}
 								AddEditorCommand(MyToolBar, IconIds.FindReference, "Edit.FindAllReferences", R.CMD_FindAllReferences);
+							}
+							else if (tokenKind.CeqAny(SyntaxKind.InterpolatedStringStartToken, SyntaxKind.InterpolatedStringEndToken, SyntaxKind.InterpolatedStringTextToken, SyntaxKind.InterpolatedStringToken)) {
+								AddCommand(MyToolBar, IconIds.SelectText, R.CMD_SelectBlock, SelectNodeAsKind<InterpolatedStringExpressionSyntax>);
 							}
 							break;
 					}
@@ -337,7 +347,8 @@ namespace Codist.SmartBars
 		bool SelectionIs<TNode>() where TNode : SyntaxNode {
 			var s = View.Selection.SelectedSpans.FirstOrDefault().ToTextSpan();
 			foreach (var item in _Context.NodeIncludeTrivia.AncestorsAndSelf()) {
-				if (item is TNode && item.Span.Contains(s) && item.Span != s) {
+				TextSpan span;
+				if (item is TNode && (span = item.Span).Contains(s) && span != s) {
 					return true;
 				}
 			}
@@ -347,7 +358,8 @@ namespace Codist.SmartBars
 		void SelectNodeAsKind<TNode>(CommandContext ctx) where TNode : SyntaxNode {
 			var s = View.Selection.SelectedSpans.FirstOrDefault().ToTextSpan();
 			foreach (var item in _Context.NodeIncludeTrivia.AncestorsAndSelf()) {
-				if (item is TNode && item.Span.Contains(s) && item.Span != s) {
+				TextSpan span;
+				if (item is TNode && (span = item.Span).Contains(s) && span != s) {
 					ctx.KeepToolBar(false);
 					item.SelectNode(false);
 					ctx.KeepToolBar(true);
@@ -357,12 +369,7 @@ namespace Codist.SmartBars
 		}
 
 		void AddCommentCommands() {
-			AddCommand(MyToolBar, IconIds.Comment, R.CMD_CommentSelection, ctx => {
-				if (ctx.RightClick) {
-					ctx.View.ExpandSelectionToLine();
-				}
-				TextEditorHelper.ExecuteEditorCommand("Edit.CommentSelection");
-			});
+			AddCommentCommand(MyToolBar);
 			if (View.TryGetFirstSelectionSpan(out var ss) && ss.Length < 0x2000) {
 				foreach (var t in _Context.Compilation.DescendantTrivia(ss.ToTextSpan())) {
 					if (t.IsKind(SyntaxKind.SingleLineCommentTrivia)) {
@@ -427,8 +434,14 @@ namespace Codist.SmartBars
 					AddCommand(MyToolBar, IconIds.DeleteType, R.CMD_DeleteEnum, DeleteCurrentNode);
 					break;
 				case SyntaxKind.VariableDeclarator:
-					if (node.Parent?.Parent.IsKind(SyntaxKind.FieldDeclaration) == true) {
-						AddEditorCommand(MyToolBar, IconIds.EncapsulateField, "Refactor.EncapsulateField", R.CMD_EncapsulateField);
+					if ((node = node.Parent?.Parent).IsAnyKind(SyntaxKind.FieldDeclaration, SyntaxKind.EventFieldDeclaration)) {
+						if (node.IsKind(SyntaxKind.FieldDeclaration) && ((FieldDeclarationSyntax)node).Declaration.Variables.Count == 1) {
+							AddEditorCommand(MyToolBar, IconIds.EncapsulateField, "Refactor.EncapsulateField", R.CMD_EncapsulateField);
+							AddCommand(MyToolBar, IconIds.DeleteField, R.CMD_DeleteField, DeleteParentDeclaration);
+						}
+						else if (node.IsKind(SyntaxKind.EventFieldDeclaration) && ((EventFieldDeclarationSyntax)node).Declaration.Variables.Count == 1) {
+							AddCommand(MyToolBar, IconIds.DeleteEvent, R.CMD_DeleteEvent, DeleteParentDeclaration);
+						}
 					}
 					break;
 			}
@@ -440,6 +453,14 @@ namespace Codist.SmartBars
 			ctx.View.Edit(node, (view, n, edit) => edit.Delete(n.FullSpan.ToSpan()));
 		}
 
+		void DeleteParentDeclaration(CommandContext ctx) {
+			var node = _Context.Node.Parent?.Parent;
+			if (node != null) {
+				ctx.View.SelectNode(node, true);
+				ctx.View.Edit(node, (view, n, edit) => edit.Delete(n.FullSpan.ToSpan()));
+			}
+		}
+
 		void AddXmlDocCommands() {
 			AddCommand(MyToolBar, IconIds.TagCode, R.CMD_TagXmlDocC, ctx => WrapWith(ctx, "<c>", "</c>", true));
 			AddCommand(MyToolBar, IconIds.TagXmlDocSee, R.CMD_TagXmlDocSee, WrapXmlDocSee);
@@ -448,12 +469,7 @@ namespace Codist.SmartBars
 			AddCommand(MyToolBar, IconIds.TagItalic, R.CMD_TagXmlDocI, ctx => WrapWith(ctx, "<i>", "</i>", true));
 			AddCommand(MyToolBar, IconIds.TagUnderline, R.CMD_TagXmlDocU, ctx => WrapWith(ctx, "<u>", "</u>", true));
 			AddCommand(MyToolBar, IconIds.TagHyperLink, R.CMD_TagXmlDocA, MakeUrl);
-			AddCommand(MyToolBar, IconIds.Comment, R.CMD_CommentSelection, ctx => {
-				if (ctx.RightClick) {
-					ctx.View.ExpandSelectionToLine();
-				}
-				TextEditorHelper.ExecuteEditorCommand("Edit.CommentSelection");
-			});
+			AddCommentCommand(MyToolBar);
 		}
 
 		void WrapXmlDocSee(CommandContext ctx) {
@@ -489,7 +505,7 @@ namespace Codist.SmartBars
 					edit.Replace(item, (SyntaxFacts.GetKeywordKind(t) != SyntaxKind.None ? "<see langword=\"" : "<see cref=\"") + t + "\"/>");
 					NEXT:;
 				}
-				if (t != null && Keyboard.Modifiers.MatchFlags(ModifierKeys.Control | ModifierKeys.Shift)
+				if (t != null && ctx.ModifierKeys.MatchFlags(ModifierKeys.Control | ModifierKeys.Shift)
 					&& FindNext(arg.ctx, t) == false) {
 					arg.ctx.HideToolBar();
 				}

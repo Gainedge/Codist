@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Windows.Forms;
+using System.Linq;
+using Codist.Controls;
 using Microsoft.VisualStudio.Text;
 
 namespace Codist.Taggers
@@ -13,6 +15,9 @@ namespace Codist.Taggers
 
 		// hack We assume that it is thread-safe to organize the tags with this
 		readonly SortedSet<TaggedContentSpan> _Tags = new SortedSet<TaggedContentSpan>(Comparer<TaggedContentSpan>.Create((x, y) => {
+			if (ReferenceEquals(x, y)) {
+				return 0;
+			}
 			var s1 = x.Start;
 			var s2 = y.Start;
 			return s1 < s2 ?
@@ -27,14 +32,14 @@ namespace Codist.Taggers
 		public bool HasTag => _Tags.Count > 0;
 		public int Count => _Tags.Count;
 
-		public TaggedContentSpan GetPrecedingTaggedSpan(int position) {
+		public TaggedContentSpan GetPrecedingTaggedSpan(SnapshotPoint position, Predicate<TaggedContentSpan> predicate) {
 			var tags = _Tags;
 			TaggedContentSpan t = null;
-			foreach (var tag in tags.Reverse()) {
-				if (tag.Contains(position)) {
+			foreach (var tag in tags.GetViewBetween(new TaggedContentSpan(0, 0), new TaggedContentSpan(position.Position + 1, 0)).Reverse()) {
+				if (tag.Contains(position) && predicate(tag)) {
 					return tag;
 				}
-				if (position > tag.Start && (t == null || tag.Start > t.Start)) {
+				if (position > tag.Start && (t == null || tag.Start > t.Start) && predicate(tag)) {
 					t = tag;
 				}
 			}
@@ -45,9 +50,14 @@ namespace Codist.Taggers
 			var tags = _Tags;
 			var r = new TaggedContentSpan[tags.Count];
 			tags.CopyTo(r);
-			Array.Sort(r, (x, y) => x.Start - y.Start);
+			//Array.Sort(r, (x, y) => x.Start - y.Start);
 			return r;
 		}
+		public ImmutableArray<TaggedContentSpan> GetTags(Func<TaggedContentSpan, bool> predicate) {
+			return ImmutableArray.CreateRange(_Tags.Where(predicate))
+				.Sort((x, y) => x.Start - y.Start);
+		}
+
 		public TaggedContentSpan Add(TaggedContentSpan tag) {
 			if (IsLocked) {
 				return tag;
@@ -81,7 +91,7 @@ namespace Codist.Taggers
 				LastParsed = args.Before.GetLineFromPosition(args.Changes[0].OldPosition).Start.Position;
 			}
 			catch (ArgumentOutOfRangeException) {
-				MessageBox.Show(String.Join("\n",
+				MessageWindow.Error(String.Join("\n",
 					"Code margin exception:", args.Changes[0].OldPosition,
 					"Before length:", args.Before.Length,
 					"After length:", after.Length

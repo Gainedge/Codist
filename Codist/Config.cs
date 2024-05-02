@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Windows;
 using System.Windows.Media;
 using CLR;
 using Codist.Margins;
@@ -15,7 +16,7 @@ namespace Codist
 {
 	sealed class Config
 	{
-		internal const string CurrentVersion = "7.7.0";
+		internal const string CurrentVersion = "7.8.0";
 		const string ThemePrefix = "res:";
 		const int DefaultIconSize = 20;
 		internal const string LightTheme = ThemePrefix + "Light",
@@ -35,8 +36,6 @@ namespace Codist
 
 		public string Version { get; set; }
 		internal InitStatus InitStatus { get; private set; }
-		public string LogPath { get => LogHelper.LogPath; set => LogHelper.LogPath = value; }
-		public bool ShouldSerializeLogPath() => String.IsNullOrEmpty(LogPath) == false;
 
 		[DefaultValue(Features.All)]
 		public Features Features { get; set; } = Features.Default;
@@ -70,6 +69,8 @@ namespace Codist
 
 		[DefaultValue(JumpListOptions.Default)]
 		public JumpListOptions JumpListOptions { get; set; } = JumpListOptions.Default;
+
+		public AutoSurroundSelectionOptions AutoSurroundSelectionOptions { get; set; }
 
 		[DefaultValue(0d)]
 		public double TopSpace { get; set; }
@@ -119,6 +120,7 @@ namespace Codist
 		public string BrowserParameter { get; set; }
 		public string TaskManagerPath { get; set; }
 		public string TaskManagerParameter { get; set; }
+		public string SyntaxHighlightThemeFolder { get; set; }
 		internal bool IsChanged => _ConfigManager?.IsChanged ?? false;
 
 		public static void RegisterLoadHandler(Action<Config> handler) {
@@ -166,13 +168,14 @@ namespace Codist
 			$"Error: {handler} has not been registered as update handler".Log();
 		}
 
-		public static Config InitConfig() {
+		static Config InitConfig() {
 			if (File.Exists(ConfigPath) == false) {
 				var config = GetDefaultConfig();
 				config.InitStatus = InitStatus.FirstLoad;
 				return config;
 			}
 			try {
+				"Begin load config".Log();
 				var config = InternalLoadConfig(ConfigPath, StyleFilters.None);
 				if (System.Version.TryParse(config.Version, out var v) == false
 					|| v < System.Version.Parse(CurrentVersion)) {
@@ -269,10 +272,28 @@ namespace Codist
 				Instance.Styles = config.Styles;
 				return Instance;
 			}
-			Display.LayoutOverride.Reload(config.DisplayOptimizations);
-			Display.ResourceMonitor.Reload(config.DisplayOptimizations);
+
+			if (Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskContext.IsOnMainThread
+				&& Application.Current.MainWindow.Visibility == Visibility.Visible) {
+				UpdateDisplay(config);
+			}
+			//else {
+			//	Application.Current.MainWindow.IsVisibleChanged += MainWindow_IsVisibleChanged;
+			//}
 			"Config loaded".Log();
 			return config;
+		}
+
+		static void UpdateDisplay(Config config) {
+			Display.LayoutOverride.Reload(config.DisplayOptimizations);
+			Display.ResourceMonitor.Reload(config.DisplayOptimizations);
+		}
+
+		static void MainWindow_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e) {
+			//if ((bool)e.NewValue) {
+			//	Application.Current.MainWindow.IsVisibleChanged -= MainWindow_IsVisibleChanged;
+			//	UpdateDisplay(Instance);
+			//}
 		}
 
 		public static void ResetStyles() {
@@ -422,6 +443,9 @@ namespace Codist
 		}
 		internal void Set(JumpListOptions options, bool set) {
 			JumpListOptions = JumpListOptions.SetFlags(options, set);
+		}
+		internal void Set(AutoSurroundSelectionOptions options, bool set) {
+			AutoSurroundSelectionOptions = AutoSurroundSelectionOptions.SetFlags(options, set);
 		}
 
 		static void LoadStyleEntries<TStyle, TStyleType> (List<TStyle> styles, bool removeFontNames)
@@ -712,7 +736,7 @@ namespace Codist
 		WrapText = 1 << 6,
 		JumpList = 1 << 7,
 		AutoSurround = 1 << 8,
-		Default = SyntaxHighlight | ScrollbarMarkers | SuperQuickInfo | SmartBar | NaviBar | WebSearch | WrapText | JumpList,
+		Default = SyntaxHighlight | ScrollbarMarkers | SuperQuickInfo | SmartBar | NaviBar | WebSearch | WrapText,
 		All = Default | AutoSurround
 	}
 
@@ -726,10 +750,13 @@ namespace Codist
 		HideSearchBox = 1 << 3,
 		HideFeedbackBox = 1 << 4,
 		HideAccountBox = 1 << 5,
-		ShowCpu = 1 << 6,
-		ShowMemory = 1 << 7,
-		ShowDrive = 1 << 8,
-		ShowNetwork = 1	<< 9,
+		HideCopilotButton = 1 << 6,
+		HideInfoBadgeButton = 1 << 7,
+		HideUIElements = HideSearchBox | HideFeedbackBox | HideAccountBox | HideCopilotButton | HideInfoBadgeButton,
+		ShowCpu = 1 << 10,
+		ShowMemory = 1 << 11,
+		ShowDrive = 1 << 12,
+		ShowNetwork = 1	<< 13,
 		ResourceMonitors = ShowCpu | ShowMemory | ShowDrive | ShowNetwork
 	}
 
@@ -800,14 +827,24 @@ namespace Codist
 	public enum SpecialHighlightOptions
 	{
 		None,
+		// comment tagger
 		SpecialComment = 1,
-		DeclarationBrace = 1 << 1,
-		ParameterBrace = 1 << 2,
-		SymbolIdentifier = 1 << 3,
-		BranchBrace = 1 << 4,
-		LoopBrace = 1 << 5,
-		ResourceBrace = 1 << 6,
-		CastBrace = 1 << 7,
+		SemanticPunctuation = 1 << 1,
+		[Obsolete]
+		DeclarationBrace = SemanticPunctuation,
+		[Obsolete]
+		ParameterBrace = SemanticPunctuation,
+		[Obsolete]
+		BranchBrace = SemanticPunctuation,
+		[Obsolete]
+		LoopBrace = SemanticPunctuation,
+		[Obsolete]
+		ResourceBrace = SemanticPunctuation,
+		[Obsolete]
+		CastBrace = SemanticPunctuation,
+		BoldSemanticPunctuation = 1 << 8,
+		// bold semantic punctuation
+		[Obsolete]
 		SpecialPunctuation = 1 << 8,
 		LocalFunctionDeclaration = 1 << 10,
 		NonPrivateField = 1 << 11,
@@ -816,7 +853,7 @@ namespace Codist
 		SearchResult = 1 << 20,
 		Default = SpecialComment,
 		AllParentheses = ParameterBrace | CastBrace | BranchBrace | LoopBrace | ResourceBrace,
-		AllBraces = DeclarationBrace | ParameterBrace | CastBrace | BranchBrace | LoopBrace | ResourceBrace | SpecialPunctuation
+		AllBraces = DeclarationBrace | ParameterBrace | CastBrace | BranchBrace | LoopBrace | ResourceBrace | BoldSemanticPunctuation
 	}
 
 	[Flags]
@@ -918,6 +955,13 @@ namespace Codist
 		DemostrationMode = 1 << 1,
 		NoScaling = 1 << 2,
 		Default = SafeMode | DemonstrationMode | NoScaling
+	}
+
+	[Flags]
+	public enum AutoSurroundSelectionOptions
+	{
+		None,
+		Trim
 	}
 
 	public enum ScrollbarMarkerStyle

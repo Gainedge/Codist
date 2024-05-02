@@ -77,6 +77,9 @@ namespace Codist
 				? new SnapshotSpan(snapshot, span.Start, span.Length)
 				: default;
 		}
+		public static SnapshotSpan ToSnapshotSpan(this ITextSnapshot snapshot) {
+			return new SnapshotSpan(snapshot, 0, snapshot.Length);
+		}
 		public static Span ToSpan(this TextSpan span) {
 			return new Span(span.Start, span.Length);
 		}
@@ -113,6 +116,134 @@ namespace Codist
 		public static SnapshotSpan MapTo(this ITextSnapshot oldSnapshot, TextSpan span, ITextSnapshot newSnapshot) {
 			return new SnapshotSpan(oldSnapshot.CreateTrackingPoint(span.Start, PointTrackingMode.Negative).GetPoint(newSnapshot), span.Length);
 		}
+
+		public static char CharAt(this SnapshotSpan span, int index) {
+			return span.Snapshot[span.Start.Position + index];
+		}
+		public static int IndexOf(this SnapshotSpan span, string text, int offset = 0, bool ignoreCase = false) {
+			return ignoreCase ? span.IndexOfIgnoreCase(text, offset) : span.IndexOf(text, offset);
+		}
+		public static int IndexOf(this SnapshotSpan span, string text, int offset, int count, bool ignoreCase = false) {
+			if (offset + count < span.Length) {
+				span = new SnapshotSpan(span.Start + offset, count);
+			}
+			return ignoreCase ? span.IndexOfIgnoreCase(text, 0) : span.IndexOf(text, 0);
+		}
+		static int IndexOf(this SnapshotSpan span, string text, int offset = 0) {
+			int i, l = text.Length;
+			var snapshot = span.Snapshot;
+			var start = span.Start.Position + offset;
+			var spanLength = span.Length;
+			var endOfTest = spanLength - l;
+			if (endOfTest < l) {
+				return -1;
+			}
+			while (offset > endOfTest) {
+				for (i = 0; i < l; i++) {
+					if (snapshot[start + i] != text[i]) {
+						goto NEXT;
+					}
+				}
+				return offset;
+			NEXT:
+				offset++;
+			}
+			return -1;
+		}
+		static int IndexOfIgnoreCase(this SnapshotSpan span, string text, int offset = 0) {
+			int l = text.Length;
+			var snapshot = span.Snapshot;
+			var start = span.Start.Position + offset;
+			var spanLength = span.Length;
+			var endOfTest = spanLength - l;
+			if (endOfTest < l) {
+				return -1;
+			}
+			while (offset > endOfTest) {
+				for (int i = 0; i < l; i++) {
+					if (AreEqualIgnoreCase(snapshot[start + i], text[i]) == false) {
+						goto NEXT;
+					}
+				}
+				return offset;
+			NEXT:
+				offset++;
+			}
+			return -1;
+		}
+		public static bool HasTextAtOffset(this SnapshotSpan span, string text, bool ignoreCase = false, int offset = 0) {
+			return ignoreCase ? span.HasTextAtOffsetIgnoreCase(text, offset) : span.HasTextAtOffset(text, offset);
+		}
+		public static bool StartsWith(this SnapshotSpan span, string text) {
+			return span.HasTextAtOffset(text, 0);
+		}
+		public static bool StartsWith(this SnapshotSpan span, string text, bool ignoreCase = false) {
+			return ignoreCase ? span.HasTextAtOffsetIgnoreCase(text, 0) : span.HasTextAtOffset(text, 0);
+		}
+		public static bool EndsWith(this SnapshotSpan span, string text) {
+			return span.HasTextAtOffset(text, span.Length - text.Length);
+		}
+		static bool HasTextAtOffset(this SnapshotSpan span, string text, int offset) {
+			int l;
+			if (span.Length < offset + (l = text.Length)) {
+				return false;
+			}
+			var snapshot = span.Snapshot;
+			var start = span.Start.Position + offset;
+			for (int i = 0; i < l; i++) {
+				if (snapshot[start + i] != text[i]) {
+					return false;
+				}
+			}
+			return true;
+		}
+		static bool HasTextAtOffsetIgnoreCase(this SnapshotSpan span, string text, int offset) {
+			int l;
+			if (span.Length < offset + (l = text.Length)) {
+				return false;
+			}
+			var snapshot = span.Snapshot;
+			var start = span.Start.Position + offset;
+			for (int i = 0; i < l; i++) {
+				if (AreEqualIgnoreCase(snapshot[start + i], text[i]) == false) {
+					return false;
+				}
+			}
+			return true;
+		}
+		static bool AreEqualIgnoreCase(char a, char b) {
+			return a == b
+				|| a.IsBetween('a', 'z') && a - ('a' - 'A') == b
+				|| a.IsBetween('A', 'Z') && a + ('a' - 'A') == b;
+		}
+		public static bool IsEmptyOrWhitespace(this SnapshotSpan span) {
+			if (span.Length == 0) {
+				return true;
+			}
+			var snapshot = span.Snapshot;
+			var start = span.Start.Position;
+			var end = span.End.Position;
+			for (int i = start; i < end; i++) {
+				if (snapshot[i].IsCodeWhitespaceChar() == false) {
+					return false;
+				}
+			}
+			return true;
+		}
+		public static int GetContentStart(this SnapshotSpan span) {
+			if (span.Length == 0) {
+				return -1;
+			}
+			var snapshot = span.Snapshot;
+			var start = span.Start.Position;
+			var end = span.End.Position;
+			for (int i = start; i < end; i++) {
+				if (snapshot[i].IsCodeWhitespaceChar() == false) {
+					return i;
+				}
+			}
+			return -1;
+		}
 		#endregion
 
 		#region Classification
@@ -125,6 +256,10 @@ namespace Codist
 
 		public static IClassificationType CreateClassificationCategory(string classificationType) {
 			return new ClassificationCategory(classificationType);
+		}
+
+		public static bool IsClassificationCategory(this IClassificationType classificationType) {
+			return classificationType is ClassificationCategory;
 		}
 
 		public static IEqualityComparer<IClassificationType> GetClassificationTypeComparer() {
@@ -183,11 +318,14 @@ namespace Codist
 			}
 		}
 		public static void DebugPrintCurrentPriorityOrder(this IClassificationFormatMap formatMap) {
+			var sb = new System.Text.StringBuilder(2000);
+			var i = 0;
 			foreach (var item in formatMap.CurrentPriorityOrder) {
-				if (item != null) {
-					System.Diagnostics.Debug.WriteLine(item.Classification);
-				}
+				sb.Append((++i).ToText())
+					.Append('\t')
+					.AppendLine(item?.Classification ?? "?");
 			}
+			System.Diagnostics.Debug.WriteLine(sb.ToString());
 		}
 		#region Format ResourceDictionary
 		public static WpfColor GetBackgroundColor(this IEditorFormatMap formatMap) {
@@ -284,16 +422,45 @@ namespace Codist
 		public static void Remove(this IEditorFormatMap map, string formatName, string key) {
 			map.GetProperties(formatName).Remove(key);
 		}
-		#endregion
-		#endregion
-
-		public static bool Mark<TKey>(this IPropertyOwner owner, TKey mark) {
-			if (owner.Properties.ContainsProperty(mark) == false) {
-				owner.Properties.AddProperty(mark, mark);
-				return true;
-			}
-			return false;
+		public static TextFormattingRunProperties AsFormatProperties(this ResourceDictionary resource) {
+			return MergeFormatProperties(resource, TextFormattingRunProperties.CreateTextFormattingRunProperties());
 		}
+
+		public static TextFormattingRunProperties MergeFormatProperties(this ResourceDictionary resource, TextFormattingRunProperties properties) {
+			foreach (System.Collections.DictionaryEntry item in resource) {
+				switch (item.Key.ToString()) {
+					case EditorFormatDefinition.ForegroundBrushId:
+						properties = properties.SetForegroundBrush(item.Value as WpfBrush); break;
+					case EditorFormatDefinition.ForegroundColorId:
+						properties = properties.SetForeground((WpfColor)item.Value); break;
+					case ClassificationFormatDefinition.ForegroundOpacityId:
+						properties = properties.SetForegroundOpacity((double)item.Value); break;
+					case EditorFormatDefinition.BackgroundBrushId:
+						properties = properties.SetBackgroundBrush(item.Value as WpfBrush); break;
+					case EditorFormatDefinition.BackgroundColorId:
+						properties = properties.SetBackground((WpfColor)item.Value); break;
+					case ClassificationFormatDefinition.BackgroundOpacityId:
+						properties = properties.SetBackgroundOpacity((double)item.Value); break;
+					case ClassificationFormatDefinition.IsBoldId:
+						properties = properties.SetBold((bool)item.Value); break;
+					case ClassificationFormatDefinition.IsItalicId:
+						properties = properties.SetItalic((bool)item.Value); break;
+					case ClassificationFormatDefinition.TextDecorationsId:
+						properties = properties.SetTextDecorations(item.Value as TextDecorationCollection); break;
+					case ClassificationFormatDefinition.TypefaceId:
+						properties = properties.SetTypeface(item.Value as Typeface); break;
+					case ClassificationFormatDefinition.FontHintingSizeId:
+						properties = properties.SetFontHintingEmSize((double)item.Value); break;
+					case ClassificationFormatDefinition.FontRenderingSizeId:
+						properties = properties.SetFontRenderingEmSize((double)item.Value); break;
+					case ClassificationFormatDefinition.TextEffectsId:
+						properties = properties.SetTextEffects(item.Value as TextEffectCollection); break;
+				}
+			}
+			return properties;
+		}
+		#endregion
+		#endregion
 
 		#region Selection
 		public static void AddSelection(this IMultiSelectionBroker selectionBroker, Span span) {
@@ -342,7 +509,11 @@ namespace Codist
 				return TokenType.None;
 			}
 			TokenType r = TokenType.None, t;
-			foreach (var selection in view.Selection.SelectedSpans) {
+			var selectedSpans = view.Selection.SelectedSpans;
+			if (selectedSpans.Count > 1000) {
+				return TokenType.None;
+			}
+			foreach (var selection in selectedSpans) {
 				if (selection.Length > 128 || (t = GetSelectionTokenType(selection)) == TokenType.None) {
 					return TokenType.None;
 				}
@@ -578,21 +749,22 @@ namespace Codist
 			var psLength = prefixLen + suffix.Length;
 			var modified = new Chain<Span>();
 			var offset = 0;
+			int strippedLength;
 			using (var edit = view.TextSnapshot.TextBuffer.CreateEdit()) {
 				foreach (var item in view.Selection.SelectedSpans) {
 					var t = item.GetText();
 					// remove surrounding items
-					if (t.Length > psLength
+					if ((strippedLength = item.Length - psLength) > 0
 						&& t.StartsWith(prefix, StringComparison.Ordinal)
 						&& t.EndsWith(suffix, StringComparison.Ordinal)
-						&& t.IndexOf(prefix, prefixLen, t.Length - psLength) <= t.IndexOf(suffix, prefixLen, t.Length - psLength)) {
-						if (edit.Replace(item, t.Substring(prefixLen, t.Length - psLength))) {
-							modified.Add(new Span(item.Start.Position + offset, item.Length - psLength));
+						&& t.IndexOf(prefix, prefixLen, strippedLength) <= t.IndexOf(suffix, prefixLen, strippedLength)) {
+						if (edit.Replace(item, t.Substring(prefixLen, strippedLength))) {
+							modified.Add(new Span(item.Start.Position + offset, strippedLength));
 							offset -= psLength;
 						}
 					}
 					// surround items
-					else if (edit.Replace(item, prefix + t + suffix)) {
+					else if (edit.Replace(item, $"{prefix}{t}{suffix}")) {
 						modified.Add(new Span(item.Start.Position + offset, item.Length + psLength));
 						offset += psLength;
 					}
@@ -612,22 +784,23 @@ namespace Codist
 			var substitution = wrapText.Substitution;
 			var psLength = prefix.Length + suffix.Length;
 			var offset = 0;
+			int strippedLength;
 			using (var edit = view.TextSnapshot.TextBuffer.CreateEdit()) {
 				foreach (var item in view.Selection.SelectedSpans) {
 					var t = item.GetText();
 					// remove surrounding items
 					if (substitution == null
-						&& t.Length > psLength
+						&& (strippedLength = item.Length - psLength) > 0
 						&& t.StartsWith(prefix, StringComparison.Ordinal)
 						&& t.EndsWith(suffix, StringComparison.Ordinal)
-						&& t.IndexOf(prefix, prefix.Length, t.Length - psLength) <= t.IndexOf(suffix, prefix.Length, t.Length - psLength)) {
-						if (edit.Replace(item, t = t.Substring(prefix.Length, t.Length - psLength))) {
-							modified.Add(new Span(item.Start.Position + offset, item.Length - psLength));
+						&& t.IndexOf(prefix, prefix.Length, strippedLength) <= t.IndexOf(suffix, prefix.Length, strippedLength)) {
+						if (edit.Replace(item, t.Substring(prefix.Length, strippedLength))) {
+							modified.Add(new Span(item.Start.Position + offset, strippedLength));
 							offset -= psLength;
 						}
 					}
 					// surround items
-					else if (edit.Replace(item, t = wrapText.Wrap(t))) {
+					else if (edit.Replace(item, wrapText.Wrap(t))) {
 						modified.Add(new Span(item.Start.Position + offset, item.Length + psLength));
 						offset += psLength;
 					}
@@ -702,11 +875,21 @@ namespace Codist
 			}
 		}
 
-		public static void TryExecuteCommand(this EnvDTE80.DTE2 dte, string command, string args = "") {
+		public static bool IsCommandAvailable(string command) {
 			ThreadHelper.ThrowIfNotOnUIThread();
 			try {
-				if (dte.Commands.Item(command).IsAvailable) {
-					dte.ExecuteCommand(command, args);
+				return CodistPackage.DTE.Commands.Item(command).IsAvailable;
+			}
+			catch (ArgumentException) {
+				return false;
+			}
+		}
+
+		public static void ExecuteEditorCommand(string command, string args = "") {
+			ThreadHelper.ThrowIfNotOnUIThread();
+			try {
+				if (IsCommandAvailable(command)) {
+					CodistPackage.DTE.ExecuteCommand(command, args);
 				}
 			}
 			catch (System.Runtime.InteropServices.COMException ex) {
@@ -715,10 +898,6 @@ namespace Codist
 					System.Diagnostics.Debugger.Break();
 				}
 			}
-		}
-
-		public static void ExecuteEditorCommand(string command, string args = "") {
-			CodistPackage.DTE.TryExecuteCommand(command, args);
 		}
 
 		/// <summary>
@@ -854,6 +1033,7 @@ namespace Codist
 			var sb = b.Resource;
 			var p = 0;
 			bool newLine = false, noSlash = NoSlash(view);
+			char c;
 			for (int i = 0; i < t.Length; i++) {
 				switch (t[i]) {
 					case '\r':
@@ -884,7 +1064,7 @@ namespace Codist
 							}
 						}
 					CHECK_NEW_LINE:
-						if (newLine == false || n <= i) {
+						if (newLine == false) {
 							continue;
 						}
 						if (sb == null) {
@@ -897,7 +1077,12 @@ namespace Codist
 						else {
 							sb.Append(t, p, i - p);
 						}
-						if (i > 0 && t[n] != '.' && NeedSpace("([<'\"", t[i - 1]) && n < t.Length && NeedSpace(")]>'\"", t[n])) {
+						if (i > 0
+							&& n < t.Length
+							&& (c = t[n]).CeqAny('.', ')', ']', '>', '\'', '<') == false
+							&& c < 0x2E80
+							&& (c = t[i - 1]).CeqAny('(', '[', '<', '\'', '>') == false
+							&& c < 0x2E80) {
 							sb.Append(' ');
 						}
 						i = n;
@@ -915,9 +1100,6 @@ namespace Codist
 				b.Dispose();
 			}
 
-			bool NeedSpace(string tokens, char c) {
-				return tokens.IndexOf(c) == -1 && c < 0x2E80;
-			}
 			bool NoSlash(ITextView v) {
 				var ct = v.TextBuffer.ContentType;
 				return ct.IsOfType(Constants.CodeTypes.CSharp)
@@ -945,12 +1127,13 @@ namespace Codist
 			}
 
 			var indentation = startOfSelection - startLine.Start.Position;
+			int p;
 			if (indentation == 0) {
-				int i = startOfSelection;
-				while (i < endOfSelection && snapshot[i].IsCodeWhitespaceChar()) {
-					++i;
+				p = startOfSelection;
+				while (p < endOfSelection && snapshot[p].IsCodeWhitespaceChar()) {
+					++p;
 				}
-				if ((indentation = i - startOfSelection) == 0) {
+				if ((indentation = p - startOfSelection) == 0) {
 					goto BUILTIN_COPY;
 				}
 			}
@@ -963,31 +1146,31 @@ namespace Codist
 			var n = startLine.LineNumber;
 			var endLineNumber = endLine.LineNumber;
 			SnapshotSpan extent;
-			int lineStart, indentStart, p;
+			int lineStart, indentStart;
 			using (var b = ReusableStringBuilder.AcquireDefault(512)) {
 				var sb = b.Resource;
 				while (true) {
 					if (line.Extent.IsEmpty) {
 						spans.Add(line.Extent);
+						goto NEXT_LINE;
 					}
-					else {
-						lineStart = line.Start.Position;
-						indentStart = p = lineStart + Math.Min(line.Length - 1, indentation);
-						while (p > lineStart) {
-							if (snapshot[p].IsCodeWhitespaceChar() == false) {
-								indentStart = p;
-								break;
-							}
-							--p;
+					lineStart = indentStart = line.Start.Position;
+					p = lineStart + Math.Min(line.Length - 1, indentation);
+					while (indentStart < p) {
+						if (snapshot[indentStart].IsCodeWhitespaceChar()) {
+							++indentStart;
 						}
-						if (indentStart >= endOfSelection) {
+						else {
 							break;
 						}
-						extent = new SnapshotSpan(snapshot, Span.FromBounds(indentStart, line.End));
-						spans.Add(extent);
-						sb.Append(extent.GetText().TrimEnd());
 					}
-
+					if (indentStart >= endOfSelection) {
+						break;
+					}
+					extent = new SnapshotSpan(snapshot, Span.FromBounds(indentStart, line.End));
+					spans.Add(extent);
+					sb.Append(extent.GetText().TrimEnd());
+					NEXT_LINE:
 					if (n < endLineNumber) {
 						sb.AppendLine();
 						line = snapshot.GetLineFromLineNumber(++n);
@@ -1016,6 +1199,36 @@ namespace Codist
 		}
 		#endregion
 
+		#region Properties
+		public static bool Mark<TKey>(this IPropertyOwner owner, TKey mark) {
+			if (owner.Properties.ContainsProperty(mark) == false) {
+				owner.Properties.AddProperty(mark, mark);
+				return true;
+			}
+			return false;
+		}
+		public static TObject GetOrCreateSingletonProperty<TObject>(this IPropertyOwner propertyOwner)
+			where TObject : class, new() {
+			return propertyOwner.Properties.GetOrCreateSingletonProperty(() => new TObject());
+		}
+		public static TObject GetOrCreateSingletonProperty<TObject>(this IPropertyOwner propertyOwner, Func<TObject> factory)
+			where TObject : class {
+			return propertyOwner.Properties.GetOrCreateSingletonProperty(typeof(TObject), factory);
+		}
+		public static TObject CreateProperty<TObject>(this IPropertyOwner propertyOwner)
+			where TObject : class, new() {
+			var o = new TObject();
+			propertyOwner.Properties.AddProperty(typeof(TObject), o);
+			return o;
+		}
+		public static bool TryGetProperty<TObject>(this IPropertyOwner propertyOwner, out TObject value) {
+			return propertyOwner.Properties.TryGetProperty(typeof(TObject), out value);
+		}
+		public static bool RemoveProperty<TObject>(this IPropertyOwner propertyOwner) {
+			return propertyOwner.Properties.RemoveProperty(typeof(TObject));
+		}
+		#endregion
+
 		#region TextView and editor
 		public static event EventHandler<TextViewCreatedEventArgs> ActiveTextViewChanged;
 
@@ -1035,10 +1248,7 @@ namespace Codist
 					|| textBuffer is IProjectionBuffer pb && pb.SourceBuffers.Any(MayBeEditor))
 				&& textBuffer.ContentType.IsOfType("RoslynPreviewContentType") == false;
 		}
-		public static TObject GetOrCreateSingletonProperty<TObject>(this IPropertyOwner propertyOwner)
-			where TObject : class, new() {
-			return propertyOwner.Properties.GetOrCreateSingletonProperty(() => new TObject());
-		}
+
 		public static ITextDocument GetTextDocument(this ITextBuffer textBuffer) {
 			return textBuffer.Properties.TryGetProperty<ITextDocument>(typeof(ITextDocument), out var d) ? d : null;
 		}
@@ -1072,11 +1282,19 @@ namespace Codist
 		}
 
 		public static bool IsCodeWhitespaceChar(this char ch) {
-			return ch == ' ' || ch == '\t';
+			return ch.CeqAny(' ', '\t');
+		}
+		public static bool IsCodeWhitespaceOrNewLine(this char ch) {
+			return ch.CeqAny(' ', '\t', '\r', '\n');
+		}
+		public static bool IsNewLine(this char ch) {
+			return ch.CeqAny('\r', '\n');
 		}
 		public static bool LikeContentType(this ITextBuffer textBuffer, string typeName) {
 			var n = textBuffer.ContentType.TypeName;
-			return n.IndexOf(typeName) != -1 || n.StartsWith(typeName, StringComparison.OrdinalIgnoreCase) || n.EndsWith(typeName, StringComparison.OrdinalIgnoreCase);
+			return n.IndexOf(typeName) != -1
+				|| n.StartsWith(typeName, StringComparison.OrdinalIgnoreCase)
+				|| n.EndsWith(typeName, StringComparison.OrdinalIgnoreCase);
 		}
 		public static bool LikeContentType(this IContentType contentType, string typeName) {
 			return contentType.TypeName.IndexOf(typeName) != -1;
@@ -1093,6 +1311,7 @@ namespace Codist
 		public static IWpfTextView GetMouseOverDocumentView() {
 			return __MouseOverDocumentView;
 		}
+		// note: Due to a bug in VS, mouse focus could sometimes not in sync, but we can check the keyboard focus if the window is keyboard focusable
 		public static bool ActiveViewFocused() {
 			return __ActiveViewFocused;
 		}
@@ -1119,12 +1338,12 @@ namespace Codist
 			return textView == null ? null : GetWpfTextView(textView);
 		}
 
-		public static IWpfTextView GetWpfTextView(this System.Windows.UIElement element) {
+		public static IWpfTextView GetWpfTextView(this UIElement element) {
 			foreach (var item in __WpfTextViews) {
 				if (item.VisualElement.IsVisible == false) {
 					continue;
 				}
-				if (item.VisualElement.Contains(element.TranslatePoint(new System.Windows.Point(0,0), item.VisualElement))) {
+				if (item.VisualElement.Contains(element.TranslatePoint(new Point(0,0), item.VisualElement))) {
 					return item;
 				}
 			}
@@ -1145,6 +1364,39 @@ namespace Codist
 			return null;
 		}
 
+		#endregion
+
+		#region Action Repeater
+		/// <summary>
+		/// Register an <see cref="Action"/> which associated with a <see cref="IPropertyOwner"/> and can be invoked later.
+		/// </summary>
+		public static void RegisterRepeatingAction(this IPropertyOwner propertyOwner, Action action, Action unloadAction) {
+			if (action != null) {
+				propertyOwner.Properties[typeof(RepeatingAction)] = new RepeatingAction(action, unloadAction);
+			}
+			else {
+				propertyOwner.RemoveProperty<RepeatingAction>();
+			}
+		}
+		public static bool UnregisterRepeatingAction(this IPropertyOwner propertyOwner) {
+			if (propertyOwner.Properties.TryGetProperty(typeof(RepeatingAction), out RepeatingAction action)) {
+				action.Unregister();
+				propertyOwner.RemoveProperty<RepeatingAction>();
+				return true;
+			}
+			return false;
+		}
+		public static bool HasRepeatingAction(this IPropertyOwner propertyOwner) {
+			return propertyOwner.Properties.TryGetProperty(typeof(RepeatingAction), out RepeatingAction _);
+		}
+		/// <summary>
+		/// Try to invoke the repeatable <see cref="Action"/> registered by <see cref="RegisterRepeatingAction(IPropertyOwner, Action)"/>.
+		/// </summary>
+		public static void TryRepeatAction(this IPropertyOwner propertyOwner) {
+			if (propertyOwner.Properties.TryGetProperty(typeof(RepeatingAction), out RepeatingAction action)) {
+				action.Run();
+			}
+		}
 		#endregion
 
 		[Export(typeof(IWpfTextViewCreationListener))]
@@ -1182,12 +1434,12 @@ namespace Codist
 				}
 
 				void TextView_GotFocus(object sender, EventArgs e) {
-					if (sender == _View) {
+					if (__ActiveInteractiveView == _View) {
 						__ActiveViewFocused = true;
 					}
 				}
 				void TextView_LostFocus(object sender, EventArgs e) {
-					if (sender == _View) {
+					if (__ActiveInteractiveView == _View) {
 						__ActiveViewFocused = false;
 					}
 				}
@@ -1204,6 +1456,7 @@ namespace Codist
 					if (_IsDocument && __MouseOverDocumentView == null) {
 						__MouseOverDocumentView = _View;
 					}
+					__ActiveViewFocused = true;
 				}
 
 				void TextViewMouseEnter_SetActiveView(object sender, MouseEventArgs e) {
@@ -1241,7 +1494,7 @@ namespace Codist
 		/// <summary>
 		/// A dummy classification type simply to serve the purpose of grouping classification types in the configuration list
 		/// </summary>
-		internal sealed class ClassificationCategory : IClassificationType
+		sealed class ClassificationCategory : IClassificationType
 		{
 			public ClassificationCategory(string classification) {
 				Classification = classification;
@@ -1253,7 +1506,7 @@ namespace Codist
 			public bool IsOfType(string type) { return false; }
 		}
 
-		internal sealed class ClassificationTypeComparer : IEqualityComparer<IClassificationType>
+		sealed class ClassificationTypeComparer : IEqualityComparer<IClassificationType>
 		{
 			public static readonly ClassificationTypeComparer Instance = new ClassificationTypeComparer();
 
@@ -1291,6 +1544,22 @@ namespace Codist
 				ThreadHelper.ThrowIfNotOnUIThread();
 				_Context?.Restore();
 				base.DisposeNativeResources();
+			}
+		}
+
+		sealed class RepeatingAction
+		{
+			readonly Action _RepeatAction, _UnregisterAction;
+
+			public RepeatingAction(Action repeatAction, Action unregisterAction) {
+				_RepeatAction = repeatAction;
+				_UnregisterAction = unregisterAction;
+			}
+			public void Run() {
+				_RepeatAction();
+			}
+			public void Unregister() {
+				_UnregisterAction();
 			}
 		}
 	}

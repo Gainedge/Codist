@@ -369,6 +369,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Delete &lt;A&gt; Statement.
+        /// </summary>
+        internal static string CMD_DeleteAStatement {
+            get {
+                return ResourceManager.GetString("CMD_DeleteAStatement", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Delete &lt;if&gt; Condition.
         /// </summary>
         internal static string CMD_DeleteCondition {
@@ -401,6 +410,15 @@ namespace Codist.Properties {
         internal static string CMD_DeleteEvent {
             get {
                 return ResourceManager.GetString("CMD_DeleteEvent", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Delete Field.
+        /// </summary>
+        internal static string CMD_DeleteField {
+            get {
+                return ResourceManager.GetString("CMD_DeleteField", resourceCulture);
             }
         }
         
@@ -440,6 +458,24 @@ namespace Codist.Properties {
         internal static string CMD_DeleteSelectedText {
             get {
                 return ResourceManager.GetString("CMD_DeleteSelectedText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Delete Statement.
+        /// </summary>
+        internal static string CMD_DeleteStatement {
+            get {
+                return ResourceManager.GetString("CMD_DeleteStatement", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Delete Switch Section.
+        /// </summary>
+        internal static string CMD_DeleteSwitchSection {
+            get {
+                return ResourceManager.GetString("CMD_DeleteSwitchSection", resourceCulture);
             }
         }
         
@@ -499,7 +535,9 @@ namespace Codist.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Edit All Matching.
+        ///   Looks up a localized string similar to Edit All Matching
+        ///Ctrl: Match case
+        ///Shift: Match whole word.
         /// </summary>
         internal static string CMD_EditMatches {
             get {
@@ -540,6 +578,51 @@ namespace Codist.Properties {
         internal static string CMD_ExtractMethod {
             get {
                 return ResourceManager.GetString("CMD_ExtractMethod", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Filter to heading 1.
+        /// </summary>
+        internal static string CMD_FilterToHeading1 {
+            get {
+                return ResourceManager.GetString("CMD_FilterToHeading1", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Filter to heading 2.
+        /// </summary>
+        internal static string CMD_FilterToHeading2 {
+            get {
+                return ResourceManager.GetString("CMD_FilterToHeading2", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Filter to heading 3.
+        /// </summary>
+        internal static string CMD_FilterToHeading3 {
+            get {
+                return ResourceManager.GetString("CMD_FilterToHeading3", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Filter to heading 4.
+        /// </summary>
+        internal static string CMD_FilterToHeading4 {
+            get {
+                return ResourceManager.GetString("CMD_FilterToHeading4", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Filter to heading 5.
+        /// </summary>
+        internal static string CMD_FilterToHeading5 {
+            get {
+                return ResourceManager.GetString("CMD_FilterToHeading5", resourceCulture);
             }
         }
         
@@ -848,6 +931,33 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Mark Heading 1.
+        /// </summary>
+        internal static string CMD_Heading1 {
+            get {
+                return ResourceManager.GetString("CMD_Heading1", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Mark Heading 2.
+        /// </summary>
+        internal static string CMD_Heading2 {
+            get {
+                return ResourceManager.GetString("CMD_Heading2", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Mark Heading 3.
+        /// </summary>
+        internal static string CMD_Heading3 {
+            get {
+                return ResourceManager.GetString("CMD_Heading3", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Highlight.
         /// </summary>
         internal static string CMD_Highlight {
@@ -925,6 +1035,15 @@ namespace Codist.Properties {
         internal static string CMD_InsertComment {
             get {
                 return ResourceManager.GetString("CMD_InsertComment", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Invert brightness.
+        /// </summary>
+        internal static string CMD_InvertBrightness {
+            get {
+                return ResourceManager.GetString("CMD_InvertBrightness", resourceCulture);
             }
         }
         
@@ -1055,6 +1174,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Make Static.
+        /// </summary>
+        internal static string CMD_MakeStatic {
+            get {
+                return ResourceManager.GetString("CMD_MakeStatic", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Mark &lt;NAME&gt;.
         /// </summary>
         internal static string CMD_Mark {
@@ -1084,6 +1212,16 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Toggle Highlight Mark
+        ///Ctrl: toggle and select next..
+        /// </summary>
+        internal static string CMD_MarkHighlight {
+            get {
+                return ResourceManager.GetString("CMD_MarkHighlight", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Toggle Italic Mark
         ///Ctrl: toggle and select next.
         /// </summary>
@@ -1099,6 +1237,15 @@ namespace Codist.Properties {
         internal static string CMD_MarkLink {
             get {
                 return ResourceManager.GetString("CMD_MarkLink", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Mark Quotation.
+        /// </summary>
+        internal static string CMD_MarkQuotation {
+            get {
+                return ResourceManager.GetString("CMD_MarkQuotation", resourceCulture);
             }
         }
         
@@ -1119,6 +1266,16 @@ namespace Codist.Properties {
         internal static string CMD_MarkSymbol {
             get {
                 return ResourceManager.GetString("CMD_MarkSymbol", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Toggle Underline Mark
+        ///Ctrl: toggle and select next..
+        /// </summary>
+        internal static string CMD_MarkUnderline {
+            get {
+                return ResourceManager.GetString("CMD_MarkUnderline", resourceCulture);
             }
         }
         
@@ -1551,6 +1708,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Seal Record.
+        /// </summary>
+        internal static string CMD_SealRecord {
+            get {
+                return ResourceManager.GetString("CMD_SealRecord", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Search Type Member.
         /// </summary>
         internal static string CMD_SearchClassMember {
@@ -1675,6 +1841,15 @@ namespace Codist.Properties {
         internal static string CMD_SimpleTheme {
             get {
                 return ResourceManager.GetString("CMD_SimpleTheme", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Sort Lines.
+        /// </summary>
+        internal static string CMD_SortLines {
+            get {
+                return ResourceManager.GetString("CMD_SortLines", resourceCulture);
             }
         }
         
@@ -1900,6 +2075,15 @@ namespace Codist.Properties {
         internal static string CMD_UnmarkSymbol {
             get {
                 return ResourceManager.GetString("CMD_UnmarkSymbol", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Mark Unordered List.
+        /// </summary>
+        internal static string CMD_UnorderedList {
+            get {
+                return ResourceManager.GetString("CMD_UnorderedList", resourceCulture);
             }
         }
         
@@ -2688,6 +2872,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to This page changes the behavior of the auto surround feature, which automatically insert paired punctuations around selections when typing the leading punctuation.
+        /// </summary>
+        internal static string OT_AutoSurroundSelectionNote {
+            get {
+                return ResourceManager.GetString("OT_AutoSurroundSelectionNote", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Base type.
         /// </summary>
         internal static string OT_BaseType {
@@ -2724,29 +2917,29 @@ namespace Codist.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Apply bold style to following braces.
-        /// </summary>
-        internal static string OT_BoldBraces {
-            get {
-                return ResourceManager.GetString("OT_BoldBraces", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to When the following checkboxes are checked, braces and parentheses will be highlighted by their semantic syntax styles.
-        /// </summary>
-        internal static string OT_BoldBracesNote {
-            get {
-                return ResourceManager.GetString("OT_BoldBracesNote", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Bold style prefer __underscore__.
         /// </summary>
         internal static string OT_BoldPreferUnderscore {
             get {
                 return ResourceManager.GetString("OT_BoldPreferUnderscore", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Use bold style.
+        /// </summary>
+        internal static string OT_BoldPunctuations {
+            get {
+                return ResourceManager.GetString("OT_BoldPunctuations", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Make semantic related punctuations and operators bold.
+        /// </summary>
+        internal static string OT_BoldPunctuationsNote {
+            get {
+                return ResourceManager.GetString("OT_BoldPunctuationsNote", resourceCulture);
             }
         }
         
@@ -2814,7 +3007,7 @@ namespace Codist.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Highlight lambda expressions that capture variables.
+        ///   Looks up a localized string similar to Highlight lambda expressions or local functions that capture variables.
         /// </summary>
         internal static string OT_CapturingLambda {
             get {
@@ -3113,7 +3306,7 @@ namespace Codist.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Recommended donation value is $19.99. But you can modify the amount to any value if you like.
+        ///   Looks up a localized string similar to Recommended donation value is $19.99.
         /// </summary>
         internal static string OT_DonateLinkTip {
             get {
@@ -3356,11 +3549,29 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Hide Github Copilot button.
+        /// </summary>
+        internal static string OT_HideCopilotButton {
+            get {
+                return ResourceManager.GetString("OT_HideCopilotButton", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Hide feedback button.
         /// </summary>
         internal static string OT_HideFeedbackButton {
             get {
                 return ResourceManager.GetString("OT_HideFeedbackButton", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Hide version info badge button.
+        /// </summary>
+        internal static string OT_HideInfoBadgeButton {
+            get {
+                return ResourceManager.GetString("OT_HideInfoBadgeButton", resourceCulture);
             }
         }
         
@@ -4188,6 +4399,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Punctuations and Operators.
+        /// </summary>
+        internal static string OT_PunctuationsAndOperators {
+            get {
+                return ResourceManager.GetString("OT_PunctuationsAndOperators", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Quick info background:.
         /// </summary>
         internal static string OT_QuickInfoBackground {
@@ -4391,6 +4611,24 @@ namespace Codist.Properties {
         internal static string OT_SelectionTip {
             get {
                 return ResourceManager.GetString("OT_SelectionTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Highlight with semantic syntax styles.
+        /// </summary>
+        internal static string OT_SemanticPunctuations {
+            get {
+                return ResourceManager.GetString("OT_SemanticPunctuations", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Highlight resource, control flow, type cast, declaration and etc. related punctuations and operators with corresponding syntax highlight styles.
+        /// </summary>
+        internal static string OT_SemanticPunctuationsNote {
+            get {
+                return ResourceManager.GetString("OT_SemanticPunctuationsNote", resourceCulture);
             }
         }
         
@@ -4602,6 +4840,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Symbol definition:.
+        /// </summary>
+        internal static string OT_SymbolDefinitionColor {
+            get {
+                return ResourceManager.GetString("OT_SymbolDefinitionColor", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Containing namespace and assembly.
         /// </summary>
         internal static string OT_SymbolLocation {
@@ -4800,6 +5047,24 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Trim whitespace before surrounding punctuations.
+        /// </summary>
+        internal static string OT_TrimBeforeSurround {
+            get {
+                return ResourceManager.GetString("OT_TrimBeforeSurround", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Before inserting paired punctuations, trim space and tab characters around selection.
+        /// </summary>
+        internal static string OT_TrimBeforeSurroundTip {
+            get {
+                return ResourceManager.GetString("OT_TrimBeforeSurroundTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Trim non-letter characters in region.
         /// </summary>
         internal static string OT_TrimNonLetterRegion {
@@ -4971,7 +5236,7 @@ namespace Codist.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to This page defines text items wrapping selection which can be accessed by right clicking the &quot;Wrap select with text&quot; button on Smart Bar.
+        ///   Looks up a localized string similar to This page defines text items wrapping selection which can be accessed by right clicking the &quot;Wrap selection with text&quot; button on Smart Bar.
         /// </summary>
         internal static string OT_WrapTextNote {
             get {
@@ -5891,6 +6156,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Don&apos;t report this error until VS restarts.
+        /// </summary>
+        internal static string T_DontReportUntilRestart {
+            get {
+                return ResourceManager.GetString("T_DontReportUntilRestart", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Dot.
         /// </summary>
         internal static string T_Dot {
@@ -6154,6 +6428,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Error occured while saving style file:.
+        /// </summary>
+        internal static string T_FailedToSaveStyleFile {
+            get {
+                return ResourceManager.GetString("T_FailedToSaveStyleFile", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Fields.
         /// </summary>
         internal static string T_Fields {
@@ -6240,6 +6523,15 @@ namespace Codist.Properties {
         internal static string T_HashCode {
             get {
                 return ResourceManager.GetString("T_HashCode", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Headings.
+        /// </summary>
+        internal static string T_Headings {
+            get {
+                return ResourceManager.GetString("T_Headings", resourceCulture);
             }
         }
         
@@ -6975,6 +7267,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Right click: repeat command on subsequent selection (Esc to cancel).
+        /// </summary>
+        internal static string T_RepeatCommandOnSelection {
+            get {
+                return ResourceManager.GetString("T_RepeatCommandOnSelection", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Result Filter.
         /// </summary>
         internal static string T_ResultFilter {
@@ -7281,6 +7582,15 @@ namespace Codist.Properties {
         internal static string T_Squiggle {
             get {
                 return ResourceManager.GetString("T_Squiggle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Stack trace:.
+        /// </summary>
+        internal static string T_StackTrace {
+            get {
+                return ResourceManager.GetString("T_StackTrace", resourceCulture);
             }
         }
         

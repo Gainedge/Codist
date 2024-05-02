@@ -137,7 +137,7 @@ namespace Codist
 			foreach (var item in compilation.GlobalNamespace.GetAllTypes(cancellationToken)) {
 				if (item.TypeKind == TypeKind.Interface
 					&& item != type
-					&& (directDerive ? item.Interfaces : item.AllInterfaces).Contains(type, NamedTypeComparer.Instance)
+					&& (directDerive ? item.Interfaces : item.AllInterfaces).Contains(type, Comparers.NamedTypeComparer)
 					&& d.TryAdd(item)) {
 					r.Add(item);
 				}
@@ -423,7 +423,7 @@ namespace Codist
 			var a = result.ToArray();
 			if (sourceCodeOnly) {
 				Array.Sort(a, (x, y) => {
-					int i = String.CompareOrdinal(x.Key.DeclaringSyntaxReferences[0].SyntaxTree.FilePath, y.Key.DeclaringSyntaxReferences[0].SyntaxTree.FilePath);
+					int i = String.CompareOrdinal(x.Key.GetSourceReferences()[0].SyntaxTree.FilePath, y.Key.GetSourceReferences()[0].SyntaxTree.FilePath);
 					return i != 0 ? i
 						: (i = String.CompareOrdinal(x.Key.ContainingType?.Name, y.Key.ContainingType?.Name)) != 0 ? i
 						: String.CompareOrdinal(x.Key.Name, y.Key.Name);
@@ -676,18 +676,12 @@ namespace Codist
 					if (matchCase) {
 						return name => name == keywords;
 					}
-					else {
-						return name => String.Equals(name, keywords, StringComparison.OrdinalIgnoreCase);
-					}
+					return name => String.Equals(name, keywords, StringComparison.OrdinalIgnoreCase);
 				}
-				else {
-					if (matchCase) {
-						return name => name.IndexOf(keywords, StringComparison.Ordinal) != -1;
-					}
-					else {
-						return name => name.IndexOf(keywords, StringComparison.OrdinalIgnoreCase) != -1;
-					}
+				if (matchCase) {
+					return name => name.IndexOf(keywords, StringComparison.Ordinal) != -1;
 				}
+				return name => name.IndexOf(keywords, StringComparison.OrdinalIgnoreCase) != -1;
 			}
 			return name => {
 				int i = 0;
@@ -700,6 +694,11 @@ namespace Codist
 				}
 				return true;
 			};
+		}
+
+		static partial class Comparers
+		{
+			internal static readonly GenericEqualityComparer<SymbolCallerInfo> SymbolCallerInfoComparer = new GenericEqualityComparer<SymbolCallerInfo>((x, y) => x.CallingSymbol == y.CallingSymbol, o => o.CallingSymbol.GetHashCode());
 		}
 	}
 }

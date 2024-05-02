@@ -48,12 +48,10 @@ namespace Codist.Controls
 		object _Editor;
 
 		public static TextEditorWrapper CreateFor(TextBlock text) {
-			if (__IsInitialized == false) {
+			if (__IsInitialized == false || __SelectableProperty.Get(text)) {
 				return null;
 			}
-			if (__SelectableProperty.Get(text)) {
-				return null;
-			}
+
 			text.Focusable = true;
 			var textContainer = __TextContainerProp.GetValue(text);
 			var editor = new TextEditorWrapper(textContainer, text, false);
@@ -101,9 +99,9 @@ namespace Codist.Controls
 					Foreground = ThemeHelper.ToolWindowTextBrush,
 					IsEnabled = true
 				};
-				m.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
+m.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
 				var newItem = new ThemedMenuItem {
-					Icon = ThemeHelper.GetImage(IconIds.Copy),
+					Icon = VsImageHelper.GetImage(IconIds.Copy),
 					Header = R.CMD_CopySelection
 				};
 				newItem.Click += HandleMouseCopy;
@@ -117,7 +115,7 @@ namespace Codist.Controls
 
 		ThemedMenuItem CreateMenuItemForWebSearch(SearchEngine s) {
 			var m = new ThemedMenuItem {
-				Icon = ThemeHelper.GetImage(IconIds.SearchWebSite),
+				Icon = VsImageHelper.GetImage(IconIds.SearchWebSite),
 				Header = R.CMD_SearchWith.Replace("<NAME>", s.Name),
 			};
 			m.SetSearchUrlPattern(s.Pattern, null);
