@@ -2491,7 +2491,7 @@ Ctrl: 仅匹配当前类，不匹配其它派生类或继承类</value>
     <value>查找和当前方法具有相同签名的其它方法
 Ctrl: 仅在源代码中查找</value>
   </data>
-  <data name="CMDT_FindReferencedSymbols" xml:space="preserve">
+  <data name="CMDT_ListReferencedSymbols" xml:space="preserve">
     <value>列出当前符号内引用的其它符号</value>
   </data>
   <data name="CMDT_FindReferrers" xml:space="preserve">
@@ -2509,8 +2509,8 @@ Ctrl: 仅匹配当前类，不匹配其它派生类或继承类</value>
   <data name="CMDT_FindSymbolTypeExtensionMethods" xml:space="preserve">
     <value>查找当前符号类型的扩展方法</value>
   </data>
-  <data name="CMDT_FindSymbolTypeMembers" xml:space="preserve">
-    <value>查找当前符号类型的成员</value>
+  <data name="CMDT_ListSymbolTypeMembers" xml:space="preserve">
+    <value>列出当前符号类型的成员</value>
   </data>
   <data name="CMDT_GoToSymbolTypeDefinition" xml:space="preserve">
     <value>转到当前符号类型的定义</value>
@@ -2727,6 +2727,14 @@ Ctrl: 切换标记并选择下一处</value>
   <data name="OT_HideCopilotButton" xml:space="preserve">
     <value>隐藏 Github Copilot 按钮</value>
   </data>
+  <data name="CMD_MarkSubscript" xml:space="preserve">
+    <value>切换下标标记
+Ctrl: 切换标记并选择下一处</value>
+  </data>
+  <data name="CMD_MarkSuperscript" xml:space="preserve">
+    <value>切换上标标记
+Ctrl: 切换标记并选择下一处</value>
+  </data>
   <data name="OT_HideInfoBadgeButton" xml:space="preserve">
     <value>隐藏版本信息按钮</value>
   </data>
@@ -2735,5 +2743,35 @@ Ctrl: 切换标记并选择下一处</value>
   </data>
   <data name="CMD_InvertBrightness" xml:space="preserve">
     <value>切换色彩明暗度</value>
+  </data>
+  <data name="CMDT_FindAssignmentsFor" xml:space="preserve">
+    <value>查找调用参数所属方法的位置和参数的值</value>
+  </data>
+  <data name="CMD_FindAssignmentsFor" xml:space="preserve">
+    <value>查找赋值给参数 &lt;NAME&gt; 的位置...</value>
+  </data>
+  <data name="T_AssignmentLocations" xml:space="preserve">
+    <value> 赋值调用位置: </value>
+  </data>
+  <data name="T_DefaultValue" xml:space="preserve">
+    <value>(默认值)</value>
+  </data>
+  <data name="T_ErrorWhenExecutingCommand" xml:space="preserve">
+    <value>在执行命令时出错:</value>
+  </data>
+  <data name="CMDT_FindAssignmentsForOption" xml:space="preserve">
+    <value>Ctrl: 仅显示显式赋值的参数
+Shift: 仅显式默认赋值的参数</value>
+  </data>
+  <data name="CMDT_ExtractLinesContainingSelection" xml:space="preserve">
+    <value>将文档中所有包含当前选中文字内容的行复制到一个新窗口
+Shift: 匹配整个单词
+Ctrl: 匹配大小写</value>
+  </data>
+  <data name="CMD_ExtractLinesContainingSelection" xml:space="preserve">
+    <value>提取包含选中文字的行</value>
+  </data>
+  <data name="T_Code" xml:space="preserve">
+    <value>代码</value>
   </data>
 </root>

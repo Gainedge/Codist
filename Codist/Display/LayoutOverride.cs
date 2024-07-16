@@ -38,28 +38,29 @@ namespace Codist.Display
 			}
 			Predicate<FrameworkElement> controlMatcher;
 			switch (element) {
-				case DisplayOptimizations.HideSearchBox: controlMatcher = CodistPackage.VsVersion.Major == 15 ? ControlNameMatcher.PART__SearchBox.Match : ControlNameMatcher.SearchBox.Match; break;
+				case DisplayOptimizations.HideSearchBox: controlMatcher = CodistPackage.VsVersion.Major == 15 ? ControlNameMatcher.PART__SearchBox.Match : (Predicate<FrameworkElement>)ControlNameMatcher.SearchBox.Match; break;
 				case DisplayOptimizations.HideAccountBox: controlMatcher = ControlNameMatcher.IDCardGrid.Match; break;
-				case DisplayOptimizations.HideFeedbackBox: controlMatcher = ControlNameMatcher.FeedbackButton.Match; break;
+				case DisplayOptimizations.HideFeedbackBox: controlMatcher = ControlAlternativeMatcher.FeedbackButton.Match; break;
 				case DisplayOptimizations.HideCopilotButton: controlMatcher = ControlTypeMatcher.CopilotBadgeControl.Match; break;
 				case DisplayOptimizations.HideInfoBadgeButton: controlMatcher = ControlTypeMatcher.InfoBadgeControl.Match; break;
 				default: return false;
 			}
-			var t = CodistPackage.VsVersion.Major == 15
-				? g.GetFirstVisualChild(controlMatcher)
-					?.GetParent<ContentPresenter>(i => System.Windows.Media.VisualTreeHelper.GetParent(i) is StackPanel)
-				: g.GetFirstVisualChild(controlMatcher)
-					?.GetParent<ContentPresenter>(i => i.Name == "DataTemplatePresenter");
+			var t = g.GetFirstVisualChild(controlMatcher);
 			if (t != null) {
-				t.ToggleVisibility(show);
+				t = CodistPackage.VsVersion.Major == 15
+					? t.GetParent<ContentPresenter>(i => System.Windows.Media.VisualTreeHelper.GetParent(i) is StackPanel)
+					: t.GetParent<ContentPresenter>(i => i.Name == "DataTemplatePresenter");
 			}
-			else if (element != DisplayOptimizations.HideSearchBox
-				|| g.GetFirstVisualChild<UserControl>(ControlTypeMatcher.PackageAllInOneSearchButtonPresenter.Match)
+			if (t == null && element == DisplayOptimizations.HideSearchBox) {
+				t = g.GetFirstVisualChild<UserControl>(ControlTypeMatcher.PackageAllInOneSearchButtonPresenter.Match)
 					?.GetParent<ContentPresenter>(i => i.Name == "DataTemplatePresenter")
-					?.GetParent<FrameworkElement>(i => i.Name == "PART_TitleBarLeftFrameControlContainer")
-					?.ToggleVisibility(show) == null) {
+					?.GetParent<FrameworkElement>(i => i.Name == "PART_TitleBarLeftFrameControlContainer");
+			}
+
+			if (t == null) {
 				return false;
 			}
+			t.ToggleVisibility(show);
 			return true;
 		}
 
@@ -185,6 +186,7 @@ namespace Codist.Display
 			ToggleUIElement(DisplayOptimizations.HideAccountBox, !options.MatchFlags(DisplayOptimizations.HideAccountBox));
 			ToggleUIElement(DisplayOptimizations.HideFeedbackBox, !options.MatchFlags(DisplayOptimizations.HideFeedbackBox));
 			ToggleUIElement(DisplayOptimizations.HideCopilotButton, !options.MatchFlags(DisplayOptimizations.HideCopilotButton));
+			ToggleUIElement(DisplayOptimizations.HideInfoBadgeButton, !options.MatchFlags(DisplayOptimizations.HideInfoBadgeButton));
 			WpfHelper.SetUITextRenderOptions(Application.Current.MainWindow, options.MatchFlags(DisplayOptimizations.MainWindow));
 		}
 
@@ -201,6 +203,9 @@ namespace Codist.Display
 			}
 			if (options.MatchFlags(DisplayOptimizations.HideCopilotButton) && CodistPackage.VsVersion.Major > 16) {
 				done &= ToggleUIElement(DisplayOptimizations.HideCopilotButton, false);
+			}
+			if (options.MatchFlags(DisplayOptimizations.HideInfoBadgeButton)) {
+				done &= ToggleUIElement(DisplayOptimizations.HideInfoBadgeButton, false);
 			}
 
 			if (done == false && ++__Retrial < 10) {
@@ -255,10 +260,24 @@ namespace Codist.Display
 				return control.Name == _Name;
 			}
 		}
+		readonly struct ControlAlternativeMatcher
+		{
+			internal static readonly ControlAlternativeMatcher FeedbackButton = new ControlAlternativeMatcher(ControlTypeMatcher.Feedback.Match, ControlNameMatcher.FeedbackButton.Match);
+
+			readonly Predicate<FrameworkElement> _PrimaryCondition, _AlternativeCondition;
+			ControlAlternativeMatcher(Predicate<FrameworkElement> condition1, Predicate<FrameworkElement> condition2) {
+				_PrimaryCondition = condition1;
+				_AlternativeCondition = condition2;
+			}
+			public bool Match(FrameworkElement control) {
+				return _PrimaryCondition(control) || _AlternativeCondition(control);
+			}
+		}
 		readonly struct ControlTypeMatcher
 		{
 			internal static readonly ControlTypeMatcher PackageAllInOneSearchButtonPresenter = new ControlTypeMatcher("PackageAllInOneSearchButtonPresenter");
 			internal static readonly ControlTypeMatcher CopilotBadgeControl = new ControlTypeMatcher("CopilotBadgeControl");
+			internal static readonly ControlTypeMatcher Feedback = new ControlTypeMatcher("SendASmileControl");
 			internal static readonly ControlTypeMatcher InfoBadgeControl = new ControlTypeMatcher("InfoBadgeControl");
 
 			readonly string _Name;

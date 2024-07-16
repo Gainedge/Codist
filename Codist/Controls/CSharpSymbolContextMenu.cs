@@ -19,7 +19,7 @@ namespace Codist.Controls
 		public CSharpSymbolContextMenu(ISymbol symbol, SyntaxNode node, SemanticContext semanticContext) {
 			Resources = SharedDictionaryManager.ContextMenu;
 			Foreground = ThemeHelper.ToolWindowTextBrush;
-this.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
+			this.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
 			_Host = new UIHost(symbol, node, semanticContext);
 		}
 
@@ -79,8 +79,10 @@ this.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
 				case SymbolKind.Field:
 					CreateCommandForMembers();
 					break;
-				case SymbolKind.Local:
 				case SymbolKind.Parameter:
+					CreateCommandForParameter();
+					goto case SymbolKind.Local;
+				case SymbolKind.Local:
 					CreateCommandsForReturnTypeCommand();
 					break;
 				case SymbolKind.NamedType:
@@ -159,7 +161,8 @@ this.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
 		}
 
 		void CreateCommandForMembers() {
-			if (_Host.Symbol.Kind != SymbolKind.Method || IsExternallyCallable(((IMethodSymbol)_Host.Symbol).MethodKind)) {
+			if (_Host.Symbol.Kind != SymbolKind.Method
+				|| IsExternallyCallable(((IMethodSymbol)_Host.Symbol).MethodKind)) {
 				AddCommand(CommandId.FindReferrers);
 			}
 			if (_Host.Symbol.MayHaveOverride()) {
@@ -205,7 +208,7 @@ this.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
 		}
 
 		void CreateCommandForNamedType(INamedTypeSymbol t) {
-			if (t.TypeKind == TypeKind.Class || t.TypeKind == TypeKind.Struct) {
+			if (t.TypeKind.CeqAny(TypeKind.Class, TypeKind.Struct)) {
 				var ctor = _Host.Node?.GetObjectCreationNode();
 				if (ctor != null) {
 					var symbol = _Host.Context.SemanticModel.GetSymbolOrFirstCandidate(ctor);
@@ -242,11 +245,8 @@ this.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
 
 		void CreateCommandsForReturnTypeCommand() {
 			var rt = _Host.Symbol.GetReturnType();
-			if (rt.SpecialType == SpecialType.System_Void
-				|| rt.SpecialType == SpecialType.System_Object
-				|| rt.TypeKind == TypeKind.TypeParameter
-				|| rt.TypeKind == TypeKind.Error
-				|| rt.TypeKind == TypeKind.Dynamic
+			if (rt.SpecialType.CeqAny(SpecialType.System_Void, SpecialType.System_Object)
+				|| rt.TypeKind.CeqAny(TypeKind.TypeParameter, TypeKind.Error, TypeKind.Dynamic)
 				|| rt.IsTupleType) {
 				return;
 			}
@@ -273,6 +273,14 @@ this.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
 			var t = ((IEventSymbol)_Host.Symbol).GetEventArgsType();
 			if (t?.GetBaseTypes().Any(i => i.MatchTypeName(nameof(EventArgs), nameof(System))) == true) {
 				AddCommand(CommandId.ListEventArgsMembers, t.GetOriginalName());
+			}
+		}
+
+		void CreateCommandForParameter() {
+			var p = (IParameterSymbol)_Host.Symbol;
+			if (p.ContainingSymbol is IMethodSymbol m
+				&& m.MethodKind.CeqAny(MethodKind.Ordinary, MethodKind.Constructor, MethodKind.LocalFunction, MethodKind.ReducedExtension)) {
+				AddCommand(p.HasExplicitDefaultValue ? CommandId.FindOptionalParameterAssignments : CommandId.FindParameterAssignments, _Host.Symbol.Name);
 			}
 		}
 
@@ -347,6 +355,8 @@ this.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
 			FindMethodsBySignature,
 			FindConstructorReferrers,
 			FindObjectInitializers,
+			FindParameterAssignments,
+			FindOptionalParameterAssignments,
 			DebugUnitTest,
 			RunUnitTest,
 			FindInstanceProducers,
@@ -426,7 +436,7 @@ this.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
 						h.Invoke(this, e);
 					}
 					catch (Exception ex) {
-						MessageWindow.Error(ex, "Error when executing command: " + ((ThemedMenuText)Header).GetText(), null, this);
+						MessageWindow.Error(ex, R.T_ErrorWhenExecutingCommand + ((ThemedMenuText)Header).GetText(), null, this);
 					}
 					_Handled = true;
 				}
@@ -480,7 +490,7 @@ this.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
 					case CommandId.FindReferrers:
 						return CreateItem(IconIds.FindReferrers, R.CMD_FindReferrers, FindReferrers, R.CMDT_FindReferrers);
 					case CommandId.FindReferencedSymbols:
-						return CreateItem(IconIds.FindReferencingSymbols, R.CMD_FindReferencedSymbols, FindReferencedSymbols, R.CMDT_FindReferencedSymbols);
+						return CreateItem(IconIds.FindReferencingSymbols, R.CMD_FindReferencedSymbols, FindReferencedSymbols, R.CMDT_ListReferencedSymbols);
 					case CommandId.ListSymbolMembers:
 						return CreateItem(IconIds.ListMembers, R.CMD_ListMembers, ListSymbolMembers);
 					case CommandId.FindSymbolsWithName:
@@ -515,13 +525,17 @@ this.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
 			public CustomMenuItem CreateCommand(CommandId commandId, string substitution) {
 				switch (commandId) {
 					case CommandId.ListReturnTypeMembers:
-						return CreateItem(IconIds.ListMembers, R.CMD_ListMembersOf, substitution, ListReturnTypeMembers, R.CMDT_FindSymbolTypeMembers);
+						return CreateItem(IconIds.ListMembers, R.CMD_ListMembersOf, substitution, ListReturnTypeMembers, R.CMDT_ListSymbolTypeMembers);
 					case CommandId.FindReturnTypeExtensionMethods:
 						return CreateItem(IconIds.ExtensionMethod, R.CMD_FindExtensionsFor, substitution, FindReturnTypeExtensionMethods, R.CMDT_FindSymbolTypeExtensionMethods);
 					case CommandId.GoToSymbolReturnType:
 						return CreateItem(IconIds.GoToReturnType, R.CMD_GoTo, substitution, GoToSymbolReturnType, R.CMDT_GoToSymbolTypeDefinition);
 					case CommandId.FindSpecialGenericReturnTypeMembers:
-						return CreateItem(IconIds.ListMembers, R.CMD_ListMembersOf, substitution, FindSpecialGenericReturnTypeMembers, R.CMDT_FindSymbolTypeMembers);
+						return CreateItem(IconIds.ListMembers, R.CMD_ListMembersOf, substitution, FindSpecialGenericReturnTypeMembers, R.CMDT_ListSymbolTypeMembers);
+					case CommandId.FindParameterAssignments:
+						return CreateItem(IconIds.FindParameterAssignment, R.CMD_FindAssignmentsFor, substitution, FindParameterAssignments, R.CMDT_FindAssignmentsFor);
+					case CommandId.FindOptionalParameterAssignments:
+						return CreateItem(IconIds.FindParameterAssignment, R.CMD_FindAssignmentsFor, substitution, FindOptionalParameterAssignments, R.CMDT_FindAssignmentsFor + Environment.NewLine + R.CMDT_FindAssignmentsForOption);
 					case CommandId.GoToSpecialGenericSymbolReturnType:
 						return CreateItem(IconIds.GoToReturnType, R.CMD_GoTo, substitution, GoToSpecialGenericSymbolReturnType, R.CMDT_GoToSymbolTypeDefinition);
 					case CommandId.ListEventArgsMembers:
@@ -645,6 +659,16 @@ this.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
 				await _SemanticContext.FindMembersAsync(_Symbol.GetReturnType().ResolveElementType().ResolveSingleGenericTypeArgument());
 			}
 
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
+			async void FindParameterAssignments(object sender, RoutedEventArgs e) {
+				await _SemanticContext.FindParameterAssignmentsAsync(_Symbol as IParameterSymbol);
+			}
+
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
+			async void FindOptionalParameterAssignments(object sender, RoutedEventArgs e) {
+				await _SemanticContext.FindParameterAssignmentsAsync(_Symbol as IParameterSymbol, false, WpfHelper.IsControlDown ? ArgumentAssignmentFilter.ExplicitValue : WpfHelper.IsShiftDown ? ArgumentAssignmentFilter.DefaultValue : ArgumentAssignmentFilter.Undefined);
+			}
+
 			void FindReferencedSymbols(object sender, RoutedEventArgs e) {
 				var m = new SymbolMenu(_SemanticContext);
 				var c = 0;
@@ -677,17 +701,13 @@ this.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
 				m.Show();
 			}
 
-			static bool IsCtrlDown() {
-				return Keyboard.Modifiers == ModifierKeys.Control;
-			}
-
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindReferrers(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindReferrersAsync(_Symbol, IsCtrlDown());
+				await _SemanticContext.FindReferrersAsync(_Symbol, WpfHelper.IsControlDown);
 			}
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindTypeReferrers(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindReferrersAsync(_Symbol.Kind == SymbolKind.Method ? _Symbol.ContainingType : _Symbol, IsCtrlDown(), s => s.Kind == SymbolKind.NamedType, IsTypeReference);
+				await _SemanticContext.FindReferrersAsync(_Symbol.Kind == SymbolKind.Method ? _Symbol.ContainingType : _Symbol, WpfHelper.IsControlDown, s => s.Kind == SymbolKind.NamedType, IsTypeReference);
 			}
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindOverrides(object sender, RoutedEventArgs e) {
@@ -705,55 +725,55 @@ this.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindSubInterfaces(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindSubInterfacesAsync(_Symbol, IsCtrlDown());
+				await _SemanticContext.FindSubInterfacesAsync(_Symbol, WpfHelper.IsControlDown);
 			}
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindMethodsBySignature(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindMethodsBySignatureAsync(_Symbol, IsCtrlDown());
+				await _SemanticContext.FindMethodsBySignatureAsync(_Symbol, WpfHelper.IsControlDown);
 			}
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindExtensionMethods(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindExtensionMethodsAsync(_Symbol, IsCtrlDown());
+				await _SemanticContext.FindExtensionMethodsAsync(_Symbol, WpfHelper.IsControlDown);
 			}
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindReturnTypeExtensionMethods(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindExtensionMethodsAsync(_Symbol.GetReturnType(), IsCtrlDown());
+				await _SemanticContext.FindExtensionMethodsAsync(_Symbol.GetReturnType(), WpfHelper.IsControlDown);
 			}
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindSymbolWithName(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindSymbolWithNameAsync(_Symbol, IsCtrlDown());
+				await _SemanticContext.FindSymbolWithNameAsync(_Symbol, WpfHelper.IsControlDown);
 			}
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindConstructorReferrers(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindReferrersAsync(_SemanticContext.SemanticModel.GetSymbolOrFirstCandidate(_Node.GetObjectCreationNode()), IsCtrlDown());
+				await _SemanticContext.FindReferrersAsync(_SemanticContext.SemanticModel.GetSymbolOrFirstCandidate(_Node.GetObjectCreationNode()), WpfHelper.IsControlDown);
 			}
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindObjectInitializers(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindReferrersAsync(_Symbol, IsCtrlDown(), s => s.Kind == SymbolKind.Method);
+				await _SemanticContext.FindReferrersAsync(_Symbol, WpfHelper.IsControlDown, s => s.Kind == SymbolKind.Method);
 			}
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindInstanceProducers(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindInstanceProducerAsync(_Symbol, IsCtrlDown());
+				await _SemanticContext.FindInstanceProducerAsync(_Symbol, WpfHelper.IsControlDown);
 			}
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindContainingTypeInstanceProducers(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindInstanceProducerAsync(_Symbol.ContainingType, IsCtrlDown());
+				await _SemanticContext.FindInstanceProducerAsync(_Symbol.ContainingType, WpfHelper.IsControlDown);
 			}
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindInstanceConsumers(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindInstanceAsParameterAsync(_Symbol, IsCtrlDown());
+				await _SemanticContext.FindInstanceAsParameterAsync(_Symbol, WpfHelper.IsControlDown);
 			}
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindContainingTypeInstanceConsumers(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindInstanceAsParameterAsync(_Symbol.ContainingType, IsCtrlDown());
+				await _SemanticContext.FindInstanceAsParameterAsync(_Symbol.ContainingType, WpfHelper.IsControlDown);
 			}
 
 			CustomMenuItem CreateWebSearchCommand() {
@@ -799,7 +819,7 @@ this.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
 					case SyntaxKind.QualifiedName:
 						return IsTypeReference(p);
 					case SyntaxKind.DeclarationPattern:
-						return p.Parent.IsKind(SyntaxKind.IsPatternExpression) || p.Parent.IsKind(SyntaxKind.CasePatternSwitchLabel);
+						return p.Parent.IsAnyKind(SyntaxKind.IsPatternExpression, SyntaxKind.CasePatternSwitchLabel);
 				}
 				return false;
 			}

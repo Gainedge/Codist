@@ -573,6 +573,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Extract Lines Containing Selection.
+        /// </summary>
+        internal static string CMD_ExtractLinesContainingSelection {
+            get {
+                return ResourceManager.GetString("CMD_ExtractLinesContainingSelection", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Extract method....
         /// </summary>
         internal static string CMD_ExtractMethod {
@@ -641,6 +650,15 @@ namespace Codist.Properties {
         internal static string CMD_FindAllReferences {
             get {
                 return ResourceManager.GetString("CMD_FindAllReferences", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Find Assignments for &lt;NAME&gt;....
+        /// </summary>
+        internal static string CMD_FindAssignmentsFor {
+            get {
+                return ResourceManager.GetString("CMD_FindAssignmentsFor", resourceCulture);
             }
         }
         
@@ -1256,6 +1274,26 @@ namespace Codist.Properties {
         internal static string CMD_MarkStrikeThrough {
             get {
                 return ResourceManager.GetString("CMD_MarkStrikeThrough", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Toggle Subscript Mark
+        ///Ctrl: toggle and select next.
+        /// </summary>
+        internal static string CMD_MarkSubscript {
+            get {
+                return ResourceManager.GetString("CMD_MarkSubscript", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Toggle Superscript Mark
+        ///Ctrl: toggle and select next.
+        /// </summary>
+        internal static string CMD_MarkSuperscript {
+            get {
+                return ResourceManager.GetString("CMD_MarkSuperscript", resourceCulture);
             }
         }
         
@@ -2288,6 +2326,36 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Copy all lines containing current selection into a new window
+        ///Shift: Match whole word
+        ///Ctrl: Match case.
+        /// </summary>
+        internal static string CMDT_ExtractLinesContainingSelection {
+            get {
+                return ResourceManager.GetString("CMDT_ExtractLinesContainingSelection", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Find all places and values where this parameter is assigned.
+        /// </summary>
+        internal static string CMDT_FindAssignmentsFor {
+            get {
+                return ResourceManager.GetString("CMDT_FindAssignmentsFor", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Ctrl: Explicit assignment only
+        ///Shift: Assign by default only.
+        /// </summary>
+        internal static string CMDT_FindAssignmentsForOption {
+            get {
+                return ResourceManager.GetString("CMDT_FindAssignmentsForOption", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Search places where active constructor is called
         ///Ctrl: Match current symbol only, excluding base or derived symbols.
         /// </summary>
@@ -2378,15 +2446,6 @@ namespace Codist.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to List symbols referenced within current symbol.
-        /// </summary>
-        internal static string CMDT_FindReferencedSymbols {
-            get {
-                return ResourceManager.GetString("CMDT_FindReferencedSymbols", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Search places where active method is called, field/property is read/write
         ///Ctrl: Match current symbol only, excluding base or derived symbols.
         /// </summary>
@@ -2402,15 +2461,6 @@ namespace Codist.Properties {
         internal static string CMDT_FindSymbolTypeExtensionMethods {
             get {
                 return ResourceManager.GetString("CMDT_FindSymbolTypeExtensionMethods", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to List members of current symbol type.
-        /// </summary>
-        internal static string CMDT_FindSymbolTypeMembers {
-            get {
-                return ResourceManager.GetString("CMDT_FindSymbolTypeMembers", resourceCulture);
             }
         }
         
@@ -2449,6 +2499,24 @@ namespace Codist.Properties {
         internal static string CMDT_LightTheme {
             get {
                 return ResourceManager.GetString("CMDT_LightTheme", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to List symbols referenced within current symbol.
+        /// </summary>
+        internal static string CMDT_ListReferencedSymbols {
+            get {
+                return ResourceManager.GetString("CMDT_ListReferencedSymbols", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to List members of current symbol type.
+        /// </summary>
+        internal static string CMDT_ListSymbolTypeMembers {
+            get {
+                return ResourceManager.GetString("CMDT_ListSymbolTypeMembers", resourceCulture);
             }
         }
         
@@ -5561,6 +5629,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to  assignment locations: .
+        /// </summary>
+        internal static string T_AssignmentLocations {
+            get {
+                return ResourceManager.GetString("T_AssignmentLocations", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Attribute:.
         /// </summary>
         internal static string T_Attribute {
@@ -5822,6 +5899,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Code.
+        /// </summary>
+        internal static string T_Code {
+            get {
+                return ResourceManager.GetString("T_Code", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to It is the first time for Codist running on your Visual Studio. Click here to.
         /// </summary>
         internal static string T_CodistFirstRun {
@@ -6026,6 +6112,15 @@ namespace Codist.Properties {
         internal static string T_Default {
             get {
                 return ResourceManager.GetString("T_Default", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to (default).
+        /// </summary>
+        internal static string T_DefaultValue {
+            get {
+                return ResourceManager.GetString("T_DefaultValue", resourceCulture);
             }
         }
         
@@ -6279,6 +6374,15 @@ namespace Codist.Properties {
         internal static string T_ErrorOpeningFile {
             get {
                 return ResourceManager.GetString("T_ErrorOpeningFile", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Error when executing command:.
+        /// </summary>
+        internal static string T_ErrorWhenExecutingCommand {
+            get {
+                return ResourceManager.GetString("T_ErrorWhenExecutingCommand", resourceCulture);
             }
         }
         

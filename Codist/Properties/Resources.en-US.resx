@@ -2506,7 +2506,7 @@ Ctrl: Match current symbol only, excluding base or derived symbols</value>
     <value>Search symbol having the same signature as current symbol
 Ctrl: Only search in source code</value>
   </data>
-  <data name="CMDT_FindReferencedSymbols" xml:space="preserve">
+  <data name="CMDT_ListReferencedSymbols" xml:space="preserve">
     <value>List symbols referenced within current symbol</value>
   </data>
   <data name="CMDT_FindReferrers" xml:space="preserve">
@@ -2524,7 +2524,7 @@ Ctrl: Match current symbol only, excluding base or derived symbols</value>
   <data name="CMDT_FindSymbolTypeExtensionMethods" xml:space="preserve">
     <value>Find extension methods for current symbol type</value>
   </data>
-  <data name="CMDT_FindSymbolTypeMembers" xml:space="preserve">
+  <data name="CMDT_ListSymbolTypeMembers" xml:space="preserve">
     <value>List members of current symbol type</value>
   </data>
   <data name="CMDT_GoToSymbolTypeDefinition" xml:space="preserve">
@@ -2741,6 +2741,14 @@ Ctrl: toggle and select next.</value>
   <data name="OT_HideCopilotButton" xml:space="preserve">
     <value>Hide Github Copilot button</value>
   </data>
+  <data name="CMD_MarkSubscript" xml:space="preserve">
+    <value>Toggle Subscript Mark
+Ctrl: toggle and select next</value>
+  </data>
+  <data name="CMD_MarkSuperscript" xml:space="preserve">
+    <value>Toggle Superscript Mark
+Ctrl: toggle and select next</value>
+  </data>
   <data name="OT_HideInfoBadgeButton" xml:space="preserve">
     <value>Hide version info badge button</value>
   </data>
@@ -2749,5 +2757,35 @@ Ctrl: toggle and select next.</value>
   </data>
   <data name="CMD_InvertBrightness" xml:space="preserve">
     <value>Invert brightness</value>
+  </data>
+  <data name="CMDT_FindAssignmentsFor" xml:space="preserve">
+    <value>Find all places and values where this parameter is assigned</value>
+  </data>
+  <data name="CMD_FindAssignmentsFor" xml:space="preserve">
+    <value>Find Assignments for &lt;NAME&gt;...</value>
+  </data>
+  <data name="T_AssignmentLocations" xml:space="preserve">
+    <value> assignment locations: </value>
+  </data>
+  <data name="T_DefaultValue" xml:space="preserve">
+    <value>(default)</value>
+  </data>
+  <data name="T_ErrorWhenExecutingCommand" xml:space="preserve">
+    <value>Error when executing command:</value>
+  </data>
+  <data name="CMDT_FindAssignmentsForOption" xml:space="preserve">
+    <value>Ctrl: Explicit assignment only
+Shift: Assign by default only</value>
+  </data>
+  <data name="CMDT_ExtractLinesContainingSelection" xml:space="preserve">
+    <value>Copy all lines containing current selection into a new window
+Shift: Match whole word
+Ctrl: Match case</value>
+  </data>
+  <data name="CMD_ExtractLinesContainingSelection" xml:space="preserve">
+    <value>Extract Lines Containing Selection</value>
+  </data>
+  <data name="T_Code" xml:space="preserve">
+    <value>Code</value>
   </data>
 </root>

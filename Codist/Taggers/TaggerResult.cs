@@ -30,12 +30,13 @@ namespace Codist.Taggers
 		/// <summary>The last parsed position.</summary>
 		public int LastParsed { get; set; }
 		public bool HasTag => _Tags.Count > 0;
+		/// <summary>Gets a sorted collection which contains parsed tags.</summary>
+		public IReadOnlyCollection<TaggedContentSpan> Tags => _Tags;
 		public int Count => _Tags.Count;
 
 		public TaggedContentSpan GetPrecedingTaggedSpan(SnapshotPoint position, Predicate<TaggedContentSpan> predicate) {
-			var tags = _Tags;
 			TaggedContentSpan t = null;
-			foreach (var tag in tags.GetViewBetween(new TaggedContentSpan(0, 0), new TaggedContentSpan(position.Position + 1, 0)).Reverse()) {
+			foreach (var tag in _Tags.GetViewBetween(new TaggedContentSpan(0, 0), new TaggedContentSpan(position.Position + 1, 0)).Reverse()) {
 				if (tag.Contains(position) && predicate(tag)) {
 					return tag;
 				}
@@ -45,17 +46,24 @@ namespace Codist.Taggers
 			}
 			return t;
 		}
-		/// <summary>Gets a sorted array which contains parsed tags.</summary>
-		public TaggedContentSpan[] GetTags() {
-			var tags = _Tags;
-			var r = new TaggedContentSpan[tags.Count];
-			tags.CopyTo(r);
-			//Array.Sort(r, (x, y) => x.Start - y.Start);
-			return r;
+		public IEnumerable<TaggedContentSpan> GetPrecedingTaggedSpans(SnapshotPoint position, Predicate<TaggedContentSpan> predicate) {
+			TaggedContentSpan t = null;
+			foreach (var tag in _Tags.GetViewBetween(new TaggedContentSpan(0, 0), new TaggedContentSpan(position.Position + 1, 0)).Reverse()) {
+				if (tag.Contains(position) && predicate(tag)) {
+					yield return tag;
+				}
+				else if (position > tag.Start && (t == null || tag.Start > t.Start) && predicate(tag)) {
+					t = tag;
+				}
+			}
+
+			if (t != null) {
+				yield return t;
+			}
 		}
+
 		public ImmutableArray<TaggedContentSpan> GetTags(Func<TaggedContentSpan, bool> predicate) {
-			return ImmutableArray.CreateRange(_Tags.Where(predicate))
-				.Sort((x, y) => x.Start - y.Start);
+			return ImmutableArray.CreateRange(_Tags.Where(predicate));
 		}
 
 		public TaggedContentSpan Add(TaggedContentSpan tag) {
@@ -66,6 +74,16 @@ namespace Codist.Taggers
 			tags.Remove(tag);
 			tags.Add(tag);
 			return tag;
+		}
+
+		public void AddRange(IEnumerable<TaggedContentSpan> items) {
+			if (IsLocked) {
+				return;
+			}
+			var tags = _Tags;
+			foreach (var tag in items) {
+				tags.Add(tag);
+			}
 		}
 
 		public void ClearRange(int start, int length) {

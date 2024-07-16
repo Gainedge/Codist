@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using CLR;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.FindSymbols;
 using R = Codist.Properties.Resources;
@@ -56,7 +57,7 @@ namespace Codist.Controls
 				ShowSymbolMenuForResult(symbol, context, classes.ToList(), R.T_DerivedClasses, false);
 				return;
 			}
-			var hierarchies = new Dictionary<INamedTypeSymbol, List<INamedTypeSymbol>>(CodeAnalysisHelper.GetNamedTypeComparer()) {
+			var hierarchies = new Dictionary<INamedTypeSymbol, List<INamedTypeSymbol>>(7, CodeAnalysisHelper.GetNamedTypeComparer()) {
 					{ type.OriginalDefinition, new List<INamedTypeSymbol>() }
 				};
 			INamedTypeSymbol t, bt;
@@ -224,6 +225,46 @@ namespace Codist.Controls
 			ShowSymbolMenuForResult(symbol, context, methods, R.T_SignatureMatch, true);
 		}
 
+		internal static async Task FindParameterAssignmentsAsync(this SemanticContext context, IParameterSymbol parameter, bool strict = false, ArgumentAssignmentFilter assignmentFilter = ArgumentAssignmentFilter.Undefined) {
+			var assignments = await parameter.FindParameterAssignmentsAsync(context.Document.Project, strict, assignmentFilter, default);
+			var c = 0;
+			foreach (var item in assignments) {
+				c += item.Value.Count;
+			}
+			await SyncHelper.SwitchToMainThreadAsync(default);
+			var m = new SymbolMenu(context, SymbolListType.SymbolReferrers);
+			m.Title.SetGlyph(VsImageHelper.GetImage(IconIds.Argument))
+				.AddSymbol(parameter, null,true, SymbolFormatter.Instance)
+				.Append(R.T_AssignmentLocations).Append(c);
+			if (c != 0) {
+				if (parameter.HasExplicitDefaultValue) {
+					if (assignmentFilter == ArgumentAssignmentFilter.ExplicitValue) {
+						m.Title.AppendInfo("Explicit value only");
+					}
+					else if (assignmentFilter == ArgumentAssignmentFilter.DefaultValue) {
+						m.Title.AppendInfo("Default value only");
+					}
+					m.Title.AppendLine().Append(VsImageHelper.GetImage(IconIds.FindParameterAssignment).WrapMargin(WpfHelper.GlyphMargin)).Append(R.T_Default).Append(" = ").Append(parameter.ExplicitDefaultValue?.ToString() ?? "null");
+				}
+				foreach (var site in assignments) {
+					for (int i = 0; i < site.Value.Count; i++) {
+						var location = site.Value[i];
+						var symItem = m.Add(site.Key, false);
+						symItem.Location = location.location ?? location.expression.GetLocation();
+						symItem.Hint = location.assignment == ArgumentAssignment.Default ? "(default)" : location.expression.NormalizeWhitespace().ToString();
+						if (location.assignment.CeqAny(ArgumentAssignment.ImplicitlyConverted, ArgumentAssignment.ImplicitlyConvertedNameValue)) {
+							symItem.Usage = SymbolUsageKind.TypeCast;
+						}
+						if (i != 0) {
+							symItem.IndentLevel = 1;
+						}
+					}
+				}
+			}
+			m.ExtIconProvider = ExtIconProvider.Default.GetExtIconsWithUsage;
+			m.Show();
+		}
+
 		internal static void ShowLocations(this SemanticContext context, ISymbol symbol, ImmutableArray<SyntaxReference> locations, UIElement positionElement = null) {
 			var m = new SymbolMenu(context, SymbolListType.Locations);
 			m.Title.SetGlyph(VsImageHelper.GetImage(symbol.GetImageId()))
@@ -246,12 +287,15 @@ namespace Codist.Controls
 			m.Show(positionElement);
 		}
 
-		static void ShowSymbolMenuForResult<TSymbol>(ISymbol symbol, SemanticContext context, List<TSymbol> members, string suffix, bool groupByType) where TSymbol : ISymbol {
+		static void ShowSymbolMenuForResult<TSymbol>(ISymbol symbol, SemanticContext context, List<TSymbol> members, string suffix, bool groupByType, string info = null) where TSymbol : ISymbol {
 			members.Sort(CodeAnalysisHelper.CompareSymbol);
 			var m = new SymbolMenu(context);
 			m.Title.SetGlyph(VsImageHelper.GetImage(symbol.GetImageId()))
 				.AddSymbol(symbol, null, true, SymbolFormatter.Instance)
 				.Append(suffix);
+			if (info != null) {
+				m.Title.AppendInfo(info);
+			}
 			INamedTypeSymbol containingType = null;
 			foreach (var item in members) {
 				if (groupByType && item.ContainingType != containingType) {
@@ -321,6 +365,11 @@ namespace Codist.Controls
 				}
 				return r;
 			}
+		}
+
+		static TTextBlock AppendInfo<TTextBlock>(this TTextBlock text, string filterInfo)
+			where TTextBlock : System.Windows.Controls.TextBlock {
+			return text.AppendLine().Append(VsImageHelper.GetImage(IconIds.Info).WrapMargin(WpfHelper.GlyphMargin)).Append(filterInfo);
 		}
 	}
 }

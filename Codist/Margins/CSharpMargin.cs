@@ -86,18 +86,30 @@ namespace Codist.Margins {
     public override string MarginName => nameof(CSharpMargin);
     public override double MarginSize => Padding + MarkerSize;
 
-    /// <summary>
-    /// Override for the FrameworkElement's OnRender. When called, redraw all markers.
-    /// </summary>
-    protected override void OnRender(DrawingContext drawingContext) {
-      base.OnRender(drawingContext);
-      if (Config.Instance.MarkerOptions.HasAnyFlag(MarkerOptions.MemberDeclaration | MarkerOptions.RegionDirective)) {
-        _MemberMarker.Render(drawingContext);
-      }
-      if (Config.Instance.MarkerOptions.HasAnyFlag(MarkerOptions.SymbolReference)) {
-        _SymbolReferenceMarker.Render(drawingContext);
-      }
-    }
+		/// <summary>
+		/// Override for the FrameworkElement's OnRender. When called, redraw all markers.
+		/// </summary>
+		protected override void OnRender(DrawingContext drawingContext) {
+			base.OnRender(drawingContext);
+			if (Config.Instance.MarkerOptions.HasAnyFlag(MarkerOptions.MemberDeclaration | MarkerOptions.RegionDirective)) {
+				try {
+					_MemberMarker.Render(drawingContext);
+				}
+				catch (Exception ex) {
+					Controls.MessageWindow.Error(ex);
+					return;
+				}
+			}
+			if (Config.Instance.MarkerOptions.HasAnyFlag(MarkerOptions.SymbolReference)) {
+				try {
+					_SymbolReferenceMarker.Render(drawingContext);
+				}
+				catch (Exception ex) {
+					Controls.MessageWindow.Error(ex);
+					return;
+				}
+			}
+		}
 
     void UpdateCSharpMembersMarginConfig(ConfigUpdatedEventArgs e) {
       _Parser.StateUpdated -= ParserStateUpdated;

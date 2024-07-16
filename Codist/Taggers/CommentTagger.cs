@@ -28,7 +28,11 @@ namespace Codist.Taggers
 				{ "h", CodeType.C },
 				{ "cxx", CodeType.C },
 				{ "css", CodeType.Css },
-				{ "cshtml", CodeType.CSharp },
+				{ "less", CodeType.AlternativeC },
+				{ "scss", CodeType.AlternativeC },
+				{ "json", CodeType.Common },
+				{ "cshtml", CodeType.AlternativeC },
+				{ "razor", CodeType.AlternativeC },
 				{ "go", CodeType.Go },
 				{ "html", CodeType.Markup },
 				{ "xhtml", CodeType.Markup },
@@ -43,7 +47,7 @@ namespace Codist.Taggers
 				{ "ps1", CodeType.BashShell },
 				{ "cmd", CodeType.Batch },
 				{ "bat", CodeType.Batch },
-				{ "ini", CodeType.Ini },
+				{ "ini", CodeType.Common },
 			};
 		}
 
@@ -115,8 +119,10 @@ namespace Codist.Taggers
 					return new MarkupCommentTagger(registry, textView, textBuffer);
 				case CodeType.Python:
 				case CodeType.BashShell:
-				case CodeType.Ini:
+				case CodeType.Common:
 					return new CommonCommentTagger(registry, textView, textBuffer);
+				case CodeType.AlternativeC:
+					return new AlternativeCCommentTagger(registry, textView, textBuffer);
 			}
 			return null;
 		}
@@ -310,16 +316,21 @@ namespace Codist.Taggers
 		static CodeType GetCodeType(ITextBuffer textBuffer) {
 			var t = textBuffer.ContentType;
 			var c = t.IsOfType(Constants.CodeTypes.CSharp) || t.IsOfType("HTMLXProjection") ? CodeType.CSharp
-				: t.IsOfType("html") || t.IsOfType("htmlx") || t.IsOfType("XAML") || t.IsOfType("XML") || t.IsOfType(Constants.CodeTypes.HtmlxProjection) || t.IsOfType("code++.NAnt Build File") ? CodeType.Markup
-				: t.IsOfType("code++.css") ? CodeType.Css
-				: t.IsOfType("TypeScript") || t.IsOfType("JavaScript") ? CodeType.Js
 				: t.IsOfType("C/C++") ? CodeType.C
+				: t.IsOfType("TypeScript") || t.IsOfType("JavaScript") ? CodeType.Js
 				: t.IsOfType("code++.MagicPython") ? CodeType.Python
+				: t.IsOfType("html") || t.IsOfType("htmlx") || t.IsOfType("XAML") || t.IsOfType("XML") || t.IsOfType(Constants.CodeTypes.HtmlxProjection) ? CodeType.Markup
+				: t.IsOfType("Razor") ? CodeType.AlternativeC
+				: t.IsOfType("code++.css") ? CodeType.Css
+				: t.IsOfType("code++.LESS") ? CodeType.Common
+				: t.IsOfType("css.extensions") ? CodeType.AlternativeC
+				: t.IsOfType("code++.JSON (Javascript Next)") ? CodeType.Common
 				: t.IsOfType("code++.Shell Script (Bash)") || t.IsOfType("InBoxPowerShell") ? CodeType.BashShell
 				: t.IsOfType("code++.Batch File") ? CodeType.Batch
-				: t.IsOfType("code++.Ini") ? CodeType.Ini
+				: t.IsOfType("code++.Ini") ? CodeType.Common
 				: t.IsOfType("code++.Go") ? CodeType.Go
 				: t.IsOfType("code++.Rust") ? CodeType.Rust
+				: t.IsOfType("code++.NAnt Build File") ? CodeType.Markup
 				: CodeType.None;
 			if (c != CodeType.None) {
 				return c;
@@ -369,7 +380,7 @@ namespace Codist.Taggers
 
 		enum CodeType
 		{
-			None, CSharp, Markup, C, Css, Go, Rust, Js, Sql, Python, Batch, BashShell, Ini
+			None, Common, CSharp, Markup, C, AlternativeC, Css, Go, Rust, Js, Sql, Python, Batch, BashShell
 		}
 
 		sealed class CommonCommentTagger : CommentTagger
@@ -431,6 +442,20 @@ namespace Codist.Taggers
 			protected override int GetCommentStartIndex(SnapshotSpan content) {
 				return content.Length > 2 && content.CharAt(1) == '/' ? 2
 					: SlashStarCommentTagger.GetStartIndexOfMultilineSlashStartComment(content, -1);
+			}
+			protected override int GetCommentEndIndex(SnapshotSpan content) {
+				return content.CharAt(1) == '*' ? content.Length - 2 : content.Length;
+			}
+		}
+
+		sealed class AlternativeCCommentTagger : CommentTagger
+		{
+			public AlternativeCCommentTagger(IClassificationTypeRegistryService registry, ITextView textView, ITextBuffer buffer) : base(registry, textView, buffer) {
+			}
+
+			protected override int GetCommentStartIndex(SnapshotSpan content) {
+				return content.Length > 2 && content.CharAt(1) == '/' ? 2
+					: SlashStarCommentTagger.GetStartIndexOfMultilineSlashStartComment(content, 0);
 			}
 			protected override int GetCommentEndIndex(SnapshotSpan content) {
 				return content.CharAt(1) == '*' ? content.Length - 2 : content.Length;

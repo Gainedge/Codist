@@ -19,7 +19,7 @@ using Window = EnvDTE.Window;
 namespace Codist.Commands
 {
 	/// <summary>A command which displays information about the active window pane.</summary>
-	internal static class WindowInformerCommand
+	static class WindowInformerCommand
 	{
 		const int SubSectionFontSize = 14;
 
@@ -45,18 +45,7 @@ namespace Codist.Commands
 
 		[SuppressMessage("Usage", Suppression.VSTHRD010, Justification = Suppression.CheckedInCaller)]
 		static void DisplayWindowInfo(Window window) {
-			var tb = new RichTextBox {
-				BorderThickness = WpfHelper.NoMargin,
-				Background = ThemeHelper.DocumentPageBrush,
-				Foreground = ThemeHelper.DocumentTextBrush,
-				FontFamily = ThemeHelper.CodeTextFont,
-				IsDocumentEnabled = true,
-				IsReadOnly = true,
-				IsReadOnlyCaretVisible = true,
-				AcceptsReturn = false
-			};
-			tb.ApplyTemplate();
-			tb.GetFirstVisualChild<ScrollViewer>().ReferenceStyle(VsResourceKeys.ScrollViewerStyleKey);
+			var tb = new ThemedRichTextBox(true);
 			var blocks = tb.Document.Blocks;
 			blocks.Clear();
 			Section s;
@@ -77,8 +66,8 @@ namespace Codist.Commands
 				}
 
 				s = NewSection(blocks, "IWpfTextView", SubSectionFontSize);
-				AppendNameValue(s, R.T_LineCount + " (TextSnapshot.LineCount)", view.TextSnapshot.LineCount);
-				AppendNameValue(s, R.T_CharacterCount + " (TextSnapshot.Length)", view.TextSnapshot.Length);
+				AppendNameValue(s, $"TextSnapshot.LineCount ({R.T_LineCount})", view.TextSnapshot.LineCount);
+				AppendNameValue(s, $"TextSnapshot.Length ({R.T_CharacterCount})", view.TextSnapshot.Length);
 
 				AppendNameValue(s, R.T_Selection, $"[{view.Selection.Start.Position.Position}-{view.Selection.End.Position.Position})");
 				AppendNameValue(s, R.T_SelectionLength, view.Selection.SelectedSpans.Sum(i => i.Length));

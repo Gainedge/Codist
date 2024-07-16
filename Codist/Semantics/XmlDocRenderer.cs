@@ -3,7 +3,6 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Media;
 using System.Xml;
@@ -20,7 +19,6 @@ namespace Codist
 	sealed class XmlDocRenderer
 	{
 		const int LIST_UNDEFINED = -1, LIST_BULLET = -2, LIST_NOT_NUMERIC = -3;
-		const int BLOCK_PARA = 0, BLOCK_ITEM = 1, BLOCK_OTHER = 2, BLOCK_TITLE = 3;
 
 		static readonly Regex __FixWhitespaces = new Regex(" {2,}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 		readonly Compilation _Compilation;
@@ -76,17 +74,20 @@ namespace Codist
 					tip.Tag = ParagraphCount;
 				}
 			}
-			if (symbol.HasSource() && Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.OrdinaryCommentDoc)) {
-				switch (symbol.Kind) {
-					case SymbolKind.Event:
-					case SymbolKind.Field:
-					case SymbolKind.Local:
-					case SymbolKind.Method:
-					case SymbolKind.NamedType:
-					case SymbolKind.Property:
+			switch (symbol.Kind) {
+				case SymbolKind.Event:
+				case SymbolKind.Field:
+				case SymbolKind.Local:
+				case SymbolKind.Method:
+				case SymbolKind.NamedType:
+				case SymbolKind.Property:
+					if (symbol.HasSource() && Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.OrdinaryCommentDoc)) {
 						RenderOrdinaryComment(symbol, tip);
-						break;
-				}
+					}
+					break;
+				case SymbolKind.Parameter:
+				case SymbolKind.TypeParameter:
+					return tip;
 			}
 			#endregion
 			#region Type parameter
@@ -154,7 +155,7 @@ namespace Codist
 				}
 			}
 			#endregion
-			#region SeeAlso
+			#region See & SeeAlso
 			if (Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.SeeAlsoDoc)) {
 				var seeAlsos = doc.SeeAlsos ?? doc.ExplicitInheritDoc?.SeeAlsos ?? doc.InheritedXmlDocs.FirstOrDefault(i => i.SeeAlsos != null)?.SeeAlsos;
 				ThemedTipText seeAlso = null;
@@ -250,6 +251,15 @@ namespace Codist
 			}
 			Render(content, text.Inlines);
 		}
+		public void Render(XElement content, FlowDocument document) {
+			if (content == null || IsEmptyElement(content)) {
+				return;
+			}
+			if (document.Blocks.FirstBlock is Paragraph p == false) {
+				document.Blocks.Add(p = new Paragraph());
+			}
+			Render(content, p.Inlines);
+		}
 		public void Render(XContainer content, InlineCollection inlines) {
 			InternalRender(content, inlines, null);
 		}
@@ -264,7 +274,7 @@ namespace Codist
 								list = list == null
 									? new ListContext(e.Attribute("type")?.Value)
 									: new ListContext(e.Attribute("type")?.Value, list);
-								RenderBlockContent(inlines, list, e, BLOCK_OTHER);
+								RenderBlockContent(inlines, list, e, BlockType.List);
 								list = list.Parent;
 								break;
 							case "para":
@@ -282,36 +292,33 @@ namespace Codist
 								}
 								break;
 							case "listheader":
-								RenderBlockContent(inlines, list, e, BLOCK_OTHER);
+								RenderBlockContent(inlines, list, e, BlockType.List);
 								break;
 							case "h1":
-								RenderBlockContent(inlines, list, e, BLOCK_TITLE).FontSize = ThemeHelper.ToolTipFontSize + 5;
+								RenderBlockContent(inlines, list, e, BlockType.Title).FontSize = ThemeHelper.ToolTipFontSize + 5;
 								break;
 							case "h2":
-								RenderBlockContent(inlines, list, e, BLOCK_TITLE).FontSize = ThemeHelper.ToolTipFontSize + 3;
+								RenderBlockContent(inlines, list, e, BlockType.Title).FontSize = ThemeHelper.ToolTipFontSize + 3;
 								break;
 							case "h3":
-								RenderBlockContent(inlines, list, e, BLOCK_TITLE).FontSize = ThemeHelper.ToolTipFontSize + 2;
+								RenderBlockContent(inlines, list, e, BlockType.Title).FontSize = ThemeHelper.ToolTipFontSize + 2;
 								break;
 							case "h4":
-								RenderBlockContent(inlines, list, e, BLOCK_TITLE).FontSize = ThemeHelper.ToolTipFontSize + 1;
+								RenderBlockContent(inlines, list, e, BlockType.Title).FontSize = ThemeHelper.ToolTipFontSize + 1;
 								break;
 							case "h5":
-								RenderBlockContent(inlines, list, e, BLOCK_TITLE).FontSize = ThemeHelper.ToolTipFontSize + 0.5;
+								RenderBlockContent(inlines, list, e, BlockType.Title).FontSize = ThemeHelper.ToolTipFontSize + 0.5;
 								break;
 							case "h6":
-								RenderBlockContent(inlines, list, e, BLOCK_TITLE);
+								RenderBlockContent(inlines, list, e, BlockType.Title);
 								break;
 							case "code":
 								++_IsCode;
-								var span = RenderBlockContent(inlines, list, e, BLOCK_OTHER);
-								span.FontFamily = GetCodeFont();
-								span.Background = ThemeHelper.ToolWindowBackgroundBrush;
-								span.Foreground = ThemeHelper.ToolWindowTextBrush;
+								RenderBlockContent(inlines, list, e, BlockType.Code);
 								--_IsCode;
 								break;
 							case "item":
-								RenderBlockContent(inlines, list, e, BLOCK_ITEM);
+								RenderBlockContent(inlines, list, e, BlockType.ListItem);
 								break;
 							case "see":
 							case "seealso":
@@ -326,7 +333,11 @@ namespace Codist
 							case "c":
 							case "tt":
 								++_IsCode;
-								StyleInner(e, inlines, new Span() { FontFamily = GetCodeFont(), Background = ThemeHelper.ToolWindowBackgroundBrush, Foreground = ThemeHelper.ToolWindowTextBrush });
+								StyleInner(e, inlines, new Span() {
+									FontFamily = GetCodeFont(),
+									Background = ThemeHelper.ToolWindowBackgroundBrush,
+									Foreground = ThemeHelper.ToolWindowTextBrush
+								});
 								--_IsCode;
 								break;
 							case "b":
@@ -354,19 +365,7 @@ namespace Codist
 								inlines.Add(new LineBreak());
 								break;
 							case "hr":
-								inlines.AddRange(new Inline[] {
-									new LineBreak(),
-									new InlineUIContainer(new Border {
-											Height = 1,
-											Background = ThemeHelper.DocumentTextBrush,
-											Margin = WpfHelper.MiddleVerticalMargin,
-											Opacity = 0.5,
-											MinWidth = 100
-										}.Bind(FrameworkElement.WidthProperty, new Binding {
-											RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor, typeof(ThemedTipText), 1),
-											Path = new PropertyPath("ActualWidth")
-										})),
-									new LineBreak() });
+								inlines.Add(CreateHorizontalRuler());
 								break;
 							//case "list":
 							//case "description":
@@ -414,6 +413,16 @@ namespace Codist
 			}
 		}
 
+		static InlineUIContainer CreateHorizontalRuler() {
+			return new InlineUIContainer(new Border {
+				Height = 1,
+				Background = ThemeHelper.DocumentTextBrush,
+				Margin = WpfHelper.MiddleVerticalMargin,
+				Opacity = 0.5,
+				MinWidth = 100
+			}.BindWidthAsAncestor(typeof(ThemedTipText)));
+		}
+
 		static bool IsUrl(string text) {
 			return text.StartsWith("http://", StringComparison.Ordinal) || text.StartsWith("https://", StringComparison.Ordinal);
 		}
@@ -424,7 +433,7 @@ namespace Codist
 			}
 			var lines = System.Collections.Immutable.ImmutableArray.CreateBuilder<(string t, int sc)>();
 			int c = Int32.MaxValue, i, ln = 0, last = 0;
-			bool cnt;
+			bool cnt; // content
 			using (var sbr = Microsoft.VisualStudio.Utilities.ReusableStringBuilder.AcquireDefault(100))
 			using (var r = new System.IO.StringReader(text)) {
 				var sb = sbr.Resource;
@@ -455,8 +464,8 @@ namespace Codist
 					lines.Add((l, i));
 				}
 				ln = 0;
-				foreach (var (t, sc) in lines) {
-					if (t.Length > 0 && sc >= c) {
+				foreach (var (t, spaces) in lines) {
+					if (t.Length > 0 && spaces >= c) {
 						sb.Append(t, c, t.Length - c);
 					}
 					if (++ln == last) {
@@ -490,7 +499,7 @@ namespace Codist
 					CreateLink(inlines, e, see);
 				}
 				else {
-					RenderXmlDocSymbol(see, inlines, SymbolKind.Alias);
+					RenderXmlDocSymbol(see, inlines, SymbolKind.Alias, e.IsEmpty ? null : e.Value);
 				}
 			}
 			else if ((see = e.Attribute("langword")?.Value) != null) {
@@ -516,11 +525,11 @@ namespace Codist
 			return r;
 		}
 
-		Span RenderBlockContent(InlineCollection inlines, ListContext list, XElement e, int blockType) {
+		Span RenderBlockContent(InlineCollection inlines, ListContext list, XElement e, BlockType blockType) {
 			if (inlines.LastInline != null && inlines.LastInline is LineBreak == false) {
 				inlines.AppendLineWithMargin();
 			}
-			if (blockType == BLOCK_ITEM) {
+			if (blockType == BlockType.ListItem) {
 				PopulateListNumber(inlines, list);
 			}
 			else {
@@ -530,16 +539,48 @@ namespace Codist
 			if (_IsCode > 0) {
 				span.FontFamily = GetCodeFont();
 			}
-			if (blockType == BLOCK_TITLE) {
+			if (blockType == BlockType.Title) {
 				span.FontWeight = FontWeights.Bold;
+			}
+			else if (blockType == BlockType.Code) {
+				inlines.Add(CreateCodeBlockStart());
 			}
 			inlines.Add(span);
 			InternalRender(e, span.Inlines, list);
-			if (blockType != BLOCK_ITEM && e.NextNode != null
+			if (blockType == BlockType.Code) {
+				inlines.Add(CreateCodeBlockEnd());
+			}
+			else if (blockType != BlockType.ListItem
+				&& GetNextContentNode(e) != null
 				&& IsInlineElementName((e.NextNode as XElement)?.Name.LocalName) == false) {
 				inlines.Add(new LineBreak());
 			}
 			return span;
+		}
+
+		static InlineUIContainer CreateCodeBlockStart() {
+			return new InlineUIContainer(new Border {
+				Child = new TextBlock {
+					Text = R.T_Code,
+					Padding = WpfHelper.MiddleHorizontalMargin,
+					Margin = WpfHelper.MiddleHorizontalMargin,
+					Foreground = ThemeHelper.MenuTextBrush,
+					Background = ThemeHelper.MenuHoverBackgroundBrush,
+					TextAlignment = TextAlignment.Left,
+					HorizontalAlignment = HorizontalAlignment.Left,
+				},
+				BorderBrush = ThemeHelper.MenuHoverBackgroundBrush,
+				BorderThickness = WpfHelper.TinyBottomMargin,
+				Margin = WpfHelper.MiddleVerticalMargin,
+			}.BindWidthAsAncestor(typeof(ThemedTipText)));
+		}
+
+		static InlineUIContainer CreateCodeBlockEnd() {
+			return new InlineUIContainer(new Border {
+				Height = 1,
+				Background = ThemeHelper.MenuHoverBackgroundBrush,
+				Margin = WpfHelper.MiddleVerticalMargin,
+			}.BindWidthAsAncestor(typeof(ThemedTipText)));
 		}
 
 		static void PopulateListNumber(InlineCollection text, ListContext list) {
@@ -552,21 +593,21 @@ namespace Codist
 			}
 		}
 
-		internal void RenderXmlDocSymbol(string symbol, InlineCollection inlines, SymbolKind symbolKind) {
+		internal void RenderXmlDocSymbol(string symbol, InlineCollection inlines, SymbolKind symbolKind, string alias = null) {
 			if (Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.UseCodeFontForXmlDocSymbol)) {
 				inlines = UseCodeEditorFont(inlines);
 			}
 
 			switch (symbolKind) {
 				case SymbolKind.Parameter:
-					inlines.Add(symbol.Render(false, _SymbolFormatter.Parameter == null, _SymbolFormatter.Parameter));
+					inlines.Add((alias ?? symbol).Render(false, _SymbolFormatter.Parameter == null, _SymbolFormatter.Parameter));
 					return;
 				case SymbolKind.TypeParameter:
-					inlines.Add(symbol.Render(_SymbolFormatter.TypeParameter == null, false, _SymbolFormatter.TypeParameter));
+					inlines.Add((alias ?? symbol).Render(_SymbolFormatter.TypeParameter == null, false, _SymbolFormatter.TypeParameter));
 					return;
 				case SymbolKind.DynamicType:
 					// highlight keywords
-					inlines.Add(symbol.Render(_SymbolFormatter.Keyword));
+					inlines.Add((alias ?? symbol).Render(_SymbolFormatter.Keyword));
 					return;
 			}
 			var s = DocumentationCommentId.GetFirstSymbolForDeclarationId(symbol, _Compilation);
@@ -574,10 +615,11 @@ namespace Codist
 				ShowBrokenLink(inlines, symbol, _SymbolFormatter);
 				return;
 			}
-			if (Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.ContainingType)) {
+			if (alias == null
+				&& Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.ContainingType)) {
 				ShowContainingType(inlines, s, SymbolFormatter.SemiTransparent);
 			}
-			_SymbolFormatter.Format(inlines, s, null, false);
+			_SymbolFormatter.Format(inlines, s, alias, false);
 
 			InlineCollection UseCodeEditorFont(InlineCollection ic) {
 				var span = new Span { FontFamily = ThemeHelper.CodeTextFont };
@@ -644,6 +686,7 @@ namespace Codist
 		static bool IsInlineElementName(string name) {
 			switch (name) {
 				case "see":
+				case "seealso":
 				case "paramref":
 				case "typeparamref":
 				case "b":
@@ -724,6 +767,24 @@ namespace Codist
 			return null;
 		}
 
+		static XNode GetNextContentNode(XElement element) {
+			XNode node = element;
+			while ((node = node.NextNode) != null) {
+				switch (node.NodeType) {
+					case XmlNodeType.Element: return node;
+					case XmlNodeType.Whitespace: continue;
+					case XmlNodeType.SignificantWhitespace: continue;
+					case XmlNodeType.Text:
+						if (((XText)node).Value.Trim().Length == 0) {
+							continue;
+						}
+						return node;
+				}
+				return null;
+			}
+			return null;
+		}
+
 		sealed class ListContext
 		{
 			public readonly int Indent;
@@ -742,6 +803,16 @@ namespace Codist
 				Parent = parent;
 			}
 		}
+
+		enum BlockType
+		{
+			Normal,
+			ListItem,
+			List,
+			Title,
+			Code
+		}
+
 		enum ListType
 		{
 			Number = 1,
