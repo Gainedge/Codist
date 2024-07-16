@@ -335,27 +335,9 @@ namespace Codist.QuickInfo {
         return _Session?.TextView.Properties.GetOrCreateSingletonProperty(CreateErrorTagger);
       }
 
-			public CrispImage GetIconForErrorText(TextBlock textBlock) {
-				var f = textBlock.Inlines.FirstInline;
-				var tt = ((f as Hyperlink)?.Inlines.FirstInline as Run)?.Text;
-				if (tt == null) {
-					tt = (f as Run)?.Text;
-					if (tt == null) {
-						return null;
-					}
-					if (tt == "SPELL") {
-						return ThemeHelper.GetImage(IconIds.StatusSpell);
-					}
-				}
-				if (tt.IndexOf("vsspell", StringComparison.InvariantCultureIgnoreCase) >= 0) {
-          return VsImageHelper.GetImage(IconIds.StatusSpell);
-        }
-				var errorTagger = GetErrorTagger();
-				return errorTagger != null
-					? (_ErrorTags ?? (_ErrorTags = new ErrorTags()))
-						.GetErrorIcon(tt, errorTagger, _Session.ApplicableToSpan.GetSpan(_Session.TextView.TextSnapshot))
-					: null;
-			}
+      ITagAggregator<IErrorTag> CreateErrorTagger() {
+        return ServicesHelper.Instance.ViewTagAggregatorFactory.CreateTagAggregator<IErrorTag>(_Session.TextView);
+      }
 
       public FrameworkElement GetIconForErrorText(TextBlock textBlock) {
         var f = textBlock.Inlines.FirstInline;
@@ -377,10 +359,7 @@ namespace Codist.QuickInfo {
           return VsImageHelper.GetImage(IconIds.StatusSpell);
         }
         if (tt.Contains("CRRSP")) {
-          return VsImageHelper.GetImage(IconIds.StatusSpell);
-        }
-        if (tt.Contains(":")) {
-          tt = tt.Split(new[] { ':' }, 2).Last();
+            return VsImageHelper.GetImage(IconIds.StatusSpell);
         }
         var errorTagger = GetErrorTagger();
         return errorTagger != null
