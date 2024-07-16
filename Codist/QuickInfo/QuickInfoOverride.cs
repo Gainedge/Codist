@@ -355,7 +355,7 @@ namespace Codist.QuickInfo
 					}
 				}
 				if (tt.IndexOf("vsspell", StringComparison.InvariantCultureIgnoreCase) >= 0) {
-          return ThemeHelper.GetImage(IconIds.StatusSpell);
+          return VsImageHelper.GetImage(IconIds.StatusSpell);
         }
 				var errorTagger = GetErrorTagger();
 				return errorTagger != null
