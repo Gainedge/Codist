@@ -21,8 +21,6 @@ namespace Codist.Options
 {
 	sealed class SyntaxHighlightCustomizationWindow : Window
 	{
-		static readonly Thickness __SubOptionMargin = new Thickness(24, 0, 0, 0);
-		static readonly IClassificationType __BraceMatchingClassificationType = ServicesHelper.Instance.ClassificationTypeRegistry.GetClassificationType(Constants.CodeBraceMatching);
 		const int SMALL_LABEL_WIDTH = 60, MIDDLE_LABEL_WIDTH = 120;
 
 		readonly StackPanel _SettingsList;
@@ -33,7 +31,7 @@ namespace Codist.Options
 		readonly TextBlock _Notice;
 		readonly ListBox _SyntaxSourceBox;
 		readonly Grid _RightPaneTitle;
-		readonly TextBlock _StyleNameHolder;
+		readonly TextBox _StyleNameHolder;
 		readonly Button _ResetButton;
 		readonly Border _SettingsGroup, _TagSettingsGroup;
 		readonly FontButton _FontButton;
@@ -56,13 +54,13 @@ namespace Codist.Options
 		readonly WrapPanel _LineStyleGroup;
 		readonly ComboBox _LineStyleBox;
 		readonly WrapPanel _BaseTypesList;
-		readonly Button _AddTagButton, _RemoveTagButton;
+		readonly ThemedImageButton _AddTagButton, _RemoveTagButton;
 		readonly TextBox _TagBox;
 		readonly ComboBox _TagStyleBox;
 		readonly StyleCheckBox _TagCaseSensitiveBox;
 		readonly StyleCheckBox _TagHasPunctuationBox;
 		readonly RadioBox _TagApplyOnTagBox, _TagApplyOnContentBox, _TagApplyOnWholeBox;
-		readonly Button _ImportThemeButton, _ExportThemeButton, _ResetThemeButton;
+		readonly ThemedButton _ImportThemeButton, _ExportThemeButton, _ResetThemeButton;
 		readonly UiLock _Lock = new UiLock();
 		IWpfTextView _WpfTextView;
 		string _CurrentViewCategory;
@@ -80,6 +78,77 @@ namespace Codist.Options
 			MinWidth = 480;
 			SnapsToDevicePixels = true;
 			Resources = SharedDictionaryManager.ThemedControls;
+			#region Controls
+			_SyntaxSourceBox = new ListBox {
+				Items = {
+					new ClassificationCategoryItem(SyntaxStyleSource.Selection, R.T_SelectedCode),
+					new ClassificationCategoryItem(SyntaxStyleSource.Common, R.T_Common),
+					new ClassificationCategoryItem(SyntaxStyleSource.CSharp, "C#"),
+					new ClassificationCategoryItem(SyntaxStyleSource.CSharpSymbolMarker, "   "+R.T_SymbolMarkers),
+					new ConfigPageItem<CSharpAdditionalHighlightConfigPage>("   "+R.T_Options),
+					new ClassificationCategoryItem(SyntaxStyleSource.CPlusPlus, "C++"),
+					new ClassificationCategoryItem(SyntaxStyleSource.Markdown, "Markdown"),
+					new ClassificationCategoryItem(SyntaxStyleSource.Xml, "XML/HTML"),
+					new ClassificationCategoryItem(SyntaxStyleSource.CommentTagger, R.T_TaggedComments),
+					new ClassificationCategoryItem(SyntaxStyleSource.CommentLabels, "   "+R.T_Tags),
+					new ClassificationCategoryItem(SyntaxStyleSource.Custom, R.T_Custom),
+					new ClassificationCategoryItem(SyntaxStyleSource.PriorityOrder, R.T_AllLanguages)
+				}
+			}.ReferenceStyle(VsResourceKeys.ThemedDialogListBoxStyleKey);
+			_ImportThemeButton = new ThemedButton(IconIds.Load, R.CMD_Import, R.CMDT_LoadTheme, ImportTheme) { HorizontalContentAlignment = HorizontalAlignment.Left }
+				.ReferenceStyle(VsResourceKeys.ButtonStyleKey);
+			_ExportThemeButton = new ThemedButton(IconIds.SaveAs, R.CMD_Export, R.CMDT_SaveTheme, ExportTheme) { HorizontalContentAlignment = HorizontalAlignment.Left }
+				.ReferenceStyle(VsResourceKeys.ButtonStyleKey);
+			_ResetThemeButton = new ThemedButton(IconIds.ResetTheme, R.CMD_Reset, R.CMDT_ResetTheme, ResetTheme) { HorizontalContentAlignment = HorizontalAlignment.Left }
+				.ReferenceStyle(VsResourceKeys.ButtonStyleKey);
+			_SettingsFilterBox = new ThemedTextBox {
+				Width = 120,
+				Margin = WpfHelper.SmallMargin,
+				ToolTip = R.OT_FilterStyleNamesTip
+			};
+			_OverriddenStyleFilterButton = new ThemedToggleButton(IconIds.FilterCustomized, R.OT_ShowCustomizedStylesTip);
+			_AddTagButton = new ThemedImageButton(IconIds.Add, R.CMD_Add);
+			_RemoveTagButton = new ThemedImageButton(IconIds.Remove, R.CMD_Remove);
+			_ClearFilterButton = new ThemedButton(VsImageHelper.GetImage(IconIds.ClearFilter), R.CMD_ClearFilter);
+			_SettingsList = new StackPanel();
+			_StyleNameHolder = new TextBox {
+				FontWeight = FontWeights.Bold,
+				IsReadOnly = true,
+				Margin = WpfHelper.MiddleHorizontalMargin,
+				MinWidth = 200,
+				MaxWidth = 400
+			}.ReferenceStyle(VsResourceKeys.TextBoxStyleKey);
+			_ResetButton = new Button { Content = R.CMD_Reset }.ReferenceStyle(VsResourceKeys.ButtonStyleKey);
+			_FontButton = new FontButton(ApplyFont) { Width = 230 }.ReferenceStyle(VsResourceKeys.ThemedDialogButtonStyleKey);
+			_FontSizeBox = new NumericUpDown { Width = 80 };
+			_VariantBox = new ComboBox { MinWidth = 80 }.ReferenceStyle(VsResourceKeys.ComboBoxStyleKey);
+			_BoldBox = new StyleCheckBox(R.CMD_Bold, OnBoldChanged);
+			_ItalicBox = new StyleCheckBox(R.CMD_Italic, OnItalicChanged);
+			_UnderlineBox = new StyleCheckBox(R.CMD_Underline, OnUnderlineChanged);
+			_StrikethroughBox = new StyleCheckBox(R.CMD_Strikethrough, OnStrikeThroughChanged);
+			_ForegroundButton = new ColorButton(Colors.Transparent, R.T_Foreground, OnForeColorChanged);
+			_ForegroundOpacityButton = new OpacityButton(OnForeOpacityChanged);
+			_BackgroundButton = new ColorButton(Colors.Transparent, R.T_Background, OnBackColorChanged);
+			_BackgroundOpacityButton = new OpacityButton(OnBackOpacityChanged);
+			_BackgroundEffectBox = new ComboBox { Width = 160 }.ReferenceStyle(VsResourceKeys.ComboBoxStyleKey);
+			_LineColorButton = new ColorButton(Colors.Transparent, R.T_LineColor, OnLineColorChanged);
+			_LineOpacityButton = new OpacityButton(OnLineOpacityChanged);
+			_LineThicknessBox = new NumericUpDown { Width = 80, Minimum = 0, Maximum = 255 };
+			_LineOffsetBox = new NumericUpDown { Width = 80, Minimum = 0, Maximum = 255 };
+			_LineStyleBox = new ComboBox { Width = 160 }.ReferenceStyle(VsResourceKeys.ComboBoxStyleKey);
+			_BaseTypesList = new WrapPanel {
+				Margin = WpfHelper.SmallMargin,
+				Children = { new TextBlock { Text = R.T_BaseSyntax } }
+			};
+			_TagBox = new TextBox() { Width = 230 }.ReferenceStyle(VsResourceKeys.TextBoxStyleKey);
+			_TagStyleBox = new ComboBox { Width = 230, IsEditable = false }.ReferenceStyle(VsResourceKeys.ComboBoxStyleKey);
+			_TagCaseSensitiveBox = new StyleCheckBox(R.T_CaseSensitive, OnTagCaseSensitiveChanged) { IsThreeState = false };
+			_TagHasPunctuationBox = new StyleCheckBox(R.T_EndWithPunctuation, OnTagHasPunctuationChanged) { IsThreeState = false };
+			_TagApplyOnTagBox = new RadioBox(R.OT_Tag, "TagApplication", OnTagApplicationChanged);
+			_TagApplyOnContentBox = new RadioBox(R.OT_Content, "TagApplication", OnTagApplicationChanged);
+			_TagApplyOnWholeBox = new RadioBox(R.OT_TagContent, "TagApplication", OnTagApplicationChanged);
+			_Notice = new TextBlock { Text = R.T_SyntaxHighlightConfigNotice, TextWrapping = TextWrapping.Wrap };
+			#endregion
 			Content = new Border {
 				Padding = WpfHelper.MiddleMargin,
 				Child = new Grid {
@@ -98,21 +167,7 @@ namespace Codist.Options
 									VerticalAlignment = VerticalAlignment.Bottom,
 									FontWeight = FontWeights.Bold
 								},
-								new ListBox {
-									Items = {
-										new ClassificationCategoryItem(SyntaxStyleSource.Selection, R.T_SelectedCode),
-										new ClassificationCategoryItem(SyntaxStyleSource.Common, R.T_Common),
-										new ClassificationCategoryItem(SyntaxStyleSource.CSharp, "C#"),
-										new ClassificationCategoryItem(SyntaxStyleSource.CSharpSymbolMarker, "   "+R.T_SymbolMarkers),
-										new ConfigPageItem<CSharpAdditionalHighlightConfigPage>("   "+R.T_Options),
-										new ClassificationCategoryItem(SyntaxStyleSource.CPlusPlus, "C++"),
-										new ClassificationCategoryItem(SyntaxStyleSource.Markdown, "Markdown"),
-										new ClassificationCategoryItem(SyntaxStyleSource.Xml, "XML/HTML"),
-										new ClassificationCategoryItem(SyntaxStyleSource.CommentTagger, R.T_TaggedComments),
-										new ClassificationCategoryItem(SyntaxStyleSource.CommentLabels, "   "+R.T_Tags),
-										new ClassificationCategoryItem(SyntaxStyleSource.PriorityOrder, R.T_AllLanguages)
-									}
-								}.Set(ref _SyntaxSourceBox).ReferenceStyle(VsResourceKeys.ThemedDialogListBoxStyleKey),
+								_SyntaxSourceBox,
 
 								new TextBlock {
 									Text = R.T_Themes,
@@ -120,15 +175,9 @@ namespace Codist.Options
 									FontWeight = FontWeights.Bold,
 									Margin = WpfHelper.TopItemMargin
 								},
-								new ThemedButton(IconIds.Load, R.CMD_Import, R.CMDT_LoadTheme, ImportTheme) { HorizontalContentAlignment = HorizontalAlignment.Left }
-									.Set(ref _ImportThemeButton)
-									.ReferenceStyle(VsResourceKeys.ButtonStyleKey),
-								new ThemedButton(IconIds.SaveAs, R.CMD_Export, R.CMDT_SaveTheme, ExportTheme) { HorizontalContentAlignment = HorizontalAlignment.Left }
-									.Set(ref _ExportThemeButton)
-									.ReferenceStyle(VsResourceKeys.ButtonStyleKey),
-								new ThemedButton(IconIds.ResetTheme, R.CMD_Reset, R.CMDT_ResetTheme, ResetTheme) { HorizontalContentAlignment = HorizontalAlignment.Left }
-									.Set(ref _ResetThemeButton)
-									.ReferenceStyle(VsResourceKeys.ButtonStyleKey),
+								_ImportThemeButton,
+								_ExportThemeButton,
+								_ResetThemeButton,
 
 								new TextBlock {
 									Text = R.T_PredefinedThemes,
@@ -175,23 +224,18 @@ namespace Codist.Options
 													VsImageHelper.GetImage(IconIds.Filter)
 														.ReferenceCrispImageBackground(EnvironmentColors.ToolWindowBackgroundColorKey)
 														.WrapMargin(WpfHelper.GlyphMargin),
-													new ThemedTextBox {
-														Width = 120,
-														Margin = WpfHelper.SmallMargin,
-														ToolTip = R.OT_FilterStyleNamesTip
-													}.Set(ref _SettingsFilterBox),
-													new ThemedControlGroup(new ThemedToggleButton(IconIds.FilterCustomized, R.OT_ShowCustomizedStylesTip)
-														.Set(ref _OverriddenStyleFilterButton),
-															new ThemedImageButton(IconIds.Add, R.CMD_Add).Set(ref _AddTagButton),
-															new ThemedImageButton(IconIds.Remove, R.CMD_Remove).Set(ref _RemoveTagButton),
-															new ThemedButton(VsImageHelper.GetImage(IconIds.ClearFilter), R.CMD_ClearFilter).Set(ref _ClearFilterButton)) { Margin = WpfHelper.SmallVerticalMargin },
+													_SettingsFilterBox,
+													new ThemedControlGroup(_OverriddenStyleFilterButton,
+														_AddTagButton,
+														_RemoveTagButton,
+														_ClearFilterButton) { Margin = WpfHelper.SmallVerticalMargin },
 												}
 											}
 										}.SetValue(Grid.SetColumn, 1)
 									}
 								}.Set(ref _RightPaneTitle),
 								new Border {
-									Child = new StackPanel().Set(ref _SettingsList)
+									Child = _SettingsList
 								}.Set(ref _OptionPageHolder)
 								.Scrollable()
 								.SetValue(Grid.SetRow, 1),
@@ -203,78 +247,42 @@ namespace Codist.Options
 											new WrapPanel {
 												Children = {
 													new TextBlock { Text = R.T_StyleSettings, FontWeight = FontWeights.Bold },
-													new TextBlock { FontWeight = FontWeights.Bold, TextDecorations = { TextDecorations.Underline }, Margin = WpfHelper.MiddleHorizontalMargin }.Set(ref _StyleNameHolder),
-													new Button { Content = R.CMD_Reset }.ReferenceStyle(VsResourceKeys.ButtonStyleKey).Set(ref _ResetButton)
+													_StyleNameHolder,
+													_ResetButton
 												}
 											},
 											new WrapPanel {
 												Margin = WpfHelper.SmallMargin,
 												Children = {
-													new LabeledControl(R.T_Font, SMALL_LABEL_WIDTH,
-														new FontButton(ApplyFont) { Width = 230 }
-															.Set(ref _FontButton)
-															.ReferenceStyle(VsResourceKeys.ThemedDialogButtonStyleKey)),
-													new LabeledControl(R.T_Size, SMALL_LABEL_WIDTH,
-														new NumericUpDown { Width = 80 }
-															.Set(ref _FontSizeBox)),
-													new LabeledControl(R.T_Variant, SMALL_LABEL_WIDTH,
-														new ComboBox { MinWidth = 80 }
-															.ReferenceStyle(VsResourceKeys.ComboBoxStyleKey)
-															.Set(ref _VariantBox))
+													new LabeledControl(R.T_Font, SMALL_LABEL_WIDTH, _FontButton),
+													new LabeledControl(R.T_Size, SMALL_LABEL_WIDTH, _FontSizeBox),
+													new LabeledControl(R.T_Variant, SMALL_LABEL_WIDTH, _VariantBox)
 												}
 											},
 											new WrapPanel {
 												Margin = WpfHelper.SmallMargin,
-												Children = {
-													new StyleCheckBox(R.CMD_Bold, OnBoldChanged).Set(ref _BoldBox),
-													new StyleCheckBox(R.CMD_Italic, OnItalicChanged).Set(ref _ItalicBox),
-													new StyleCheckBox(R.CMD_Underline, OnUnderlineChanged).Set(ref _UnderlineBox),
-													new StyleCheckBox(R.CMD_Strikethrough, OnStrikeThroughChanged).Set(ref _StrikethroughBox),
-												}
+												Children = { _BoldBox, _ItalicBox, _UnderlineBox, _StrikethroughBox, }
 											},
 											new WrapPanel {
 												Margin = WpfHelper.SmallMargin,
-												Children = {
-													new ColorButton(Colors.Transparent, R.T_Foreground, OnForeColorChanged).Set(ref _ForegroundButton),
-													new OpacityButton(OnForeOpacityChanged).Set(ref _ForegroundOpacityButton),
-													new ColorButton(Colors.Transparent, R.T_Background, OnBackColorChanged).Set(ref _BackgroundButton),
-													new OpacityButton(OnBackOpacityChanged).Set(ref _BackgroundOpacityButton),
-												}
+												Children = { _ForegroundButton, _ForegroundOpacityButton, _BackgroundButton, _BackgroundOpacityButton, }
 											},
-											new LabeledControl(R.T_BackgroundEffect, MIDDLE_LABEL_WIDTH,
-													new ComboBox { Width = 160 }
-														.ReferenceStyle(VsResourceKeys.ComboBoxStyleKey)
-														.Set(ref _BackgroundEffectBox)) {
+											new LabeledControl(R.T_BackgroundEffect, MIDDLE_LABEL_WIDTH, _BackgroundEffectBox) {
 												Margin = WpfHelper.SmallMargin
 											}.Set(ref _BackgroundEffectControl),
 											new WrapPanel {
 												Margin = WpfHelper.SmallMargin,
-												Children = {
-													new ColorButton(Colors.Transparent, R.T_LineColor, OnLineColorChanged).Set(ref _LineColorButton),
-													new OpacityButton(OnLineOpacityChanged).Set(ref _LineOpacityButton)
-												}
+												Children = { _LineColorButton, _LineOpacityButton }
 											},
 											new WrapPanel {
 												Margin = WpfHelper.SmallMargin,
 												Children = {
-													new LabeledControl(R.T_LineThickness, MIDDLE_LABEL_WIDTH,
-														new NumericUpDown { Width = 80, Minimum = 0, Maximum = 255 }
-															.Set(ref _LineThicknessBox)),
-													new LabeledControl(R.T_LineOffset, MIDDLE_LABEL_WIDTH,
-														new NumericUpDown { Width = 80, Minimum = 0, Maximum = 255 }
-															.Set(ref _LineOffsetBox)),
-													new LabeledControl(R.T_LineStyle, MIDDLE_LABEL_WIDTH,
-														new ComboBox { Width = 160 }
-															.ReferenceStyle(VsResourceKeys.ComboBoxStyleKey)
-															.Set(ref _LineStyleBox))
+													new LabeledControl(R.T_LineThickness, MIDDLE_LABEL_WIDTH, _LineThicknessBox),
+													new LabeledControl(R.T_LineOffset, MIDDLE_LABEL_WIDTH, _LineOffsetBox),
+													new LabeledControl(R.T_LineStyle, MIDDLE_LABEL_WIDTH, _LineStyleBox)
 												}
 											}.Set(ref _LineStyleGroup),
-											new WrapPanel {
-												Margin = WpfHelper.SmallMargin,
-												Children = {
-													new TextBlock { Text = R.T_BaseSyntax }
-												}
-											}.Set(ref _BaseTypesList)
+											_BaseTypesList
 										}
 									},
 									Padding = new Thickness(0, 6, 0, 0)
@@ -290,30 +298,21 @@ namespace Codist.Options
 											new WrapPanel {
 												Margin = WpfHelper.SmallMargin,
 												Children = {
-													new LabeledControl(R.T_Tag, SMALL_LABEL_WIDTH,
-														new TextBox() { Width = 230 }
-															.ReferenceStyle(VsResourceKeys.TextBoxStyleKey)
-															.Set(ref _TagBox)),
-													new LabeledControl(R.T_Style, SMALL_LABEL_WIDTH,
-														new ComboBox { Width = 230, IsEditable = false }
-															.Set(ref _TagStyleBox)
-															.ReferenceStyle(VsResourceKeys.ComboBoxStyleKey))
+													new LabeledControl(R.T_Tag, SMALL_LABEL_WIDTH, _TagBox),
+													new LabeledControl(R.T_Style, SMALL_LABEL_WIDTH, _TagStyleBox)
 												}
 											},
 											new WrapPanel {
 												Margin = WpfHelper.SmallMargin,
-												Children = {
-													new StyleCheckBox(R.T_CaseSensitive, OnTagCaseSensitiveChanged) { IsThreeState = false }.Set(ref _TagCaseSensitiveBox),
-													new StyleCheckBox(R.T_EndWithPunctuation, OnTagHasPunctuationChanged) { IsThreeState = false }.Set(ref _TagHasPunctuationBox),
-												}
+												Children = { _TagCaseSensitiveBox, _TagHasPunctuationBox, }
 											},
 											new WrapPanel {
 												Margin = WpfHelper.SmallMargin,
 												Children = {
 													new TextBlock { Text = R.T_ApplyTo, Width = SMALL_LABEL_WIDTH, Margin = WpfHelper.SmallMargin },
-													new RadioBox(R.OT_Tag, "TagApplication", OnTagApplicationChanged).Set(ref _TagApplyOnTagBox),
-													new RadioBox(R.OT_Content, "TagApplication", OnTagApplicationChanged).Set(ref _TagApplyOnContentBox),
-													new RadioBox(R.OT_TagContent, "TagApplication", OnTagApplicationChanged).Set(ref _TagApplyOnWholeBox),
+													_TagApplyOnTagBox,
+													_TagApplyOnContentBox,
+													_TagApplyOnWholeBox,
 												}
 											},
 										}
@@ -321,10 +320,7 @@ namespace Codist.Options
 									Padding = new Thickness(0, 6, 0, 0)
 								}.Set(ref _TagSettingsGroup).SetValue(Grid.SetRow, 2),
 
-								new TextBlock {
-									Text = R.T_SyntaxHighlightConfigNotice,
-									TextWrapping = TextWrapping.Wrap
-								}.Set(ref _Notice).SetValue(Grid.SetRow, 2),
+								_Notice.SetValue(Grid.SetRow, 2),
 
 								new WrapPanel {
 									HorizontalAlignment = HorizontalAlignment.Right,
@@ -544,6 +540,7 @@ namespace Codist.Options
 				case SyntaxStyleSource.CPlusPlus: classifications = ToClassificationTypes(Config.Instance.CppStyles); break;
 				case SyntaxStyleSource.Markdown: classifications = ToClassificationTypes(Config.Instance.MarkdownStyles); break;
 				case SyntaxStyleSource.Xml: classifications = ToClassificationTypes(Config.Instance.XmlCodeStyles); break;
+				case SyntaxStyleSource.Custom: classifications = ServicesHelper.Instance.ClassificationTypeExporter.GetCustomClassificationTypes(); break;
 				case SyntaxStyleSource.CommentTagger: classifications = ToClassificationTypes(Config.Instance.CommentStyles); break;
 				case SyntaxStyleSource.PriorityOrder: classifications = GetClassificationsOrderByPriority(); break;
 				case SyntaxStyleSource.Selection:
@@ -601,6 +598,8 @@ namespace Codist.Options
 						? R.T_NoSyntaxHighlightSelected
 						: source == SyntaxStyleSource.CommentLabels
 						? R.T_NoCommentTagDefined
+						: source == SyntaxStyleSource.Custom
+						? R.T_NoCustomizedTagDefined
 						: R.T_NoSyntaxHighlightDefined,
 					FontSize = 20,
 					TextWrapping = TextWrapping.Wrap
@@ -610,6 +609,18 @@ namespace Codist.Options
 			else {
 				FilterSettingsList(null, EventArgs.Empty);
 				_RightPaneTitle.Visibility = Visibility.Visible;
+			}
+			if (source == SyntaxStyleSource.Custom) {
+				l.Add(new TextBlock { Margin = WpfHelper.SmallMargin }.AppendLink(ClassificationTypeExporter.HasCustomTypes ? R.T_OpenClassificationTypesJson : R.T_CreateClassificationTypesJson, _ => {
+					try {
+						ClassificationTypeExporter.CreateSampleCustomClassificationTypes();
+						TextEditorHelper.OpenFile(Config.CustomizedClassificationTypePath);
+					}
+					catch (Exception ex) {
+						MessageWindow.Error(ex);
+					}
+				}, R.T_ClassificationTypesJsonTip, ThemeHelper.HyperlinkBrush));
+				l.Add(new TextBlock { Margin = WpfHelper.SmallMargin }.AppendLink(R.T_AboutCustomSyntaxRules, "https://github.com/wmjordan/Codist/wiki/ClassificationTypes.json-and-Codist.ct.json", R.T_AboutCustomSyntaxRulesTip, ThemeHelper.HyperlinkBrush));
 			}
 		}
 
@@ -1259,7 +1270,7 @@ namespace Codist.Options
 				Title = R.T_LoadSyntaxHighlightFile,
 				FileName = "Codist.styles",
 				DefaultExt = "styles",
-				Filter = R.T_HighlightSettingFileFilter
+				Filter = R.F_HighlightSettings
 			};
 			if (String.IsNullOrEmpty(_ThemeFolder) == false) {
 				try {
@@ -1282,7 +1293,7 @@ namespace Codist.Options
 				Title = R.T_SaveSyntaxHighlightFile,
 				FileName = "Codist.styles",
 				DefaultExt = "styles",
-				Filter = R.T_HighlightSettingFileFilter
+				Filter = R.F_HighlightSettings
 			};
 			if (String.IsNullOrEmpty(_ThemeFolder) == false) {
 				try {
@@ -1291,8 +1302,9 @@ namespace Codist.Options
 				catch (System.Security.SecurityException) { }
 			}
 			try {
+				var fullExport = WpfHelper.IsShiftDown;
 				if (d.ShowDialog() == true) {
-					Config.Instance.SaveConfig(d.FileName, true);
+					Config.Instance.SaveConfig(d.FileName, true, fullExport);
 					_ThemeFolder = System.IO.Path.GetDirectoryName(d.FileName);
 				}
 			}
@@ -1653,10 +1665,11 @@ namespace Codist.Options
 			Xml,
 			CommentTagger,
 			CommentLabels,
+			Custom,
 			PriorityOrder
 		}
 
-		sealed class ClassificationCategoryItem
+		readonly struct ClassificationCategoryItem
 		{
 			public readonly SyntaxStyleSource Style;
 			public readonly string Description;
@@ -1674,6 +1687,7 @@ namespace Codist.Options
 		{
 			Control Control { get; }
 		}
+
 		sealed class ConfigPageItem<TControl> : IControlProvider
 			where TControl : Control, new()
 		{

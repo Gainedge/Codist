@@ -81,9 +81,15 @@ namespace Codist.QuickInfo
 							SyntaxKind.ObjectInitializerExpression,
 							CodeAnalysisHelper.WithInitializerExpression)) {
 						container.Add(new ThemedTipText()
-							.SetGlyph(VsImageHelper.GetImage(IconIds.InstanceMember))
+							.SetGlyph(IconIds.InstanceMember)
 							.Append(R.T_ExpressionCount)
-							.Append((node as InitializerExpressionSyntax).Expressions.Count.ToText(), true, false, __SymbolFormatter.Number));
+							.Append(((InitializerExpressionSyntax)node).Expressions.Count.ToText(), true, false, __SymbolFormatter.Number));
+					}
+					else if (node.IsKind(CodeAnalysisHelper.PropertyPatternClause)) {
+						container.Add(new ThemedTipText().SetGlyph(IconIds.InstanceMember)
+							.Append(R.T_SubPatternCount)
+							.Append(((CSharpSyntaxNode)node).GetPropertyPatternSubPatternsCount().ToText())
+							);
 					}
 					else if (node.IsKind(SyntaxKind.Interpolation)) {
 						symbol = semanticModel.Compilation.GetSpecialType(SpecialType.System_String);
@@ -128,9 +134,23 @@ namespace Codist.QuickInfo
 					symbol = semanticModel.GetTypeInfo(unitCompilation.FindNode(token.Span, false, true), cancellationToken).ConvertedType;
 					isConvertedType = symbol != null;
 					break;
+				case SyntaxKind.SwitchKeyword:
+					node = unitCompilation.FindNode(token.Span, false, true);
+					if (node.IsKind(CodeAnalysisHelper.SwitchExpression)) {
+						symbol = semanticModel.GetTypeInfo(node.ChildNodes().First()).Type;
+						if (symbol != null) {
+							container.Add(new ThemedTipText().SetGlyph(IconIds.ReadVariables).AddSymbol(symbol, false, __SymbolFormatter));
+						}
+						ShowMiscInfo(container, node);
+						symbol = semanticModel.GetTypeInfo(node, cancellationToken).ConvertedType;
+						if (symbol == null) {
+							return null;
+						}
+						isConvertedType = true;
+					}
+					break;
 				case SyntaxKind.NullKeyword:
 				case SyntaxKind.DefaultKeyword:
-				case SyntaxKind.SwitchKeyword:
 				case SyntaxKind.QuestionToken:
 				case SyntaxKind.ColonToken:
 				case SyntaxKind.QuestionQuestionToken:
@@ -188,6 +208,12 @@ namespace Codist.QuickInfo
 						symbol = semanticModel.GetSymbolInfo((ElementAccessExpressionSyntax)node.Parent, cancellationToken).Symbol;
 					}
 					else if (node.IsAnyKind(CodeAnalysisHelper.CollectionExpression, CodeAnalysisHelper.ListPatternExpression)) {
+						if (node.IsKind(CodeAnalysisHelper.CollectionExpression)) {
+							container.Add(new ThemedTipText(R.T_ElementCount + ((ExpressionSyntax)node).GetCollectionExpressionElementsCount().ToText()).SetGlyph(IconIds.InstanceMember));
+						}
+						else {
+							container.Add(new ThemedTipText(R.T_PatternCount + ((PatternSyntax)node).GetListPatternsCount().ToText()).SetGlyph(IconIds.InstanceMember));
+						}
 						symbol = semanticModel.GetTypeInfo(node, cancellationToken).ConvertedType;
 					}
 					if (symbol == null) {
@@ -231,13 +257,13 @@ namespace Codist.QuickInfo
 					return null;
 				case SyntaxKind.EndRegionKeyword:
 					container.Add(new ThemedTipText(R.T_EndOfRegion)
-						.SetGlyph(VsImageHelper.GetImage(IconIds.Region))
+						.SetGlyph(IconIds.Region)
 						.Append((unitCompilation.FindNode(token.Span, true) as EndRegionDirectiveTriviaSyntax).GetRegion()?.GetDeclarationSignature(), true)
 						);
 					return CreateQuickInfoItem(session, token, container.ToUI());
 				case SyntaxKind.EndIfKeyword:
 					container.Add(new ThemedTipText(R.T_EndOfIf)
-						.SetGlyph(VsImageHelper.GetImage(IconIds.Region))
+						.SetGlyph(IconIds.Region)
 						.Append((unitCompilation.FindNode(token.Span, true) as EndIfDirectiveTriviaSyntax).GetIf()?.GetDeclarationSignature(), true)
 						);
 					return CreateQuickInfoItem(session, token, container.ToUI());
@@ -360,6 +386,7 @@ namespace Codist.QuickInfo
 					cancellationToken);
 			}
 			if (isConvertedType == false) {
+				await SyncHelper.SwitchToMainThreadAsync(cancellationToken);
 				if (Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.Attributes)) {
 					ShowAttributesInfo(container, symbol);
 				}
@@ -433,25 +460,23 @@ namespace Codist.QuickInfo
 				return semanticModel.GetDeclaredSymbol(node, cancellationToken);
 			}
 			if (node is QueryClauseSyntax q) {
-				if (node is OrderByClauseSyntax o && o.Orderings.Count != 0) {
-					return semanticModel.GetSymbolInfo(o.Orderings[0], cancellationToken).Symbol;
-				}
-				return semanticModel.GetQueryClauseInfo(q, cancellationToken).OperationInfo.Symbol;
+				return node is OrderByClauseSyntax o && o.Orderings.Count != 0
+					? semanticModel.GetSymbolInfo(o.Orderings[0], cancellationToken).Symbol
+					: semanticModel.GetQueryClauseInfo(q, cancellationToken).OperationInfo.Symbol;
 			}
 			var symbolInfo = semanticModel.GetSymbolInfo(node, cancellationToken);
 			if (symbolInfo.CandidateReason != CandidateReason.None) {
-				candidates = symbolInfo.CandidateSymbols;
-				return symbolInfo.CandidateSymbols.FirstOrDefault();
+				return (candidates = symbolInfo.CandidateSymbols).FirstOrDefault();
 			}
 			return symbolInfo.Symbol
 				?? (kind.IsDeclaration()
-						|| kind == SyntaxKind.VariableDeclarator
+						|| kind.CeqAny(SyntaxKind.VariableDeclarator, SyntaxKind.CatchDeclaration)
 						|| kind == SyntaxKind.SingleVariableDesignation
 							&& node.Parent.IsAnyKind(SyntaxKind.DeclarationExpression, SyntaxKind.DeclarationPattern, SyntaxKind.ParenthesizedVariableDesignation)
 					? semanticModel.GetDeclaredSymbol(node, cancellationToken)
 					// : kind == SyntaxKind.ArrowExpressionClause
 					// ? semanticModel.GetDeclaredSymbol(node.Parent, cancellationToken)
-					: kind == SyntaxKind.IdentifierName && node.Parent.IsKind(SyntaxKind.NameEquals) && (node = node.Parent.Parent) != null && node.IsKind(SyntaxKind.UsingDirective)
+					: kind == SyntaxKind.IdentifierName && node.Parent.IsKind(SyntaxKind.NameEquals) && (node = node.Parent.Parent).IsKind(SyntaxKind.UsingDirective)
 					? semanticModel.GetDeclaredSymbol(node, cancellationToken)?.GetAliasTarget()
 					: semanticModel.GetSymbolExt(node, cancellationToken));
 		}
@@ -459,21 +484,22 @@ namespace Codist.QuickInfo
 		static void LocateNodeInParameterList(ref SyntaxNode node, ref SyntaxToken token) {
 			if (node.IsKind(SyntaxKind.Argument)) {
 				node = ((ArgumentSyntax)node).Expression;
+				return;
 			}
-			else if (node.IsKind(SyntaxKind.ArgumentList)) {
+			if (node.IsKind(SyntaxKind.ArgumentList)) {
 				var al = node as ArgumentListSyntax;
 				if (al.OpenParenToken == token) {
 					node = al.Arguments.FirstOrDefault() ?? node;
+					return;
 				}
-				else if (al.CloseParenToken == token) {
+				if (al.CloseParenToken == token) {
 					node = al.Arguments.LastOrDefault() ?? node;
+					return;
 				}
-				else {
-					foreach (var item in al.Arguments) {
-						if (item.FullSpan.Contains(token.SpanStart, true)) {
-							node = item;
-							break;
-						}
+				foreach (var item in al.Arguments) {
+					if (item.FullSpan.Contains(token.SpanStart, true)) {
+						node = item;
+						return;
 					}
 				}
 			}
@@ -661,24 +687,31 @@ namespace Codist.QuickInfo
 		static void ShowMiscInfo(InfoContainer qiContent, SyntaxNode node) {
 			Grid infoBox = null;
 			var nodeKind = node.Kind();
+			int c;
 			if (Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.NumericValues)
 				&& nodeKind.CeqAny(SyntaxKind.NumericLiteralExpression, SyntaxKind.CharacterLiteralExpression)) {
 				infoBox = ToolTipHelper.ShowNumericRepresentations(node);
 			}
 			else if (nodeKind == SyntaxKind.SwitchStatement) {
-				var s = ((SwitchStatementSyntax)node).Sections.Count;
-				if (s > 1) {
+				c = ((SwitchStatementSyntax)node).Sections.Count;
+				if (c > 1) {
 					var cases = 0;
 					foreach (var section in ((SwitchStatementSyntax)node).Sections) {
 						cases += section.Labels.Count;
 					}
-					qiContent.Add(new ThemedTipText($"{s} switch sections, {cases} cases").SetGlyph(VsImageHelper.GetImage(IconIds.Switch)));
+					qiContent.Add(new ThemedTipText(R.T_SectionsCases.Replace("<C>", c.ToText()).Replace("<S>", cases.ToText())).SetGlyph(IconIds.Switch));
 				}
-				else if (s == 1) {
-					s = ((SwitchStatementSyntax)node).Sections[0].Labels.Count;
-					if (s > 1) {
-						qiContent.Add(new ThemedTipText($"1 switch section, {s} cases").SetGlyph(VsImageHelper.GetImage(IconIds.Switch)));
+				else if (c == 1) {
+					c = ((SwitchStatementSyntax)node).Sections[0].Labels.Count;
+					if (c > 1) {
+						qiContent.Add(new ThemedTipText(R.T_1SectionCases.Replace("<C>", c.ToText())).SetGlyph(IconIds.Switch));
 					}
+				}
+			}
+			else if (nodeKind == CodeAnalysisHelper.SwitchExpression) {
+				c = ((ExpressionSyntax)node).GetSwitchExpressionArmsCount();
+				if (c > 1) {
+					qiContent.Add(new ThemedTipText(R.T_SwitchCases.Replace("<C>", c.ToText())).SetGlyph(IconIds.Switch));
 				}
 			}
 			else if (nodeKind == SyntaxKind.StringLiteralExpression) {
@@ -712,7 +745,7 @@ namespace Codist.QuickInfo
 				}
 				var symbol = semanticModel.GetSymbolInfo(node, cancellationToken).Symbol ?? semanticModel.GetDeclaredSymbol(node, cancellationToken);
 				var t = new ThemedTipText();
-				t.SetGlyph(VsImageHelper.GetImage(IconIds.ReturnValue));
+				t.SetGlyph(IconIds.ReturnValue);
 				if (method != null) {
 					if (method.MethodKind == MethodKind.AnonymousFunction) {
 						t.Append(R.T_ReturnAnonymousFunction);
@@ -888,7 +921,7 @@ namespace Codist.QuickInfo
 			if (members.Length > 0) {
 				var info = new StackPanel().Add(new ThemedTipText(R.T_Type, true));
 				foreach (var type in members) {
-					var t = new ThemedTipText().SetGlyph(VsImageHelper.GetImage(type.GetImageId()));
+					var t = new ThemedTipText().SetGlyph(type.GetImageId());
 					__SymbolFormatter.ShowSymbolDeclaration(type, t, true, true);
 					t.AddSymbol(type, false, __SymbolFormatter);
 					info.Add(t);
@@ -909,7 +942,7 @@ namespace Codist.QuickInfo
 				&& typeSymbol.TypeParameters[0] != typeSymbol.TypeArguments[0]) {
 				ShowTypeArguments(qiContent, typeSymbol.TypeArguments, typeSymbol.TypeParameters);
 			}
-			if (typeSymbol.TypeKind.CeqAny(TypeKind.Class, TypeKind.Struct)
+			if (typeSymbol.IsAnyKind(TypeKind.Class, TypeKind.Struct)
 				&& options.MatchFlags(QuickInfoOptions.MethodOverload)) {
 				if (node.IsAnyKind(SyntaxKind.ClassDeclaration, SyntaxKind.StructDeclaration)
 					&& ((TypeDeclarationSyntax)node).GetParameterList() != null) {

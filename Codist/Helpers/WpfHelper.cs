@@ -43,6 +43,9 @@ namespace Codist
 		internal static readonly Thickness MenuItemMargin = new Thickness(6, 0, 6, 0);
 
 		#region TextBlock and Run
+		public static TextBlock SetGlyph(this TextBlock block, int iconId) {
+			return block.SetGlyph(VsImageHelper.GetImage(iconId));
+		}
 		public static TextBlock SetGlyph(this TextBlock block, ImageSource image) {
 			var first = block.Inlines.FirstInline;
 			var glyph = new InlineUIContainer(new Image { Source = image, Width = image.Width, Margin = GlyphMargin }) { BaselineAlignment = BaselineAlignment.TextTop };
@@ -146,14 +149,22 @@ namespace Codist
 			}
 			return block;
 		}
-		public static TTextBlock AppendLink<TTextBlock>(this TTextBlock block, string text, string uri, string toolTip)
+		public static TTextBlock AppendLink<TTextBlock>(this TTextBlock block, string text, string uri, string toolTip, Brush foreground = null)
 			where TTextBlock : TextBlock {
-			block.Inlines.Add(new Hyperlink { Inlines = { text }, NavigateUri = new Uri(uri), ToolTip = toolTip }.ClickToNavigate());
+			var link = new Hyperlink(new Run(text)) { NavigateUri = new Uri(uri), ToolTip = toolTip }.ClickToNavigate();
+			if (foreground != null) {
+				link.Foreground = foreground;
+			}
+			block.Inlines.Add(link);
 			return block;
 		}
-		public static TTextBlock AppendLink<TTextBlock>(this TTextBlock block, string text, Action<Hyperlink> clickHandler, string toolTip)
+		public static TTextBlock AppendLink<TTextBlock>(this TTextBlock block, string text, Action<Hyperlink> clickHandler, string toolTip, Brush foreground = null)
 			where TTextBlock : TextBlock {
-			block.Inlines.Add(new Hyperlink { Inlines = { text }, ToolTip = toolTip }.ClickToNavigate(clickHandler));
+			var link = new Hyperlink(new Run(text)) { ToolTip = toolTip }.ClickToNavigate(clickHandler);
+			if (foreground != null) {
+				link.Foreground = foreground;
+			}
+			block.Inlines.Add(link);
 			return block;
 		}
 		public static TTextBlock AppendFileLink<TTextBlock>(this TTextBlock block, string file, string folder)

@@ -17,25 +17,31 @@ namespace Codist
 	{
 		#region Node info
 		public static bool IsAnyKind(this SyntaxNode node, SyntaxKind kind1, SyntaxKind kind2) {
-			return Op.Cast<int, SyntaxKind>(node.RawKind).CeqAny(kind1, kind2);
+			return node.RawKind.CeqAny(kind1, kind2);
 		}
 		public static bool IsAnyKind(this SyntaxNode node, SyntaxKind kind1, SyntaxKind kind2, SyntaxKind kind3) {
-			return Op.Cast<int, SyntaxKind>(node.RawKind).CeqAny(kind1, kind2, kind3);
+			return node.RawKind.CeqAny(kind1, kind2, kind3);
 		}
 		public static bool IsAnyKind(this SyntaxNode node, SyntaxKind kind1, SyntaxKind kind2, SyntaxKind kind3, SyntaxKind kind4) {
-			return Op.Cast<int, SyntaxKind>(node.RawKind).CeqAny(kind1, kind2, kind3, kind4);
+			return node.RawKind.CeqAny(kind1, kind2, kind3, kind4);
 		}
 		public static bool IsAnyKind(this SyntaxToken token, SyntaxKind kind1, SyntaxKind kind2) {
-			return Op.Cast<int, SyntaxKind>(token.RawKind).CeqAny(kind1, kind2);
+			return token.RawKind.CeqAny(kind1, kind2);
 		}
 		public static bool IsAnyKind(this SyntaxToken token, SyntaxKind kind1, SyntaxKind kind2, SyntaxKind kind3) {
-			return Op.Cast<int, SyntaxKind>(token.RawKind).CeqAny(kind1, kind2, kind3);
+			return token.RawKind.CeqAny(kind1, kind2, kind3);
 		}
 		public static bool IsAnyKind(this SyntaxToken token, SyntaxKind kind1, SyntaxKind kind2, SyntaxKind kind3, SyntaxKind kind4) {
-			return Op.Cast<int, SyntaxKind>(token.RawKind).CeqAny(kind1, kind2, kind3, kind4);
+			return token.RawKind.CeqAny(kind1, kind2, kind3, kind4);
+		}
+		public static bool IsAnyKind(this ITypeSymbol type, TypeKind kind1, TypeKind kind2) {
+			return type.TypeKind.CeqAny(kind1, kind2);
+		}
+		public static bool IsAnyKind(this ITypeSymbol type, TypeKind kind1, TypeKind kind2, TypeKind kind3) {
+			return type.TypeKind.CeqAny(kind1, kind2, kind3);
 		}
 		public static bool IsPredefinedSystemType(this SyntaxKind kind) {
-			return kind >= SyntaxKind.BoolKeyword && kind <= SyntaxKind.ObjectKeyword;
+			return kind.IsBetween(SyntaxKind.BoolKeyword, SyntaxKind.ObjectKeyword);
 		}
 		public static bool IsDeclaration(this SyntaxKind kind) {
 			switch (kind) {
@@ -63,7 +69,8 @@ namespace Codist
 				case SyntaxKind.VariableDeclaration:
 				case SyntaxKind.LocalFunctionStatement:
 				case SyntaxKind.SingleVariableDesignation:
-					//case SyntaxKind.VariableDeclarator:
+				//case SyntaxKind.CatchDeclaration:
+				//case SyntaxKind.VariableDeclarator:
 					return true;
 			}
 			return false;
@@ -147,12 +154,7 @@ namespace Codist
 			return false;
 		}
 		public static bool IsNamespaceDeclaration(this SyntaxKind kind) {
-			switch (kind) {
-				case SyntaxKind.NamespaceDeclaration:
-				case FileScopedNamespaceDeclaration:
-					return true;
-			}
-			return false;
+			return kind.CeqAny(SyntaxKind.NamespaceDeclaration, FileScopedNamespaceDeclaration);
 		}
 		public static bool IsMemberDeclaration(this SyntaxKind kind) {
 			switch (kind) {
@@ -1330,11 +1332,16 @@ namespace Codist
 				int i = 2, // skip leading "/*"
 					l = t.Length - 2; // drop trailing "*/"
 				while (true) {
+					Next:
 					var p = t.IndexOfAny(__SplitLineChars, i);
 					if (i > 2) {
 						sb.AppendLine();
 					}
 					while (i < l) {
+						if (p == i) {
+							++i;
+							goto Next;
+						}
 						if (Char.IsWhiteSpace(t[i])) {
 							++i;
 						}
@@ -1346,6 +1353,7 @@ namespace Codist
 						sb.Append(t, i, l - i);
 						break;
 					}
+					System.Diagnostics.Debug.Assert(p > i);
 					sb.Append(t, i, p - i);
 					i = (t[p] == '\r' && p + 1 < l && t[p + 1] == '\n' ? 2 : 1)
 						+ p;

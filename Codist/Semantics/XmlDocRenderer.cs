@@ -479,9 +479,9 @@ namespace Codist
 		}
 
 		void CreateLink(InlineCollection inlines, XElement e, string url) {
-			var link = new Hyperlink {
+			var link = new ThemedHyperlink {
 				NavigateUri = new Uri(url),
-				ToolTip = e.Attribute("title") != null ? $"{e.Attribute("title").Value}{Environment.NewLine}{url}" : url
+				ToolTip = e.Attribute("title") != null ? $"{e.Attribute("title").Value}{Environment.NewLine}{url}" : url,
 			}.ClickToNavigate();
 			if (e.IsEmpty) {
 				link.Inlines.Add(url);
@@ -689,6 +689,7 @@ namespace Codist
 				case "seealso":
 				case "paramref":
 				case "typeparamref":
+				case "a":
 				case "b":
 				case "i":
 				case "u":

@@ -428,7 +428,8 @@ namespace Codist
 			}
 
 			public SnapshotSpan MapSourceSpan(TextSpan span, ITextView view) {
-				return view.BufferGraph.MapUpToBuffer(new SnapshotSpan(SourceBuffer.CurrentSnapshot, span.ToSpan()), SpanTrackingMode.EdgeInclusive, view.TextBuffer)[0];
+				var c = view.BufferGraph.MapUpToBuffer(new SnapshotSpan(SourceBuffer.CurrentSnapshot, span.ToSpan()), SpanTrackingMode.EdgeInclusive, view.TextBuffer);
+				return c.Count != 0 ? c[0] : default;
 			}
 
 			public NormalizedSnapshotSpanCollection MapDownToSourceSpan(SnapshotSpan span, ITextView view) {
@@ -447,7 +448,9 @@ namespace Codist
 			public SnapshotPointSyntax(SyntaxModel model, SnapshotPoint visualPosition, ITextView view) {
 				_Model = model;
 				VisualPosition = visualPosition;
-				SourcePosition = visualPosition.Snapshot.TextBuffer != model.SourceBuffer && view?.BufferGraph != null
+				SourcePosition = model.SourceBuffer == null
+					? default
+					: visualPosition.Snapshot.TextBuffer != model.SourceBuffer && view?.BufferGraph != null
 					? view.BufferGraph.MapDownToSnapshot(visualPosition, PointTrackingMode.Positive, model.SourceBuffer.CurrentSnapshot, PositionAffinity.Successor).GetValueOrDefault(visualPosition)
 					: visualPosition;
 			}

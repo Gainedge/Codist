@@ -49,6 +49,9 @@ namespace Codist
 		public IFileExtensionRegistryService FileExtensionRegistry { get; private set; }
 
 		[Import]
+		public IFileToContentTypeService FileToContentType { get; private set; }
+
+		[Import]
 		public IEditorFormatMapService EditorFormatMap { get; private set; }
 
 		[Import]
@@ -75,7 +78,6 @@ namespace Codist
 		internal SyntaxHighlight.ClassificationTypeExporter ClassificationTypeExporter { get; }
 
 		public static TInterface Get<TInterface, VSInterface>() where TInterface : class {
-			ThreadHelper.ThrowIfNotOnUIThread();
 			return ServiceProvider.GlobalProvider.GetService(typeof(VSInterface)) as TInterface;
 		}
 
@@ -89,6 +91,7 @@ namespace Codist
 			cte.RegisterClassificationTypes<SyntaxHighlight.XmlStyleTypes>();
 			cte.RegisterClassificationTypes<SyntaxHighlight.PrivateStyleTypes>();
 			//e.RegisterClassificationTypes<SyntaxHighlight.CppStyleTypes>();
+			cte.RegisterCustomizedClassificationTypes();
 			cte.ExportClassificationTypes();
 			"Classification types exported".Log();
 			#endregion

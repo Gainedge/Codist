@@ -39,9 +39,8 @@ namespace Codist.Display
 			Predicate<FrameworkElement> controlMatcher;
 			switch (element) {
 				case DisplayOptimizations.HideSearchBox: controlMatcher = CodistPackage.VsVersion.Major == 15 ? ControlNameMatcher.PART__SearchBox.Match : (Predicate<FrameworkElement>)ControlNameMatcher.SearchBox.Match; break;
-				case DisplayOptimizations.HideAccountBox: controlMatcher = ControlNameMatcher.IDCardGrid.Match; break;
+				case DisplayOptimizations.HideAccountBox: controlMatcher = ControlAlternativeMatcher.AccountButton.Match; break;
 				case DisplayOptimizations.HideFeedbackBox: controlMatcher = ControlAlternativeMatcher.FeedbackButton.Match; break;
-				case DisplayOptimizations.HideCopilotButton: controlMatcher = ControlTypeMatcher.CopilotBadgeControl.Match; break;
 				case DisplayOptimizations.HideInfoBadgeButton: controlMatcher = ControlTypeMatcher.InfoBadgeControl.Match; break;
 				default: return false;
 			}
@@ -185,7 +184,6 @@ namespace Codist.Display
 			ToggleUIElement(DisplayOptimizations.HideSearchBox, !options.MatchFlags(DisplayOptimizations.HideSearchBox));
 			ToggleUIElement(DisplayOptimizations.HideAccountBox, !options.MatchFlags(DisplayOptimizations.HideAccountBox));
 			ToggleUIElement(DisplayOptimizations.HideFeedbackBox, !options.MatchFlags(DisplayOptimizations.HideFeedbackBox));
-			ToggleUIElement(DisplayOptimizations.HideCopilotButton, !options.MatchFlags(DisplayOptimizations.HideCopilotButton));
 			ToggleUIElement(DisplayOptimizations.HideInfoBadgeButton, !options.MatchFlags(DisplayOptimizations.HideInfoBadgeButton));
 			WpfHelper.SetUITextRenderOptions(Application.Current.MainWindow, options.MatchFlags(DisplayOptimizations.MainWindow));
 		}
@@ -200,9 +198,6 @@ namespace Codist.Display
 			}
 			if (options.MatchFlags(DisplayOptimizations.HideFeedbackBox)) {
 				done &= ToggleUIElement(DisplayOptimizations.HideFeedbackBox, false);
-			}
-			if (options.MatchFlags(DisplayOptimizations.HideCopilotButton) && CodistPackage.VsVersion.Major > 16) {
-				done &= ToggleUIElement(DisplayOptimizations.HideCopilotButton, false);
 			}
 			if (options.MatchFlags(DisplayOptimizations.HideInfoBadgeButton)) {
 				done &= ToggleUIElement(DisplayOptimizations.HideInfoBadgeButton, false);
@@ -263,6 +258,7 @@ namespace Codist.Display
 		readonly struct ControlAlternativeMatcher
 		{
 			internal static readonly ControlAlternativeMatcher FeedbackButton = new ControlAlternativeMatcher(ControlTypeMatcher.Feedback.Match, ControlNameMatcher.FeedbackButton.Match);
+			internal static readonly ControlAlternativeMatcher AccountButton = new ControlAlternativeMatcher(ControlTypeMatcher.ProfileCardButton.Match, ControlNameMatcher.IDCardGrid.Match);
 
 			readonly Predicate<FrameworkElement> _PrimaryCondition, _AlternativeCondition;
 			ControlAlternativeMatcher(Predicate<FrameworkElement> condition1, Predicate<FrameworkElement> condition2) {
@@ -276,8 +272,8 @@ namespace Codist.Display
 		readonly struct ControlTypeMatcher
 		{
 			internal static readonly ControlTypeMatcher PackageAllInOneSearchButtonPresenter = new ControlTypeMatcher("PackageAllInOneSearchButtonPresenter");
-			internal static readonly ControlTypeMatcher CopilotBadgeControl = new ControlTypeMatcher("CopilotBadgeControl");
 			internal static readonly ControlTypeMatcher Feedback = new ControlTypeMatcher("SendASmileControl");
+			internal static readonly ControlTypeMatcher ProfileCardButton = new ControlTypeMatcher("ProfileCardButton");
 			internal static readonly ControlTypeMatcher InfoBadgeControl = new ControlTypeMatcher("InfoBadgeControl");
 
 			readonly string _Name;

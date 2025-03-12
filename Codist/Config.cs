@@ -31,7 +31,9 @@ namespace Codist
 
 		ConfigManager _ConfigManager;
 
-		public static readonly string ConfigPath = $"{Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)}\\{Constants.NameOfMe}\\Config.json";
+		public static readonly string ConfigDirectory = $"{Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)}\\{Constants.NameOfMe}\\";
+		public static readonly string ConfigPath = $"{ConfigDirectory}Config.json";
+		public static readonly string CustomizedClassificationTypePath = $"{ConfigDirectory}ClassificationTypes.json";
 		public static Config Instance = InitConfig();
 
 		public string Version { get; set; }
@@ -232,6 +234,7 @@ namespace Codist
 				DefaultValueHandling = DefaultValueHandling.IgnoreAndPopulate,
 				NullValueHandling = NullValueHandling.Ignore,
 				Error = (sender, args) => {
+					args.ErrorContext.Error.Log();
 					args.ErrorContext.Handled = true; // ignore json error
 				}
 			});
@@ -277,9 +280,6 @@ namespace Codist
 				&& Application.Current.MainWindow.Visibility == Visibility.Visible) {
 				UpdateDisplay(config);
 			}
-			//else {
-			//	Application.Current.MainWindow.IsVisibleChanged += MainWindow_IsVisibleChanged;
-			//}
 			"Config loaded".Log();
 			return config;
 		}
@@ -287,13 +287,6 @@ namespace Codist
 		static void UpdateDisplay(Config config) {
 			Display.LayoutOverride.Reload(config.DisplayOptimizations);
 			Display.ResourceMonitor.Reload(config.DisplayOptimizations);
-		}
-
-		static void MainWindow_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e) {
-			//if ((bool)e.NewValue) {
-			//	Application.Current.MainWindow.IsVisibleChanged -= MainWindow_IsVisibleChanged;
-			//	UpdateDisplay(Instance);
-			//}
 		}
 
 		public static void ResetStyles() {
@@ -333,7 +326,7 @@ namespace Codist
 			});
 		}
 
-		public void SaveConfig(string path, bool stylesOnly = false) {
+		public void SaveConfig(string path, bool stylesOnly = false, bool allStyles = false) {
 			path = path ?? ConfigPath;
 			try {
 				var d = Path.GetDirectoryName(path);
@@ -342,16 +335,17 @@ namespace Codist
 				}
 				object o;
 				bool isDarkStyle = ServicesHelper.Instance.EditorFormatMap.GetEditorFormatMap(Constants.CodeText).GetBackgroundColor().IsDark();
+				var styles = allStyles ? GetAllStyles() : GetCustomizedStyles();
 				if (stylesOnly) {
 					o = new {
 						Version = CurrentVersion,
-						Styles = GetCustomizedStyles()
+						Styles = styles
 					};
 				}
 				else {
 					o = this;
 					Version = CurrentVersion;
-					Styles = GetCustomizedStyles().ToList();
+					Styles = styles.ToList();
 				}
 				File.WriteAllText(path, JsonConvert.SerializeObject(
 					o,
@@ -367,15 +361,21 @@ namespace Codist
 			}
 			catch (Exception ex) {
 				ex.Log();
+				throw;
 			}
 			finally {
 				Styles = null;
 			}
 
+			IEnumerable<SyntaxStyle> GetAllStyles() {
+				return FormatStore.GetAllStyles()
+					.Select(i => new SyntaxStyle(i.Key, i.Value));
+			}
+
 			IEnumerable<SyntaxStyle> GetCustomizedStyles() {
 				return FormatStore.GetStyles()
 					.Where(i => i.Value?.IsSet == true)
-					.Select(i => { var s = new SyntaxStyle(i.Key); i.Value.CopyTo(s); return s; });
+					.Select(i => new SyntaxStyle(i.Key, i.Value));
 			}
 		}
 
@@ -587,7 +587,13 @@ namespace Codist
 				__Updated -= MarkUpdated;
 				if (apply) {
 					if (_Version != _OldVersion) {
-						Instance.SaveConfig(null);
+						try {
+							Instance.SaveConfig(null);
+						}
+						catch (Exception ex) {
+							// ignore
+							ex.Log();
+						}
 						_OldVersion = _Version;
 					}
 				}
@@ -750,9 +756,10 @@ namespace Codist
 		HideSearchBox = 1 << 3,
 		HideFeedbackBox = 1 << 4,
 		HideAccountBox = 1 << 5,
+		[Obsolete]
 		HideCopilotButton = 1 << 6,
 		HideInfoBadgeButton = 1 << 7,
-		HideUIElements = HideSearchBox | HideFeedbackBox | HideAccountBox | HideCopilotButton | HideInfoBadgeButton,
+		HideUIElements = HideSearchBox | HideFeedbackBox | HideAccountBox | HideInfoBadgeButton,
 		ShowCpu = 1 << 10,
 		ShowMemory = 1 << 11,
 		ShowDrive = 1 << 12,

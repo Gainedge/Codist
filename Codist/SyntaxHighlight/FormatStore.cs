@@ -136,6 +136,79 @@ namespace Codist.SyntaxHighlight
 			return __SyntaxStyleCache;
 		}
 
+		public static IReadOnlyDictionary<string, StyleBase> GetAllStyles() {
+			var d = new Dictionary<string, StyleBase>(__SyntaxStyleCache.Count, StringComparer.OrdinalIgnoreCase);
+			foreach (var item in __SyntaxStyleCache) {
+				if (item.Value.IsSet) {
+					d.Add(item.Key, item.Value);
+				}
+			}
+			var efm = ServicesHelper.Instance.EditorFormatMap.GetEditorFormatMap(Constants.CodeText);
+			var cfm = ServicesHelper.Instance.ClassificationFormatMap.GetClassificationFormatMap(Constants.CodeText);
+			foreach (var item in cfm.CurrentPriorityOrder) {
+				if (item == null || IsFormattableClassificationType(item) == false) {
+					continue;
+				}
+				var c = cfm.GetEditorFormatMapKey(item);
+				var r = efm.GetProperties(c);
+				SyntaxStyle s = d.TryGetValue(c, out var cs)
+					? MergeSyntaxStyle(c, r, cs)
+					: MakeSyntaxStyleFromResourceDictionary(c, r);
+				if (s.IsSet) {
+					d[c] = s;
+				}
+			}
+			return d;
+
+			SyntaxStyle MergeSyntaxStyle(string name, ResourceDictionary rd, StyleBase style) {
+				var s = new SyntaxStyle(name, style);
+				if (s.Bold == null) {
+					s.Bold = rd.GetBold();
+				}
+				if (s.Italic == null) {
+					s.Italic = rd.GetItalic();
+				}
+				if (s.ForeColor.A == 0) {
+					s.ForeColor = rd.GetColor();
+				}
+				if (s.BackColor.A == 0) {
+					s.BackColor = rd.GetBackgroundColor();
+				}
+				var tds = rd.GetTextDecorations();
+				if (tds != null) {
+					foreach (var td in tds) {
+						switch (td.Location) {
+							case TextDecorationLocation.Underline: s.Underline = true; break;
+							case TextDecorationLocation.OverLine: s.OverLine = true; break;
+							case TextDecorationLocation.Strikethrough: s.Strikethrough = true; break;
+						}
+					}
+				}
+				return s;
+			}
+
+			SyntaxStyle MakeSyntaxStyleFromResourceDictionary(string name, ResourceDictionary rd) {
+				var s = new SyntaxStyle(name) {
+					Bold = rd.GetBold(),
+					Italic = rd.GetItalic(),
+					ForeColor = rd.GetColor(),
+					BackColor = rd.GetBackgroundColor()
+				};
+				var tds = rd.GetTextDecorations();
+				if (tds != null) {
+					foreach (var td in tds) {
+						switch (td.Location) {
+							case TextDecorationLocation.Underline: s.Underline = true; break;
+							case TextDecorationLocation.OverLine: s.OverLine = true; break;
+							case TextDecorationLocation.Strikethrough: s.Strikethrough = true; break;
+						}
+					}
+				}
+
+				return s;
+			}
+		}
+
 		/// <summary>
 		/// Get descendant <see cref="IClassificationType"/>s of a given <paramref name="classificationType"/>.
 		/// </summary>
@@ -338,6 +411,7 @@ namespace Codist.SyntaxHighlight
 
 		sealed class Highlighter : IEquatable<Highlighter>, IFormatCache
 		{
+			const string UnnecessaryCodeDiagnostic = "UnnecessaryCodeDiagnostic";
 			readonly string _Category;
 			readonly IEditorFormatMap _EditorFormatMap;
 			readonly IClassificationFormatMap _ClassificationFormatMap;
@@ -429,13 +503,18 @@ namespace Codist.SyntaxHighlight
 				_ClassificationFormatMap.BeginBatchUpdate();
 				try {
 					var formats = _ClassificationFormatMap.CurrentPriorityOrder;
+					KeyValuePair<string, ResourceDictionary> newStyle;
 					$"Refresh priority {formats.Count}".Log();
 					_PropertiesCache.Clear();
 					foreach (var item in formats) {
-						if (item.IsFormattableClassificationType()) {
+						if (item.IsFormattableClassificationType()
+							// hack: UnnecessaryCodeDiagnostic behaves weirdly, if we let it run the following code,
+							//   foreground color will be applied.
+							//   thus, we skip it heres
+							&& item.Classification != UnnecessaryCodeDiagnostic) {
 							var p = _ClassificationFormatMap.GetTextProperties(item);
-							// C/C++ styles can somehow get reverted, here we forcefully reinforce our highlights 
-							if (Highlight(item, out var newStyle) != FormatChanges.None) {
+							// C/C++ styles can somehow get reverted, here we forcefully reinforce our highlights
+							if (Highlight(item, out newStyle) != FormatChanges.None) {
 								p = newStyle.Value.MergeFormatProperties(p);
 							}
 							$"[{_Category}] refresh classification {item.Classification} ({p.Print()})".Log();
@@ -478,6 +557,7 @@ namespace Codist.SyntaxHighlight
 						$"[{_Category}] apply format {item.Key}".Log();
 						_EditorFormatMap.SetProperties(item.Key, item.Value);
 					}
+					WorkaroundUnnecessaryCodeDiagnostic(_EditorFormatMap);
 				}
 				finally {
 					_EditorFormatMap.EndBatchUpdate();
@@ -486,9 +566,9 @@ namespace Codist.SyntaxHighlight
 			}
 
 			public void SwapPriority(string classificationX, string classificationY) {
-				var x = __GetClassificationType(classificationX);
-				var y = __GetClassificationType(classificationY);
-				if (x != null && y != null) {
+				IClassificationType x, y;
+				if ((x = __GetClassificationType(classificationX)) != null
+					&& (y = __GetClassificationType(classificationY)) != null) {
 					_ClassificationFormatMap.SwapPriorities(x, y);
 				}
 			}
@@ -589,6 +669,7 @@ namespace Codist.SyntaxHighlight
 							_EditorFormatMap.SetProperties(item.Key, p);
 						}
 					}
+					WorkaroundUnnecessaryCodeDiagnostic(_EditorFormatMap);
 				}
 				finally {
 					_Context = FormatContext.None;
@@ -662,6 +743,7 @@ namespace Codist.SyntaxHighlight
 						foreach (var item in newStyles) {
 							_EditorFormatMap.SetProperties(item.Key, item.Value);
 						}
+						WorkaroundUnnecessaryCodeDiagnostic(_EditorFormatMap);
 						if (needRefresh == false) {
 							needRefresh = dedup.Contains(__GetClassificationType(Constants.CodeClassName));
 						}
@@ -688,9 +770,6 @@ namespace Codist.SyntaxHighlight
 			/// </summary>
 			/// <remarks>Since syntax highlight colors are used majorly in primary document editor window, thus this method only works for the primary editor.</remarks>
 			internal void DetectThemeColorCompatibilityWithBackground() {
-				if (_Category != Constants.CodeText) {
-					return;
-				}
 				var isBackgroundDark = _ViewBackground.IsDark();
 				// color counter
 				int brightness = 0;
@@ -721,22 +800,14 @@ namespace Codist.SyntaxHighlight
 			void InvertColorBrightness() {
 				$"[{_Category}] invert color brightness".Log();
 				foreach (var item in GetStyles()) {
-					var style = item.Value;
-					if (style.ForeColor.A != 0) {
-						style.ForeColor = style.ForeColor.InvertBrightness();
-					}
-					if (style.BackColor.A != 0) {
-						style.BackColor = style.BackColor.InvertBrightness();
-					}
-					if (style.HasLineColor) {
-						style.LineColor = style.LineColor.InvertBrightness();
-					}
+					item.Value.InvertBrightness = true;
+				}
+				if (_Category != Constants.CodeText) {
+					return;
 				}
 
-				var qi = Config.Instance.QuickInfo;
-				if (qi.BackColor.A != 0) {
-					qi.BackColor = qi.BackColor.InvertBrightness();
-					Config.Instance.FireConfigChangedEvent(Features.SuperQuickInfo);
+				foreach (var item in GetStyles()) {
+					item.Value.ConsolidateBrightness();
 				}
 				var sm = Config.Instance.SymbolReferenceMarkerSettings;
 				if (sm.ReferenceMarker.A != 0 || sm.WriteMarker.A != 0 || sm.SymbolDefinition.A != 0) {
@@ -825,6 +896,7 @@ namespace Codist.SyntaxHighlight
 							ResetTextProperties(map, item);
 						}
 					}
+					WorkaroundUnnecessaryCodeDiagnostic(map);
 				}
 				finally {
 					map.EndBatchUpdate();
@@ -905,6 +977,10 @@ namespace Codist.SyntaxHighlight
 						yield return t;
 					}
 				}
+			}
+
+			static void WorkaroundUnnecessaryCodeDiagnostic(IEditorFormatMap map) {
+				map.SetProperties(UnnecessaryCodeDiagnostic, map.GetProperties(UnnecessaryCodeDiagnostic).SetBrush(null));
 			}
 
 			static bool AreBrushesEqual(Brush x, Brush y) {

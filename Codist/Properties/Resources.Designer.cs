@@ -197,6 +197,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Comment to #region.
+        /// </summary>
+        internal static string CMD_CommentToRegion {
+            get {
+                return ResourceManager.GetString("CMD_CommentToRegion", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Concat to Interpolated String.
         /// </summary>
         internal static string CMD_ConcatToInterpolatedString {
@@ -360,6 +369,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Decode Numeric Entity.
+        /// </summary>
+        internal static string CMD_DecodeNumericEntity {
+            get {
+                return ResourceManager.GetString("CMD_DecodeNumericEntity", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Delete All Breakpoints.
         /// </summary>
         internal static string CMD_DeleteAllBreakpoints {
@@ -392,6 +410,15 @@ namespace Codist.Properties {
         internal static string CMD_DeleteContainingStatement {
             get {
                 return ResourceManager.GetString("CMD_DeleteContainingStatement", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Delete Empty Lines.
+        /// </summary>
+        internal static string CMD_DeleteEmptyLines {
+            get {
+                return ResourceManager.GetString("CMD_DeleteEmptyLines", resourceCulture);
             }
         }
         
@@ -2072,6 +2099,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Trim Trailing Spaces.
+        /// </summary>
+        internal static string CMD_TrimTrailingSpaces {
+            get {
+                return ResourceManager.GetString("CMD_TrimTrailingSpaces", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Uncomment selection.
         /// </summary>
         internal static string CMD_UncommentSelection {
@@ -2280,6 +2316,16 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Make words in selection capitalized
+        ///Ctrl: Convert underscore(&quot;_&quot;) separated words to capitalized words.
+        /// </summary>
+        internal static string CMDT_Capitalize {
+            get {
+                return ResourceManager.GetString("CMDT_Capitalize", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Open the syntax highlight configuration dialog window.
         /// </summary>
         internal static string CMDT_ConfigureSyntaxHighlight {
@@ -2322,6 +2368,15 @@ namespace Codist.Properties {
         internal static string CMDT_DarkTheme {
             get {
                 return ResourceManager.GetString("CMDT_DarkTheme", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Decode markup entities in selection like &amp;#1234; or &amp;#xA123; to their actual Unicode characters.
+        /// </summary>
+        internal static string CMDT_DecodeNumericEntity {
+            get {
+                return ResourceManager.GetString("CMDT_DecodeNumericEntity", resourceCulture);
             }
         }
         
@@ -2611,7 +2666,8 @@ namespace Codist.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Save syntax highlight theme....
+        ///   Looks up a localized string similar to Save syntax highlight theme...
+        ///Shift: Save built-in default styles as well.
         /// </summary>
         internal static string CMDT_SaveTheme {
             get {
@@ -2704,6 +2760,42 @@ namespace Codist.Properties {
         internal static string Dark {
             get {
                 return ResourceManager.GetString("Dark", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Codist configuration file|*.json|All files|*.*.
+        /// </summary>
+        internal static string F_Config {
+            get {
+                return ResourceManager.GetString("F_Config", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Executable files (*.exe)|*.exe.
+        /// </summary>
+        internal static string F_Executable {
+            get {
+                return ResourceManager.GetString("F_Executable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Codist syntax highlight settings file|*.styles|All files|*.*.
+        /// </summary>
+        internal static string F_HighlightSettings {
+            get {
+                return ResourceManager.GetString("F_HighlightSettings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to HTML files|*.html|All files|*.*.
+        /// </summary>
+        internal static string F_Html {
+            get {
+                return ResourceManager.GetString("F_Html", resourceCulture);
             }
         }
         
@@ -3437,15 +3529,6 @@ namespace Codist.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Executable files (*.exe)|*.exe.
-        /// </summary>
-        internal static string OT_ExecutableFileFilter {
-            get {
-                return ResourceManager.GetString("OT_ExecutableFileFilter", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to This page contains functions for Visual Studio extension developers.
         /// </summary>
         internal static string OT_ExtensionNote {
@@ -3613,15 +3696,6 @@ namespace Codist.Properties {
         internal static string OT_HideAccountIcon {
             get {
                 return ResourceManager.GetString("OT_HideAccountIcon", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Hide Github Copilot button.
-        /// </summary>
-        internal static string OT_HideCopilotButton {
-            get {
-                return ResourceManager.GetString("OT_HideCopilotButton", resourceCulture);
             }
         }
         
@@ -5512,6 +5586,33 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to 1 switch section, &lt;C&gt;cases.
+        /// </summary>
+        internal static string T_1SectionCases {
+            get {
+                return ResourceManager.GetString("T_1SectionCases", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to About custom syntax rules.
+        /// </summary>
+        internal static string T_AboutCustomSyntaxRules {
+            get {
+                return ResourceManager.GetString("T_AboutCustomSyntaxRules", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Open a web page which documents the syntax customization rules.
+        /// </summary>
+        internal static string T_AboutCustomSyntaxRulesTip {
+            get {
+                return ResourceManager.GetString("T_AboutCustomSyntaxRulesTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Accessors and methods.
         /// </summary>
         internal static string T_AccessorsAndMethods {
@@ -5890,6 +5991,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Open or create the ClassificationTypes.json file to define your own syntax style names.
+        /// </summary>
+        internal static string T_ClassificationTypesJsonTip {
+            get {
+                return ResourceManager.GetString("T_ClassificationTypesJsonTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Click to open folder in Windows Explorer.
         /// </summary>
         internal static string T_ClickToOpenInExplorer {
@@ -5971,15 +6081,6 @@ namespace Codist.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Codist configuration file|*.json|All files|*.*.
-        /// </summary>
-        internal static string T_ConfigFileFilter {
-            get {
-                return ResourceManager.GetString("T_ConfigFileFilter", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Configuration:.
         /// </summary>
         internal static string T_Configuration {
@@ -6044,20 +6145,29 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Create ClassificationTypes.json.
+        /// </summary>
+        internal static string T_CreateClassificationTypesJson {
+            get {
+                return ResourceManager.GetString("T_CreateClassificationTypesJson", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Custom.
+        /// </summary>
+        internal static string T_Custom {
+            get {
+                return ResourceManager.GetString("T_Custom", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Custom colors:.
         /// </summary>
         internal static string T_CustomColors {
             get {
                 return ResourceManager.GetString("T_CustomColors", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Customized.
-        /// </summary>
-        internal static string T_Customized {
-            get {
-                return ResourceManager.GetString("T_Customized", resourceCulture);
             }
         }
         
@@ -6224,6 +6334,16 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to &lt;NAME&gt; is not saved.
+        ///Discard its changes?.
+        /// </summary>
+        internal static string T_DiscardUnsavedChanges {
+            get {
+                return ResourceManager.GetString("T_DiscardUnsavedChanges", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Documentation from .
         /// </summary>
         internal static string T_DocumentationFrom {
@@ -6275,6 +6395,15 @@ namespace Codist.Properties {
         internal static string T_DriveUsage {
             get {
                 return ResourceManager.GetString("T_DriveUsage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Element count: .
+        /// </summary>
+        internal static string T_ElementCount {
+            get {
+                return ResourceManager.GetString("T_ElementCount", resourceCulture);
             }
         }
         
@@ -6360,11 +6489,29 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Error occurred when executing command:.
+        /// </summary>
+        internal static string T_ErrorExecutingCommand {
+            get {
+                return ResourceManager.GetString("T_ErrorExecutingCommand", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Error occured while loading config file: .
         /// </summary>
         internal static string T_ErrorLoadingConfig {
             get {
                 return ResourceManager.GetString("T_ErrorLoadingConfig", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Error occurred when navigating to source code:.
+        /// </summary>
+        internal static string T_ErrorNavigatingToSource {
+            get {
+                return ResourceManager.GetString("T_ErrorNavigatingToSource", resourceCulture);
             }
         }
         
@@ -6378,11 +6525,11 @@ namespace Codist.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Error when executing command:.
+        ///   Looks up a localized string similar to Error occurred while saving configuration file..
         /// </summary>
-        internal static string T_ErrorWhenExecutingCommand {
+        internal static string T_ErrorSavingConfig {
             get {
-                return ResourceManager.GetString("T_ErrorWhenExecutingCommand", resourceCulture);
+                return ResourceManager.GetString("T_ErrorSavingConfig", resourceCulture);
             }
         }
         
@@ -6510,6 +6657,15 @@ namespace Codist.Properties {
         internal static string T_FailedToLoadStyleFile {
             get {
                 return ResourceManager.GetString("T_FailedToLoadStyleFile", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Failed to load syntax customization file.
+        /// </summary>
+        internal static string T_FailedToLoadSyntaxCustomizationFile {
+            get {
+                return ResourceManager.GetString("T_FailedToLoadSyntaxCustomizationFile", resourceCulture);
             }
         }
         
@@ -6645,15 +6801,6 @@ namespace Codist.Properties {
         internal static string T_Hexadecimal {
             get {
                 return ResourceManager.GetString("T_Hexadecimal", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Codist syntax highlight setting file|*.styles|All files|*.*.
-        /// </summary>
-        internal static string T_HighlightSettingFileFilter {
-            get {
-                return ResourceManager.GetString("T_HighlightSettingFileFilter", resourceCulture);
             }
         }
         
@@ -7101,6 +7248,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to No custom syntax highlight is defined. To define custom tags, place a ClassificationTypes.json file into the config folder of Codist. For more information, see:.
+        /// </summary>
+        internal static string T_NoCustomizedTagDefined {
+            get {
+                return ResourceManager.GetString("T_NoCustomizedTagDefined", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Non-scaling Mode.
         /// </summary>
         internal static string T_NonScaleMode {
@@ -7182,6 +7338,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Open ClassificationTypes.json.
+        /// </summary>
+        internal static string T_OpenClassificationTypesJson {
+            get {
+                return ResourceManager.GetString("T_OpenClassificationTypesJson", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to options.
         /// </summary>
         internal static string T_Options {
@@ -7214,6 +7379,15 @@ namespace Codist.Properties {
         internal static string T_Overrides {
             get {
                 return ResourceManager.GetString("T_Overrides", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Pattern count: .
+        /// </summary>
+        internal static string T_PatternCount {
+            get {
+                return ResourceManager.GetString("T_PatternCount", resourceCulture);
             }
         }
         
@@ -7537,6 +7711,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to &lt;C&gt; switch sections, &lt;S&gt; cases.
+        /// </summary>
+        internal static string T_SectionsCases {
+            get {
+                return ResourceManager.GetString("T_SectionsCases", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to See also.
         /// </summary>
         internal static string T_SeeAlso {
@@ -7672,6 +7855,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Specify the location for saving the transformed markdown file.
+        /// </summary>
+        internal static string T_SpecifyLocation {
+            get {
+                return ResourceManager.GetString("T_SpecifyLocation", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Save screenshot file.
         /// </summary>
         internal static string T_SpecifyScreenshotLocation {
@@ -7753,11 +7945,29 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Sub-pattern count: .
+        /// </summary>
+        internal static string T_SubPatternCount {
+            get {
+                return ResourceManager.GetString("T_SubPatternCount", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Super Quick Info.
         /// </summary>
         internal static string T_SuperQuickInfo {
             get {
                 return ResourceManager.GetString("T_SuperQuickInfo", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to &lt;C&gt; switch cases.
+        /// </summary>
+        internal static string T_SwitchCases {
+            get {
+                return ResourceManager.GetString("T_SwitchCases", resourceCulture);
             }
         }
         
@@ -7929,6 +8139,15 @@ namespace Codist.Properties {
         internal static string T_TopGradient {
             get {
                 return ResourceManager.GetString("T_TopGradient", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Transformation for file &lt;NAME&gt; failed..
+        /// </summary>
+        internal static string T_TransformFailed {
+            get {
+                return ResourceManager.GetString("T_TransformFailed", resourceCulture);
             }
         }
         

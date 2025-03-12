@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
+using System.Threading.Tasks;
 using CLR;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Classification;
@@ -10,6 +11,96 @@ using Microsoft.VisualStudio.Utilities;
 
 namespace Codist.Taggers
 {
+	[Export(typeof(IViewTaggerProvider))]
+	[ContentType(Constants.CodeTypes.Text)]
+	[ContentType(Constants.CodeTypes.Output)]
+	[TagType(typeof(IClassificationTag))]
+	[TextViewRole(PredefinedTextViewRoles.Document)]
+	[TextViewRole(PredefinedTextViewRoles.Interactive)]
+	sealed class CustomTaggerProvider : IViewTaggerProvider
+	{
+		readonly Dictionary<ITextView, CustomTagger> _Taggers = new Dictionary<ITextView, CustomTagger>();
+		bool _Enabled;
+
+		public CustomTaggerProvider() {
+			_Enabled = Config.Instance.Features.MatchFlags(Features.SyntaxHighlight);
+			Config.RegisterUpdateHandler(FeatureToggle);
+		}
+
+		public ITagger<T> CreateTagger<T>(ITextView textView, ITextBuffer buffer) where T : ITag {
+			if (_Enabled == false
+				|| Config.Instance.Features.MatchFlags(Features.SyntaxHighlight) == false
+				|| buffer.MayBeEditor() == false && textView.TextBuffer.ContentType.IsOfType("RoslynPreviewContentType") == false
+				|| textView.Roles.Contains("STICKYSCROLL_TEXT_VIEW")
+				) {
+				return null;
+			}
+
+			return (textView.TryGetProperty(out CustomTagger t)
+				? t
+				: CreateTaggerInternal(textView)) as ITagger<T>;
+		}
+
+		CustomTagger CreateTaggerInternal(ITextView textView) {
+			CustomTagger t;
+			var d = textView.TextBuffer.GetTextDocument();
+			if (d == null) {
+				return null;
+			}
+			var p = d.FilePath;
+			if (String.IsNullOrEmpty(p)) {
+				return null;
+			}
+			if (_Taggers.TryGetValue(textView, out var ct)) {
+				return MarkAndHookEvent(textView, ct, this);
+			}
+			try {
+				t = CustomTagger.Get(textView, d);
+			}
+			catch (Exception ex) {
+				ex.Log();
+				return null;
+			}
+			if (t != null) {
+				_Taggers.Add(textView, t);
+				return MarkAndHookEvent(textView, t, this);
+			}
+			return null;
+
+			CustomTagger MarkAndHookEvent(ITextView tv, CustomTagger ct, CustomTaggerProvider p) {
+				if (tv.Properties.ContainsProperty(typeof(CustomTagger)) == false) {
+					tv.Properties.AddProperty(typeof(CustomTagger), ct);
+					tv.Closed -= p.TextViewClosed;
+					tv.Closed += p.TextViewClosed;
+				}
+				return ct;
+			}
+		}
+
+		void FeatureToggle(ConfigUpdatedEventArgs args) {
+			bool enabled;
+			if (args.UpdatedFeature.MatchFlags(Features.SyntaxHighlight)
+				&& (enabled = Config.Instance.Features.MatchFlags(Features.SyntaxHighlight)) != _Enabled) {
+				_Enabled = enabled;
+				foreach (var item in _Taggers) {
+					item.Value.Disabled = !enabled;
+				}
+			}
+		}
+
+		void TextViewClosed(object sender, EventArgs args) {
+			var textView = sender as ITextView;
+			textView.Closed -= TextViewClosed;
+			if (textView.TryGetProperty(out CustomTagger ct)) {
+				ct.Drop();
+				if (_Taggers.TryGetValue(textView, out var rt)) {
+					_Taggers.Remove(textView);
+				}
+				textView.RemoveProperty<CustomTagger>();
+			}
+		}
+	}
+
 	[Export(typeof(IViewTaggerProvider))]
 	[ContentType(Constants.CodeTypes.Code)]
 	[ContentType(Constants.CodeTypes.HtmlxProjection)]
@@ -108,11 +199,13 @@ namespace Codist.Taggers
 				return null;
 			}
 			if (_LastView == textView && _LastTextBuffer == buffer) {
+				_LastTagger.Ref();
 				return _LastTagger;
 			}
 
 			if (_Taggers.TryGetValue(textView, out var bufferTaggers)) {
 				if (bufferTaggers.TryGetValue(buffer, out var tagger)) {
+					tagger.Ref();
 					return tagger;
 				}
 				bufferTaggers.Add(_LastTextBuffer = buffer, _LastTagger = CreateTagger());

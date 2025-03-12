@@ -198,13 +198,15 @@ namespace Codist.QuickInfo {
         ((TextBlock)sender).Background = Brushes.Transparent;
       }
 
-      void GoToSource(object sender, MouseButtonEventArgs e) {
-        try {
-          _symbol.GoToDefinition();
-        } catch (Exception ex) {
-          MessageWindow.Error(ex, null, null, this);
-        }
-      }
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
+			void GoToSource(object sender, MouseButtonEventArgs e) {
+				try {
+					_symbol.GoToDefinition();
+				}
+				catch (Exception ex) {
+					MessageWindow.Error(ex, null, null, this);
+				}
+			}
 
       void ShowToolTip(object sender, ToolTipEventArgs e) {
         var s = _symbol;
@@ -391,8 +393,39 @@ namespace Codist.QuickInfo {
         _Override = uiOverride;
       }
 
-      public bool KeepQuickInfoOpen { get; set; }
-      public bool IsMouseOverAggregated { get; set; }
+			void MakeTextualContentSelectableWithIcon(IList items) {
+				for (int i = 0; i < items.Count; i++) {
+					if (items[i] is DependencyObject qi
+						&& (qi as FrameworkElement)?.IsCodistQuickInfoItem() != true) {
+						if (qi is TextBlock t) {
+							OverrideTextBlock(t);
+							continue;
+						}
+						if (qi is IWpfTextView vi) {
+							items[i] = null;
+							items[i] = new ThemedTipText {
+								Text = vi.TextSnapshot.GetText(),
+								Margin = WpfHelper.MiddleBottomMargin
+							}.SetGlyph(IconIds.Info);
+							continue;
+						}
+						if (qi is ItemsControl ic) {
+							MakeTextualContentSelectableWithIcon(ic.Items);
+							continue;
+						}
+						foreach (var tb in qi.GetDescendantChildren((Predicate<TextBlock>)null, WorkaroundForTypeScriptQuickInfo)) {
+							OverrideTextBlock(tb);
+						}
+						foreach (var item in qi.GetDescendantChildren<ContentPresenter>()) {
+							if (item.Content is IWpfTextView v) {
+								item.Content = new ThemedTipText {
+									Text = v.TextSnapshot.GetText(),
+									Margin = WpfHelper.MiddleBottomMargin
+								}.SetGlyph(IconIds.Info);
+							}
+						}
+					}
+				}
 
       public void Hold(bool hold) {
         IsMouseOverAggregated = hold;

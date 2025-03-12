@@ -24,7 +24,7 @@ namespace Codist.Options
 		int _UILock;
 
 		protected OptionsPage() {
-			Config.RegisterLoadHandler (config => LoadConfig(config));
+			Config.RegisterLoadHandler(LoadConfig);
 		}
 
 		void LoadConfig(Config config) {
@@ -228,7 +228,7 @@ namespace Codist.Options
 						Title = R.T_LoadConfig,
 						FileName = "Codist.json",
 						DefaultExt = "json",
-						Filter = R.T_ConfigFileFilter
+						Filter = R.F_Config
 					};
 					if (d.ShowDialog() != true) {
 						return;
@@ -253,21 +253,28 @@ namespace Codist.Options
 						Title = R.T_SaveConfig,
 						FileName = "Codist.json",
 						DefaultExt = "json",
-						Filter = R.T_ConfigFileFilter
+						Filter = R.F_Config
 					};
 					if (d.ShowDialog() != true) {
 						return;
 					}
-					Config.Instance.SaveConfig(d.FileName);
+
+					try {
+						Config.Instance.SaveConfig(d.FileName);
+					}
+					catch (Exception ex) {
+						MessageWindow.Error(ex, R.T_ErrorSavingConfig);
+					}
 				}
 				else {
 					try {
-						if (System.IO.File.Exists(Config.ConfigPath)) {
-							System.Diagnostics.Process.Start(System.IO.Path.GetDirectoryName(Config.ConfigPath));
+						if (System.IO.Directory.Exists(Config.ConfigDirectory) == false) {
+							System.IO.Directory.CreateDirectory(Config.ConfigDirectory);
 						}
+						System.Diagnostics.Process.Start(Config.ConfigDirectory);
 					}
 					catch (Exception ex) {
-						System.Diagnostics.Debug.WriteLine(ex);
+						ex.Log();
 					}
 				}
 			}
@@ -288,7 +295,7 @@ namespace Codist.Options
 			readonly OptionBox<QuickInfoOptions> _OverrideDefaultDocumentation, _DocumentationFromBaseType, _DocumentationFromInheritDoc, _TextOnlyDoc, _OrdinaryDoc, _ReturnsDoc, _RemarksDoc, _ExceptionDoc, _SeeAlsoDoc, _ExampleDoc, _AlternativeStyle, _ContainingType, _CodeFontForXmlDocSymbol;
 			readonly OptionBox<QuickInfoOptions> _NodeRange, _Attributes, _BaseType, _Declaration, _SymbolLocation, _Interfaces, _NumericValues, _String, _Parameter, _InterfaceImplementations, _TypeParameters, _NamespaceTypes, _MethodOverload, _InterfaceMembers, _EnumMembers;
 			readonly OptionBox<QuickInfoOptions>[] _Options;
-			readonly Controls.IntegerBox _MaxWidth, _MaxHeight, _DisplayDelay;
+			readonly IntegerBox _MaxWidth, _MaxHeight, _DisplayDelay;
 			readonly ColorButton _BackgroundButton;
 
 			public PageControl(OptionsPage page) : base(page) {
@@ -814,7 +821,7 @@ namespace Codist.Options
 		sealed class PageControl : OptionsPageContainer
 		{
 			readonly Controls.IntegerBox _TopSpace, _BottomSpace;
-			readonly OptionBox<DisplayOptimizations> _MainWindow, _CodeWindow, _MenuLayoutOverride, _HideSearchBox, _HideAccountBox, _HideFeedbackButton, _HideCodePilotButton, _HideInfoBadgeButton, _CpuMonitor, _MemoryMonitor, _DriveMonitor, _NetworkMonitor;
+			readonly OptionBox<DisplayOptimizations> _MainWindow, _CodeWindow, _MenuLayoutOverride, _HideSearchBox, _HideAccountBox, _HideFeedbackButton, _HideInfoBadgeButton, _CpuMonitor, _MemoryMonitor, _DriveMonitor, _NetworkMonitor;
 			readonly OptionBox<BuildOptions> _BuildTimestamp, _ShowOutputWindowAfterBuild;
 			readonly TextBox _TaskManagerPath, _TaskManagerParameter;
 			readonly Button _BrowseTaskManagerPath;
@@ -893,7 +900,6 @@ namespace Codist.Options
 							Config.Instance.DisplayOptimizations.CreateOptionBox(DisplayOptimizations.HideSearchBox, UpdateHideSearchBoxOption, R.OT_HideSearchBox).Set(ref _HideSearchBox),
 							Config.Instance.DisplayOptimizations.CreateOptionBox(DisplayOptimizations.HideAccountBox, UpdateHideAccountBoxOption, R.OT_HideAccountIcon).Set(ref _HideAccountBox),
 							Config.Instance.DisplayOptimizations.CreateOptionBox(DisplayOptimizations.HideFeedbackBox, UpdateHideFeedbackButtonOption, R.OT_HideFeedbackButton).Set(ref _HideFeedbackButton),
-							Config.Instance.DisplayOptimizations.CreateOptionBox(DisplayOptimizations.HideCopilotButton, UpdateHideCodePilotButtonOption, R.OT_HideCopilotButton).Set(ref _HideCodePilotButton),
 							Config.Instance.DisplayOptimizations.CreateOptionBox(DisplayOptimizations.HideInfoBadgeButton, UpdateHideInfoBadgeButtonOption, R.OT_HideInfoBadgeButton).Set(ref _HideInfoBadgeButton),
 						}
 					}
@@ -908,7 +914,7 @@ namespace Codist.Options
 						Title = R.OT_LocateTaskManager,
 						CheckFileExists = true,
 						AddExtension = true,
-						Filter = R.OT_ExecutableFileFilter
+						Filter = R.F_Executable
 					};
 					if (d.ShowDialog() == true) {
 						_TaskManagerPath.Text = d.FileName;
@@ -916,7 +922,6 @@ namespace Codist.Options
 				};
 
 				_MenuLayoutOverride.IsEnabled = CodistPackage.VsVersion.Major == 15;
-				_HideCodePilotButton.IsEnabled = CodistPackage.VsVersion.Major > 17 || CodistPackage.VsVersion.Major == 17 && CodistPackage.VsVersion.Minor > 9;
 			}
 
 			protected override void LoadConfig(Config config) {
@@ -928,7 +933,6 @@ namespace Codist.Options
 				_HideAccountBox.UpdateWithOption(o);
 				_HideFeedbackButton.UpdateWithOption(o);
 				_HideSearchBox.UpdateWithOption(o);
-				_HideCodePilotButton.UpdateWithOption(o);
 				_HideInfoBadgeButton.UpdateWithOption(o);
 				_BuildTimestamp.UpdateWithOption(config.BuildOptions);
 				_ShowOutputWindowAfterBuild.UpdateWithOption(config.BuildOptions);
@@ -1146,7 +1150,7 @@ namespace Codist.Options
 						Title = R.OT_LocateBrowser,
 						CheckFileExists = true,
 						AddExtension = true,
-						Filter = R.OT_ExecutableFileFilter
+						Filter = R.F_Executable
 					};
 					if (d.ShowDialog() == true) {
 						_BrowserPath.Text = d.FileName;

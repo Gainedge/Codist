@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -25,13 +24,17 @@ namespace Codist.Taggers
 
 		ConcurrentQueue<SnapshotSpan> _PendingSpans = new ConcurrentQueue<SnapshotSpan>();
 		CancellationTokenSource _RenderBreaker;
-
+		int _Ref;
 		ITextBufferParser _Parser;
 
 		public CSharpTagger(CSharpParser parser, ITextBuffer buffer) {
 			_Parser = parser.GetParser(buffer);
 			_Parser.StateUpdated += HandleParseResult;
+			Ref();
 		}
+
+		public bool Disabled { get; set; }
+		public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
 
 		void HandleParseResult(object sender, EventArgs<SemanticState> result) {
 			var pendingSpans = _PendingSpans;
@@ -40,16 +43,13 @@ namespace Codist.Taggers
 				if (snapshot != null) {
 					while (pendingSpans.TryDequeue(out var span)) {
 						if (snapshot == span.Snapshot) {
-							Debug.WriteLine($"Refresh span {span}");
+							$"Refresh span {span}".Log();
 							TagsChanged?.Invoke(this, new SnapshotSpanEventArgs(span));
 						}
 					}
 				}
 			}
 		}
-
-		public bool Disabled { get; set; }
-		public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
 
 		public IEnumerable<ITagSpan<IClassificationTag>> GetTags(NormalizedSnapshotSpanCollection spans) {
 			var p = _Parser;
@@ -60,7 +60,7 @@ namespace Codist.Taggers
 				return Tagger.GetTags(spans, r, SyncHelper.CancelAndRetainToken(ref _RenderBreaker));
 			}
 			foreach (var item in spans) {
-				Debug.WriteLine($"Enqueue span {item}");
+				$"Enqueue span {item}".Log();
 				_PendingSpans.Enqueue(item);
 			}
 			return r == null
@@ -80,7 +80,14 @@ namespace Codist.Taggers
 			}
 		}
 
+		public void Ref() {
+			++_Ref;
+		}
+
 		public void Dispose() {
+			if (_Ref-- > 0) {
+				return;
+			}
 			_PendingSpans = null;
 			SyncHelper.CancelAndDispose(ref _RenderBreaker, false);
 			ITextBufferParser t = _Parser;
@@ -624,6 +631,7 @@ namespace Codist.Taggers
 
 			static void ClassifyIdentifier(SnapshotSpan itemSpan, in TagHolder tags, SyntaxNode node, SemanticModel semanticModel, CancellationToken cancellationToken) {
 				var symbol = semanticModel.GetSymbolOrFirstCandidate(node, cancellationToken);
+				IMethodSymbol method;
 				if (symbol is null) {
 					symbol = semanticModel.GetDeclaredSymbol(node, cancellationToken);
 					if (symbol is null) {
@@ -750,37 +758,45 @@ namespace Codist.Taggers
 
 					case SymbolKind.Parameter:
 						tags.Add(itemSpan, __Classifications.Parameter);
+						if ((method = symbol.ContainingSymbol as IMethodSymbol) != null) {
+							if (method.IsPrimaryConstructor()) {
+								tags.Add(itemSpan, __Classifications.PrimaryConstructorParameter);
+							}
+							else if (method.MethodKind.CeqAny(MethodKind.LambdaMethod, MethodKind.LocalFunction)) {
+								tags.Add(itemSpan, __Classifications.LocalFunctionParameter);
+							}
+						}
 						break;
 
 					case SymbolKind.Method:
-						var methodSymbol = symbol as IMethodSymbol;
-						switch (methodSymbol.MethodKind) {
+						method = (IMethodSymbol)symbol;
+						switch (method.MethodKind) {
 							case MethodKind.Constructor:
 								tags.Add(itemSpan,
 									node is AttributeSyntax || node.Parent is AttributeSyntax || node.Parent?.Parent is AttributeSyntax
 										? __Classifications.AttributeName
 										: HighlightOptions.StyleConstructorAsType
-										? (methodSymbol.ContainingType.TypeKind == TypeKind.Struct ? __Classifications.StructName : __Classifications.ClassName)
+										? (method.ContainingType.TypeKind == TypeKind.Struct ? __Classifications.StructName : __Classifications.ClassName)
 										: __Classifications.ConstructorMethod);
 								break;
 							case MethodKind.Destructor:
 							case MethodKind.StaticConstructor:
 								tags.Add(itemSpan, HighlightOptions.StyleConstructorAsType
-										? (methodSymbol.ContainingType.TypeKind == TypeKind.Struct
+										? (method.ContainingType.TypeKind == TypeKind.Struct
 											? __Classifications.StructName
 											: __Classifications.ClassName)
 										: __Classifications.ConstructorMethod);
 								break;
 							default:
-								tags.Add(itemSpan, methodSymbol.IsExtensionMethod ? __Classifications.ExtensionMethod
-									: methodSymbol.IsExtern ? __Classifications.ExternMethod
+								tags.Add(itemSpan, method.IsExtensionMethod ? __Classifications.ExtensionMethod
+									: method.IsExtern ? __Classifications.ExternMethod
 									: __Classifications.Method);
 								break;
 						}
 						break;
 
 					case SymbolKind.NamedType:
-						if (symbol.ContainingType != null && symbol.Kind == SymbolKind.NamedType) {
+						if (symbol.ContainingType?.Kind == SymbolKind.NamedType) {
 							tags.Add(itemSpan, __Classifications.NestedType);
 						}
 						break;

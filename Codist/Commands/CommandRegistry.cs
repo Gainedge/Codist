@@ -21,7 +21,9 @@ namespace Codist.Commands
 			ScreenshotCommand.Initialize();
 			SemanticContextCommand.Initialize();
 			ToggleAutoBuildVersionCommand.Initialize();
+			ShowSupportedFileTypesCommand.Initialize();
 			WindowInformerCommand.Initialize();
+			TransformDocumentCommand.Initialize();
 			nameof(CommandRegistry).LogInitialized();
 		}
 
@@ -46,5 +48,7 @@ namespace Codist.Commands
 		OpenOutputFolder,
 		OpenDebugOutputFolder,
 		OpenReleaseOutputFolder,
+		ShowSupportedFileTypes,
+		TransformDocument
 	}
 }

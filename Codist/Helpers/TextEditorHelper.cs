@@ -131,41 +131,45 @@ namespace Codist
 		}
 		static int IndexOf(this SnapshotSpan span, string text, int offset = 0) {
 			int i, l = text.Length;
-			var snapshot = span.Snapshot;
-			var start = span.Start.Position + offset;
-			var spanLength = span.Length;
-			var endOfTest = spanLength - l;
-			if (endOfTest < l) {
+			if (span.Length < l) {
 				return -1;
 			}
-			while (offset > endOfTest) {
-				for (i = 0; i < l; i++) {
-					if (snapshot[start + i] != text[i]) {
-						goto NEXT;
+			var snapshot = span.Snapshot;
+			var start = offset = span.Start.Position + offset;
+			var end = span.End.Position - l;
+			char t0 = text[0];
+			while (offset < end) {
+				if (snapshot[offset] == t0) {
+					for (i = 1; i < l; i++) {
+						if (snapshot[offset + i] != text[i]) {
+							goto NEXT;
+						}
 					}
+					return offset - start;
 				}
-				return offset;
 			NEXT:
 				offset++;
 			}
 			return -1;
 		}
 		static int IndexOfIgnoreCase(this SnapshotSpan span, string text, int offset = 0) {
-			int l = text.Length;
-			var snapshot = span.Snapshot;
-			var start = span.Start.Position + offset;
-			var spanLength = span.Length;
-			var endOfTest = spanLength - l;
-			if (endOfTest < l) {
+			int i, l = text.Length;
+			if (span.Length < l) {
 				return -1;
 			}
-			while (offset > endOfTest) {
-				for (int i = 0; i < l; i++) {
-					if (AreEqualIgnoreCase(snapshot[start + i], text[i]) == false) {
-						goto NEXT;
+			var snapshot = span.Snapshot;
+			var start = offset = span.Start.Position + offset;
+			var end = span.End.Position - l;
+			char t0 = text[0];
+			while (offset < end) {
+				if (snapshot[offset] == t0) {
+					for (i = 1; i < l; i++) {
+						if (AreEqualIgnoreCase(snapshot[start + i], text[i]) == false) {
+							goto NEXT;
+						}
 					}
+					return offset - start;
 				}
-				return offset;
 			NEXT:
 				offset++;
 			}
@@ -252,6 +256,16 @@ namespace Codist
 			return t == null
 				? throw new KeyNotFoundException($"Missing ClassificationType ({classificationType})")
 				: new ClassificationTag(t);
+		}
+
+		public static bool TryGetClassificationTag(this IClassificationTypeRegistryService registry, string classificationType, out ClassificationTag tag) {
+			var t = registry.GetClassificationType(classificationType);
+			if (t != null) {
+				tag = new ClassificationTag(t);
+				return true;
+			}
+			tag = null;
+			return false;
 		}
 
 		public static IClassificationType CreateClassificationCategory(string classificationType) {
@@ -490,18 +504,15 @@ namespace Codist
 			return view.TryGetFirstSelectionSpan(out var span) ? span.GetText() : String.Empty;
 		}
 		public static SnapshotSpan FirstSelectionSpan(this ITextView view) {
-			NormalizedSnapshotSpanCollection spans = view.Selection.SelectedSpans;
-			return spans.Count != 0 ? spans[0] : new SnapshotSpan();
+			return view.GetMultiSelectionBroker().PrimarySelection.Extent.SnapshotSpan;
 		}
 		public static bool TryGetFirstSelectionSpan(this ITextView view, out SnapshotSpan span) {
-			if (view.Selection.IsEmpty || view.Selection.SelectedSpans.Count < 1) {
-				span = new SnapshotSpan();
+			var s = view.GetMultiSelectionBroker().PrimarySelection;
+			if (s.IsEmpty || (span = s.Extent.SnapshotSpan).IsEmpty) {
+				span = default;
 				return false;
 			}
-			else {
-				span = view.Selection.SelectedSpans[0];
-				return true;
-			}
+			return true;
 		}
 
 		public static TokenType GetSelectedTokenType(this ITextView view) {
@@ -580,9 +591,16 @@ namespace Codist
 
 		public static bool IsMultilineSelected(this ITextView textView) {
 			var s = textView.Selection;
-			return s.IsEmpty == false
-				&& textView.TextSnapshot.GetLineNumberFromPosition(s.Start.Position)
-					!= textView.TextSnapshot.GetLineNumberFromPosition(s.End.Position);
+			if (s.IsEmpty == true) {
+				return false;
+			}
+			int lines = 0;
+			foreach (var item in textView.GetSelectedLines()) {
+				if (++lines > 1) {
+					return true;
+				}
+			}
+			return false;
 		}
 
 		public static void SelectNode(this SyntaxNode node, bool includeTrivia) {
@@ -641,7 +659,8 @@ namespace Codist
 			}
 			var b = view.GetMultiSelectionBroker();
 			var m = ServicesHelper.Instance.OutliningManager.GetOutliningManager(view);
-			SnapshotSpan first = default;
+			SnapshotSpan primary = default;
+			var caret = view.GetCaretPosition();
 			using (var o = b.BeginBatchOperation()) {
 				foreach (var span in spans) {
 					if (view.TextSnapshot != span.Snapshot) {
@@ -653,15 +672,36 @@ namespace Codist
 							m.Expand(c);
 						}
 					}
-					if (first.IsEmpty) {
-						first = span;
+					if (primary.IsEmpty && span.Contains(caret)) {
+						primary = span;
 					}
 					b.AddSelection(new Selection(span));
 				}
 			}
 
-			if (first.IsEmpty == false) {
-				view.ViewScroller.EnsureSpanVisible(first, EnsureSpanVisibleOptions.ShowStart);
+			if (primary.IsEmpty == false) {
+				view.ViewScroller.EnsureSpanVisible(primary, EnsureSpanVisibleOptions.ShowStart);
+			}
+		}
+
+		public static IEnumerable<ITextSnapshotLine> GetSelectedLines(this ITextView view) {
+			ITextSnapshotLine l = null, startLine;
+			int end;
+			var snapshot = view.TextBuffer.CurrentSnapshot;
+			foreach (var span in view.Selection.SelectedSpans) {
+				startLine = snapshot.GetLineFromPosition(span.Start.Position);
+				end = snapshot.GetLineFromPosition(span.End.Position).Start.Position;
+				if (l == null || startLine.Start.Position != l.Start.Position) {
+					l = startLine;
+					yield return l;
+				}
+				while (startLine.Start.Position < end) {
+					startLine = snapshot.GetLineFromLineNumber(startLine.LineNumber + 1);
+					if (startLine != l) {
+						l = startLine;
+						yield return l;
+					}
+				}
 			}
 		}
 		#endregion
@@ -711,6 +751,33 @@ namespace Codist
 					s = action(view, edit, item);
 					if (s.HasValue) {
 						changedSpans.Add(s.Value);
+					}
+				}
+				if (edit.HasEffectiveChanges) {
+					var oldSnapshot = view.TextSnapshot;
+					var newSnapshot = edit.Apply();
+					if (changedSpans.IsEmpty == false) {
+						return changedSpans.Select(i => oldSnapshot.MapTo(i, newSnapshot));
+					}
+				}
+			}
+			return null;
+		}
+
+		/// <summary>
+		/// Performs edit operation to each selected spans in the <paramref name="view"/>.
+		/// </summary>
+		/// <typeparam name="TView">The type of the view.</typeparam>
+		/// <param name="view">The <see cref="ITextView"/> to be edited.</param>
+		/// <param name="action">The edit operation against each selected span, returns a collection of spans for select.</param>
+		/// <returns>Returns a collections of new <see cref="SnapshotSpan"/>s if <see cref="ITextEdit.HasEffectiveChanges"/> returns <see langword="true"/> and any <paramref name="action"/> returns a <see cref="Span"/>, otherwise, returns <see langword="null"/>.</returns>
+		public static IEnumerable<SnapshotSpan> EditSelection<TView>(this TView view, Func<TView, ITextEdit, SnapshotSpan, IEnumerable<Span>> action)
+			where TView : ITextView {
+			var changedSpans = new Chain<Span>();
+			using (var edit = view.TextSnapshot.TextBuffer.CreateEdit()) {
+				foreach (var item in view.Selection.SelectedSpans) {
+					foreach (var span in action(view, edit, item)) {
+						changedSpans.Add(span);
 					}
 				}
 				if (edit.HasEffectiveChanges) {
@@ -1197,6 +1264,53 @@ namespace Codist
 		BUILTIN_COPY:
 			ExecuteEditorCommand("Edit.Copy");
 		}
+
+		public static void DeleteEmptyLinesInSelection(this ITextView view) {
+			view.Edit((v, edit) => {
+				foreach (var line in v.GetSelectedLines()) {
+					if (line.IsEmptyOrWhitespace()) {
+						edit.Delete(line.ExtentIncludingLineBreak);
+					}
+				}
+			});
+		}
+
+		public static void TrimTrailingSpaces(this ITextView view) {
+			view.Edit((v, edit) => {
+				var snapshot = v.TextSnapshot;
+				foreach (var span in v.Selection.SelectedSpans) {
+					if (span.IsEmpty) {
+						continue;
+					}
+					var start = span.Start.Position;
+					var end = span.End.Position;
+					var startLine = snapshot.GetLineFromPosition(start);
+					var endLine = snapshot.GetLineFromPosition(end);
+					if (startLine.Start.Position != endLine.Start.Position) {
+						TrimSpanTrailingSpaces(edit, snapshot, start, startLine.End.Position);
+						while (startLine.EndIncludingLineBreak.Position < end
+							&& (start = (startLine = snapshot.GetLineFromLineNumber(startLine.LineNumber + 1)).Start.Position) < end) {
+							TrimSpanTrailingSpaces(edit, snapshot, start, startLine.End.Position);
+						}
+					}
+					else {
+						TrimSpanTrailingSpaces(edit, snapshot, start, end);
+					}
+				}
+			});
+		}
+
+		static void TrimSpanTrailingSpaces(ITextEdit edit, ITextSnapshot snapshot, int start, int end) {
+			int i;
+			for (i = end - 1; i >= start; i--) {
+				if (snapshot[i].IsCodeWhitespaceChar() == false) {
+					break;
+				}
+			}
+			if (++i != end) {
+				edit.Delete(i, end - i);
+			}
+		}
 		#endregion
 
 		#region Properties
@@ -1252,6 +1366,10 @@ namespace Codist
 		public static ITextDocument GetTextDocument(this ITextBuffer textBuffer) {
 			return textBuffer.Properties.TryGetProperty<ITextDocument>(typeof(ITextDocument), out var d) ? d : null;
 		}
+		public static string GetText(this ITextBuffer textBuffer) {
+			return textBuffer.CurrentSnapshot.GetText();
+		}
+
 		public static string GetText(this ITextBuffer textBuffer, int start, int end) {
 			var e = textBuffer.CurrentSnapshot.Length;
 			if (start >= e) {
@@ -1264,15 +1382,31 @@ namespace Codist
 				? String.Empty
 				: textBuffer.CurrentSnapshot.GetText(start, end - start);
 		}
-		public static int CountLinePrecedingWhitespace(this ITextSnapshotLine line) {
-			var ts = line.Snapshot;
-			var s = line.Start.Position;
-			int i = s;
-			while (ts[i].IsCodeWhitespaceChar()) {
-				++i;
+
+		public static void ClearUndoHistory(this ITextBuffer textBuffer) {
+			var s = ServicesHelper.Instance.TextUndoHistoryService;
+			if (s.TryGetHistory(textBuffer, out var history)) {
+				s.RemoveHistory(history);
 			}
-			return i - s;
 		}
+
+		public static bool IsEmptyOrWhitespace(this ITextSnapshotLine line) {
+			int i, end = line.End.Position;
+			var ts = line.Snapshot;
+			for (i = line.Start.Position; i < end && ts[i].IsCodeWhitespaceChar(); i++) { }
+			return i == end;
+		}
+
+		public static int CountLinePrecedingWhitespace(this ITextSnapshotLine line) {
+			return CountPrecedingWhitespace(line.Snapshot, line.Start.Position, line.End.Position);
+		}
+
+		public static int CountPrecedingWhitespace(this ITextSnapshot ts, int start, int end) {
+			int i;
+			for (i = start; i < end && ts[i].IsCodeWhitespaceChar(); i++) { }
+			return i - start;
+		}
+
 		public static string GetLinePrecedingWhitespace(this ITextSnapshotLine line) {
 			return line.Snapshot.GetText(line.Start, line.CountLinePrecedingWhitespace());
 		}

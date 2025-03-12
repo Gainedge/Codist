@@ -14,7 +14,7 @@
 					<ToolTipText>对当前代码窗口截图，保存为图像文件</ToolTipText>
 				</Strings>
 			</Button>
-			<Button guid="guidCodistPackageCmdSet" id="GetContentTypeCommandId" priority="4133" type="Button">
+			<Button guid="guidCodistPackageCmdSet" id="ShowActiveWindowPropertiesId" priority="4133" type="Button">
 				<Parent guid="guidCodistPackageCmdSet" id="CodistMenuGroup" />
 				<Icon guid="ImageCatalogGuid" id="ContentType" />
 				<CommandFlag>DefaultInvisible</CommandFlag>
@@ -23,6 +23,28 @@
 				<Strings>
 					<ButtonText>显示当前窗口属性...</ButtonText>
 					<ToolTipText>显示当前窗口的属性和文档属性</ToolTipText>
+				</Strings>
+			</Button>
+			<Button guid="guidCodistPackageCmdSet" id="ShowSupportedFileTypesId" priority="4134" type="Button">
+				<Parent guid="guidCodistPackageCmdSet" id="CodistMenuGroup" />
+				<Icon guid="ImageCatalogGuid" id="SourceFileGroup" />
+				<CommandFlag>DefaultInvisible</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>IconIsMoniker</CommandFlag>
+				<Strings>
+					<ButtonText>显示已注册的文件类型...</ButtonText>
+					<ToolTipText>显示 Visual Studio 支持的文件类型</ToolTipText>
+				</Strings>
+			</Button>
+			<Button guid="guidCodistPackageCmdSet" id="TransformDocumentId" priority="4135" type="Button">
+				<Parent guid="guidCodistPackageCmdSet" id="CodistMenuGroup" />
+				<Icon guid="ImageCatalogGuid" id="XMLTransformation" />
+				<CommandFlag>DefaultInvisible</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>IconIsMoniker</CommandFlag>
+				<Strings>
+					<ButtonText>转换文档格式...</ButtonText>
+					<ToolTipText>将当前文档转换为另一个格式</ToolTipText>
 				</Strings>
 			</Button>
 			<Button guid="guidCodistPackageCmdSet" id="IncrementVsixVersionId" priority="0x0100" type="Button">
@@ -145,6 +167,18 @@
 					<ToolTipText>打开重构代码的菜单...</ToolTipText>
 					<CanonicalName>.Refactor.RefactoringCode</CanonicalName>
 					<LocCanonicalName>.重构.重构代码</LocCanonicalName>
+				</Strings>
+			</Button>
+			<Button guid="guidCodistPackageCmdSet" id="FavoriteWindowCommandId" priority="0x1000" type="Button">
+				<Parent guid="guidSHLMainMenu" id="IDG_VS_VIEW_BROWSER" />
+				<Icon guid="ImageCatalogGuid" id="Favorite" />
+				<CommandFlag>IconIsMoniker</CommandFlag>
+				<Strings>
+					<MenuText>收藏夹...</MenuText>
+					<ButtonText>收藏夹</ButtonText>
+					<ToolTipText>显示收藏夹窗口...</ToolTipText>
+					<CanonicalName>.View.FavoriteWindow</CanonicalName>
+					<LocCanonicalName>.视图.收藏夹窗口</LocCanonicalName>
 				</Strings>
 			</Button>
 		</Buttons>

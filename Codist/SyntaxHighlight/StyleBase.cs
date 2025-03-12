@@ -81,14 +81,15 @@ namespace Codist.SyntaxHighlight
     /// <summary>Gets or sets the font variant.</summary>
     public string FontVariant { get; set; }
 
-    internal Color ForeColor { get => _ForeColor; set => _ForeColor = value; }
-    internal byte ForegroundOpacity { get => _ForeColorOpacity; set => _ForeColorOpacity = value; }
-    internal Color BackColor { get => _BackColor; set => _BackColor = value; }
-    internal byte BackgroundOpacity { get => _BackColorOpacity; set => _BackColorOpacity = value; }
-    internal Color LineColor { get => _LineColor; set => _LineColor = value; }
-    internal byte LineOpacity { get => _LineOpacity; set => _LineOpacity = value; }
-    internal bool HasLine => Underline == true || Strikethrough == true || OverLine == true;
-    internal bool HasLineColor => HasLine && _LineColor.A != 0;
+		internal Color ForeColor { get => _ForeColor; set => _ForeColor = value; }
+		internal byte ForegroundOpacity { get => _ForeColorOpacity; set => _ForeColorOpacity = value; }
+		internal Color BackColor { get => _BackColor; set => _BackColor = value; }
+		internal byte BackgroundOpacity { get => _BackColorOpacity; set => _BackColorOpacity = value; }
+		internal Color LineColor { get => _LineColor; set => _LineColor = value; }
+		internal byte LineOpacity { get => _LineOpacity; set => _LineOpacity = value; }
+		internal bool HasLine => Underline == true || Strikethrough == true || OverLine == true;
+		internal bool HasLineColor => HasLine && _LineColor.A != 0;
+		internal bool InvertBrightness { get; set; }
 
     /// <summary>The category used in option pages to group style items</summary>
     internal abstract string Category { get; }
@@ -109,25 +110,41 @@ namespace Codist.SyntaxHighlight
     internal abstract string ClassificationType { get; }
     internal abstract string Description { get; }
 
-		internal SolidColorBrush MakeBrush() {
-			return ForeColor.A != 0 ? new SolidColorBrush(ForeColor) : null;
+		internal void ConsolidateBrightness() {
+			if (InvertBrightness) {
+				InvertColorBrightness(ref _ForeColor);
+				InvertColorBrightness(ref _BackColor);
+				InvertColorBrightness(ref _LineColor);
+				InvertBrightness = false;
+			}
 		}
 
-    internal Brush MakeBackgroundBrush(Color backColor) {
-      backColor = backColor.Alpha(0);
-      switch(BackgroundEffect) {
-        case BrushEffect.ToBottom:
-          return new LinearGradientBrush(backColor, BackColor, 90);
-        case BrushEffect.ToTop:
-          return new LinearGradientBrush(BackColor, backColor, 90);
-        case BrushEffect.ToRight:
-          return new LinearGradientBrush(backColor, BackColor, 0);
-        case BrushEffect.ToLeft:
-          return new LinearGradientBrush(BackColor, backColor, 0);
-        default:
-          return BackColor.A != 0 ? new SolidColorBrush(BackColor) : null;
-      }
-    }
+		static void InvertColorBrightness(ref Color color) {
+			if (color.A != 0) {
+				color = color.InvertBrightness();
+			}
+		}
+
+		internal SolidColorBrush MakeBrush() {
+			return ForeColor.A != 0 ? new SolidColorBrush(InvertBrightness ? ForeColor.InvertBrightness() : ForeColor) : null;
+		}
+
+		internal Brush MakeBackgroundBrush(Color backColor) {
+			backColor = backColor.Alpha(0);
+			var bc = InvertBrightness ? BackColor.InvertBrightness() : BackColor;
+			switch (BackgroundEffect) {
+				case BrushEffect.ToBottom:
+					return new LinearGradientBrush(backColor, bc, 90);
+				case BrushEffect.ToTop:
+					return new LinearGradientBrush(bc, backColor, 90);
+				case BrushEffect.ToRight:
+					return new LinearGradientBrush(backColor, bc, 0);
+				case BrushEffect.ToLeft:
+					return new LinearGradientBrush(bc, backColor, 0);
+				default:
+					return bc.A != 0 ? new SolidColorBrush(bc) : null;
+			}
+		}
 
     internal Typeface MakeTypeface() {
       var f = new FontFamily(Font);
@@ -295,11 +312,14 @@ namespace Codist.SyntaxHighlight
     internal override string ClassificationType => Key;
     internal override string Description { get; }
 
-    public SyntaxStyle(string classificationType) {
-      Key = classificationType;
-      Category = "General";
-    }
-  }
+		public SyntaxStyle(string classificationType) {
+			Key = classificationType;
+			Category = "General";
+		}
+		internal SyntaxStyle(string classificationType, StyleBase baseStyle) : this(classificationType) {
+			baseStyle.CopyTo(this);
+		}
+	}
 
   abstract class StyleBase<TStyle> : StyleBase where TStyle : Enum {
     string _ClassificationType, _Description;

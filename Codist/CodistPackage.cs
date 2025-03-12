@@ -9,6 +9,7 @@ using CLR;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Events;
 using Microsoft.VisualStudio.Shell.Interop;
+using R = Codist.Properties.Resources;
 
 namespace Codist
 {
@@ -88,6 +89,20 @@ namespace Codist
 			}
 		}
 
+		public static void ShowError(Exception ex, string title) {
+			if (ThreadHelper.CheckAccess()) {
+				Controls.MessageWindow.Error(ex, title);
+			}
+			else {
+				ShowErrorAsync(ex, title).FireAndForget();
+			}
+		}
+
+		static async Task ShowErrorAsync(Exception error, string title) {
+			await SyncHelper.SwitchToMainThreadAsync();
+			Controls.MessageWindow.Error(error, title);
+		}
+
 		#region Package Members
 		/// <summary>
 		/// Initialization of the package; this method is called right after the package is sited, so this is the place
@@ -131,15 +146,20 @@ namespace Codist
 		}
 
 		void InitializeOrUpgradeConfig() {
-			// save the file to prevent following notification showing up again until future upgrade
-			Config.Instance.SaveConfig(Config.ConfigPath);
+			try {
+				// save the file to prevent following notification showing up again until future upgrade
+				Config.Instance.SaveConfig(Config.ConfigPath);
+			}
+			catch (Exception ex) {
+				Controls.MessageWindow.Error(ex, R.T_ErrorSavingConfig);
+			}
 
 			try {
 				new Commands.VersionInfoBar(this).Show(Config.Instance.InitStatus);
 			}
 			catch (MissingMemberException) {
 				// HACK: For VS 2022, InfoBar is broken. Prompt to open page at this moment.
-				string welcome = Config.Instance.InitStatus.Case(InitStatus.FirstLoad, Properties.Resources.T_FirstRunPrompt, Properties.Resources.T_NewVersionPrompt);
+				string welcome = Config.Instance.InitStatus.Case(InitStatus.FirstLoad, R.T_FirstRunPrompt, R.T_NewVersionPrompt);
 				if (new Controls.MessageWindow(welcome, null, MessageBoxButton.YesNo, MessageBoxImage.Information) { Topmost = true }.ShowDialog() == true) {
 					OpenWebPage(Config.Instance.InitStatus);
 				}

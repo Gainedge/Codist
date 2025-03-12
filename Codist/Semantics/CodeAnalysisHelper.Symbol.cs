@@ -282,10 +282,11 @@ namespace Codist
 
 		public static string GetValueAccessModifier(this ISymbol symbol) {
 			switch (symbol.Kind) {
-				case SymbolKind.NamedType: return ShowTypeValueAccessModifier(symbol as ITypeSymbol);
-				case SymbolKind.Method: return (symbol as IMethodSymbol).GetSpecialMethodModifier();
-				case SymbolKind.Property: return ShowPropertyValueAccessModifier(symbol as IPropertySymbol);
-				case SymbolKind.Field: return ShowFieldValueAccessModifier(symbol as IFieldSymbol);
+				case SymbolKind.NamedType: return ShowTypeValueAccessModifier((ITypeSymbol)symbol);
+				case SymbolKind.Method: return ((IMethodSymbol)symbol).GetSpecialMethodModifier();
+				case SymbolKind.Property: return ShowPropertyValueAccessModifier((IPropertySymbol)symbol);
+				case SymbolKind.Field: return ShowFieldValueAccessModifier((IFieldSymbol)symbol);
+				case SymbolKind.Parameter: return ShowParameterAccessModifier((IParameterSymbol)symbol);
 				default: return String.Empty;
 			}
 
@@ -307,6 +308,10 @@ namespace Codist
 				return f.IsReadOnly ? "readonly "
 					: f.IsVolatile ? "volatile "
 					: String.Empty;
+			}
+
+			string ShowParameterAccessModifier(IParameterSymbol p) {
+				return p.GetScopedKind() != 0 ? "scoped " : String.Empty;
 			}
 		}
 
@@ -344,7 +349,7 @@ namespace Codist
 				case SymbolKind.Discard:
 					return ((IDiscardSymbol)symbol).Type.GetUnderlyingSymbol();
 				case SymbolKind.Method:
-					return ((IMethodSymbol)symbol).MethodKind == MethodKind.BuiltinOperator
+					return ((IMethodSymbol)symbol).MethodKind == MethodKind.BuiltinOperator && symbol.ContainingType != null
 						? symbol.ContainingType.GetMembers(symbol.Name).FirstOrDefault()
 						: symbol;
 			}
@@ -364,6 +369,42 @@ namespace Codist
 					return t.TypeKind == TypeKind.Delegate ? t.DelegateInvokeMethod : null;
 				default: return null;
 			}
+		}
+
+		public static bool IsPrimaryConstructor(this IMethodSymbol method) {
+			if (method is null || method.MethodKind != MethodKind.Constructor || method.ContainingType is null) {
+				return false;
+			}
+			var rm = method.DeclaringSyntaxReferences;
+			if (rm.Length == 0) {
+				return false;
+			}
+			var rt = method.ContainingType.DeclaringSyntaxReferences;
+			foreach (var m in rm) {
+				foreach (var t in rt) {
+					if (m.SyntaxTree == t.SyntaxTree && m.Span == t.Span) {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
+		public static IMethodSymbol GetPrimaryConstructor(this INamedTypeSymbol type) {
+			if (type is null || type.IsAnyKind(TypeKind.Class, TypeKind.Struct) == false) {
+				return null;
+			}
+			var rt = type.DeclaringSyntaxReferences;
+			foreach (var ctor in type.InstanceConstructors) {
+				foreach (var m in ctor.DeclaringSyntaxReferences) {
+					foreach (var t in rt) {
+						if (m.SyntaxTree == t.SyntaxTree && m.Span == t.Span) {
+							return ctor;
+						}
+					}
+				}
+			}
+			return null;
 		}
 
 		public static IReadOnlyList<ISymbol> GetExplicitInterfaceImplementations(this ISymbol symbol) {
@@ -437,6 +478,7 @@ namespace Codist
 				|| symbol.HasValueTypeConstraint
 				|| symbol.HasConstructorConstraint
 				|| symbol.HasUnmanagedTypeConstraint
+				|| symbol.HasNotNullConstraint()
 				|| symbol.ConstraintTypes.Length > 0;
 		}
 
@@ -468,6 +510,16 @@ namespace Codist
 						: null;
 			}
 			return null;
+		}
+
+		public static RefKind GetRefKind(this ISymbol symbol) {
+			switch (symbol.Kind) {
+				case SymbolKind.Method: return ((IMethodSymbol)symbol).RefKind;
+				case SymbolKind.Property: return ((IPropertySymbol)symbol).RefKind;
+				case SymbolKind.Local: return ((ILocalSymbol)symbol).RefKind;
+				case SymbolKind.Parameter: return ((IParameterSymbol)symbol).RefKind;
+				default: return RefKind.None;
+			}
 		}
 
 		public static ITypeSymbol GetNullableValueType(this ITypeSymbol type) {
@@ -578,6 +630,9 @@ namespace Codist
 					}
 					if (item.IsOptional) {
 						sb.Append('[');
+					}
+					if (item.GetScopedKind() != 0) {
+						sb.Append("scoped ");
 					}
 					switch (item.RefKind) {
 						case RefKind.Ref: sb.Append("ref "); break;
@@ -855,6 +910,11 @@ namespace Codist
 				&& type.GetBaseTypes().Any(t => t.MatchTypeName(nameof(Attribute), "System"));
 		}
 
+		public static bool IsExceptionType(this INamedTypeSymbol type) {
+			return type?.TypeKind == TypeKind.Class
+				&& type.GetBaseTypes().Any(t => t.MatchTypeName(nameof(Exception), "System"));
+		}
+
 		public static bool IsCommonBaseType(this ISymbol symbol) {
 			if (symbol is ITypeSymbol type) {
 				switch (type.SpecialType) {
@@ -926,7 +986,8 @@ namespace Codist
 						}
 						continue;
 					case SymbolKind.Property:
-						if (item.Name == "IsCompleted" && item.GetReturnType()?.SpecialType == SpecialType.System_Boolean) {
+						if (item.GetReturnType()?.SpecialType == SpecialType.System_Boolean
+							&& item.Name == "IsCompleted") {
 							f |= HAS_IS_COMPLETED;
 						}
 						continue;
@@ -989,6 +1050,24 @@ namespace Codist
 		}
 
 		#region Protected/Future property accessors
+		public static int GetNullableAnnotation(this ILocalSymbol local) {
+			return local != null ? NonPublicOrFutureAccessors.GetLocalNullableAnnotation(local) : 0;
+		}
+		public static int GetScopedKind(this ILocalSymbol local) {
+			return local != null ? NonPublicOrFutureAccessors.GetLocalScopedKind(local) : 0;
+		}
+		public static bool IsForEach(this ILocalSymbol local) {
+			return local != null && NonPublicOrFutureAccessors.GetLocalIsForEach(local);
+		}
+		public static bool IsUsing(this ILocalSymbol local) {
+			return local != null && NonPublicOrFutureAccessors.GetLocalIsUsing(local);
+		}
+		public static bool IsFileLocal(this INamedTypeSymbol type) {
+			return type != null && NonPublicOrFutureAccessors.GetNamedTypeIsFileLocal(type);
+		}
+		public static bool IsNativeIntegerType(this ITypeSymbol type) {
+			return type != null && NonPublicOrFutureAccessors.GetTypeIsNativeIntegerType(type);
+		}
 		public static bool IsReadOnly(this ITypeSymbol type) {
 			return type != null && NonPublicOrFutureAccessors.GetNamedTypeIsReadOnly(type);
 		}
@@ -998,8 +1077,8 @@ namespace Codist
 		public static bool IsRefLike(this ITypeSymbol type) {
 			return type != null && NonPublicOrFutureAccessors.GetNamedTypeIsRefLikeType(type);
 		}
-		public static byte GetNullableAnnotation(this ITypeSymbol type) {
-			return type != null ? NonPublicOrFutureAccessors.GetNullableAnnotation(type) : (byte)0;
+		public static int GetNullableAnnotation(this ITypeSymbol type) {
+			return type != null ? NonPublicOrFutureAccessors.GetTypeNullableAnnotation(type) : 0;
 		}
 		public static bool IsInitOnly(this IMethodSymbol method) {
 			return method != null && NonPublicOrFutureAccessors.GetMethodIsInitOnly(method);
@@ -1007,8 +1086,14 @@ namespace Codist
 		public static bool IsReadOnly(this IMethodSymbol method) {
 			return method != null && NonPublicOrFutureAccessors.GetMethodIsReadOnly(method);
 		}
-		public static byte GetCallingConvention(this IMethodSymbol method) {
-			return method != null ? NonPublicOrFutureAccessors.GetMethodCallingConvention(method) : (byte)0;
+		public static int GetCallingConvention(this IMethodSymbol method) {
+			return method != null ? NonPublicOrFutureAccessors.GetMethodCallingConvention(method) : 0;
+		}
+		public static int GetScopedKind(this IParameterSymbol parameter) {
+			return parameter != null ? NonPublicOrFutureAccessors.GetParameterScopedKind(parameter) : 0;
+		}
+		public static INamedTypeSymbol GetNativeIntegerUnderlyingType(this INamedTypeSymbol type) {
+			return type != null ? NonPublicOrFutureAccessors.GetNamedTypeNativeIntegerUnderlyingType(type) : null;
 		}
 		public static IMethodSymbol GetFunctionPointerTypeSignature(this ITypeSymbol symbol) {
 			return symbol?.TypeKind == FunctionPointer ? NonPublicOrFutureAccessors.GetFunctionPointerTypeSignature(symbol) : null;
@@ -1016,13 +1101,34 @@ namespace Codist
 		public static IFieldSymbol GetPropertyBackingField(this IPropertySymbol property) {
 			return property != null && property.ContainingAssembly.GetSourceType() != AssemblySource.Metadata ? NonPublicOrFutureAccessors.GetPropertyBackingField(property) : null;
 		}
+		public static IPropertySymbol GetPropertyPartialDefinitionPart(this IPropertySymbol property) {
+			return property != null ? NonPublicOrFutureAccessors.GetPropertyPartialDefinitionPart(property) : null;
+		}
+		public static IPropertySymbol GetPropertyPartialImplementationPart(this IPropertySymbol property) {
+			return property != null ? NonPublicOrFutureAccessors.GetPropertyPartialImplementationPart(property) : null;
+		}
 		public static bool IsRequired(this IPropertySymbol property) {
 			return property != null && NonPublicOrFutureAccessors.GetPropertyIsRequired(property);
+		}
+		public static bool HasNotNullConstraint(this ITypeParameterSymbol typeParameter) {
+			return typeParameter != null && NonPublicOrFutureAccessors.GetTypeParameterHasNotNullConstraint(typeParameter);
 		}
 		public static AssemblySource GetSourceType(this IAssemblySymbol assembly) {
 			return assembly is null
 				? AssemblySource.Metadata
 				: (AssemblySource)NonPublicOrFutureAccessors.GetAssemblySourceType(assembly);
+		}
+		public static int GetSwitchExpressionArmsCount(this ExpressionSyntax switchExpression) {
+			return switchExpression.IsKind(SwitchExpression) ? NonPublicOrFutureAccessors.GetSwitchExpressionArmsCount(switchExpression) : 0;
+		}
+		public static int GetPropertyPatternSubPatternsCount(this CSharpSyntaxNode propertyPatternClause) {
+			return propertyPatternClause.IsKind(PropertyPatternClause) ? NonPublicOrFutureAccessors.GetPropertyPatternSubPatternsCount(propertyPatternClause) : 0;
+		}
+		public static int GetCollectionExpressionElementsCount(this ExpressionSyntax collectionExpression) {
+			return collectionExpression.IsKind(CollectionExpression) ? NonPublicOrFutureAccessors.GetCollectionExpressionElementsCount(collectionExpression) : 0;
+		}
+		public static int GetListPatternsCount(this PatternSyntax listPattern) {
+			return listPattern.IsKind(ListPatternExpression) ? NonPublicOrFutureAccessors.GetListPatternsCount(listPattern) : 0;
 		}
 		#endregion
 
@@ -1112,6 +1218,14 @@ namespace Codist
 					source = source.AddRange(symbol.DeclaringSyntaxReferences);
 				}
 			}
+			else if (symbol is IPropertySymbol p) {
+				if (p.GetPropertyPartialDefinitionPart() != null) {
+					source = source.AddRange(p.GetPropertyPartialDefinitionPart().DeclaringSyntaxReferences);
+				}
+				if (p.GetPropertyPartialImplementationPart() != null) {
+					source = source.AddRange(p.GetPropertyPartialImplementationPart().DeclaringSyntaxReferences);
+				}
+			}
 			return source;
 		}
 
@@ -1138,6 +1252,7 @@ namespace Codist
 		}
 
 		public static void GoToDefinition(this ISymbol symbol) {
+			Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
 			var r = symbol.GetSourceReferences();
 			if (r.Length == 1) {
 				r[0].GoToSource();
@@ -1326,7 +1441,7 @@ namespace Codist
 			if (ReferenceEquals(a, b)) {
 				return true;
 			}
-			if (a == null || b == null) {
+			if (a == null || b == null || a.IsRefLike() != b.IsRefLike()) {
 				return false;
 			}
 			if (a.Equals(b)) {
@@ -1372,7 +1487,8 @@ namespace Codist
 				|| a.HasReferenceTypeConstraint != b.HasReferenceTypeConstraint
 				|| a.HasValueTypeConstraint != b.HasValueTypeConstraint
 				|| a.HasConstructorConstraint != b.HasConstructorConstraint
-				|| a.HasUnmanagedTypeConstraint != b.HasUnmanagedTypeConstraint) {
+				|| a.HasUnmanagedTypeConstraint != b.HasUnmanagedTypeConstraint
+				|| a.HasNotNullConstraint() != b.HasNotNullConstraint()) {
 				return false;
 			}
 			var ac = a.ConstraintTypes;
@@ -1381,7 +1497,7 @@ namespace Codist
 				return false;
 			}
 			for (int i = ac.Length - 1; i >= 0; i--) {
-				if (ac[i].Equals(bc[i]) == false) {
+				if (AreEqual(ac[i], bc[i], true) == false) {
 					return false;
 				}
 			}
@@ -1528,15 +1644,37 @@ namespace Codist
 				? ReflectionHelper.CreateGetPropertyMethod<ITypeSymbol, bool>("IsRefLikeType")
 				: ReflectionHelper.CreateGetPropertyMethod<ITypeSymbol, bool>("IsRefLikeType", typeof(CSharpCompilation).Assembly.GetType("Microsoft.CodeAnalysis.CSharp.Symbols.NamedTypeSymbol", false));
 
+			public static readonly Func<INamedTypeSymbol, bool> GetNamedTypeIsFileLocal = ReflectionHelper.CreateGetPropertyMethod<INamedTypeSymbol, bool>("IsFileLocal");
+
 			public static readonly Func<ITypeSymbol, bool> GetTypeIsRecord = ReflectionHelper.CreateGetPropertyMethod<ITypeSymbol, bool>("IsRecord");
 
-			public static readonly Func<ITypeSymbol, byte> GetNullableAnnotation = ReflectionHelper.CreateGetPropertyMethod<ITypeSymbol, byte>("NullableAnnotation");
+			public static readonly Func<ITypeSymbol, bool> GetTypeIsNativeIntegerType = ReflectionHelper.CreateGetPropertyMethod<ITypeSymbol, bool>("IsNativeIntegerType");
+
+			public static readonly Func<ITypeSymbol, int> GetTypeNullableAnnotation = ReflectionHelper.CreateGetPropertyMethod<ITypeSymbol, int>("NullableAnnotation");
+
+			public static readonly Func<INamedTypeSymbol, INamedTypeSymbol> GetNamedTypeNativeIntegerUnderlyingType = ReflectionHelper.CreateGetPropertyMethod<INamedTypeSymbol, INamedTypeSymbol>("NativeIntegerUnderlyingType");
+
+			public static readonly Func<ILocalSymbol, bool> GetLocalIsForEach = ReflectionHelper.CreateGetPropertyMethod<ILocalSymbol, bool>("IsForEach");
+
+			public static readonly Func<ILocalSymbol, bool> GetLocalIsUsing = ReflectionHelper.CreateGetPropertyMethod<ILocalSymbol, bool>("IsUsing");
+
+			public static readonly Func<ILocalSymbol, int> GetLocalNullableAnnotation = ReflectionHelper.CreateGetPropertyMethod<ILocalSymbol, int>("NullableAnnotation");
+
+			public static readonly Func<ILocalSymbol, int> GetLocalScopedKind = ReflectionHelper.CreateGetPropertyMethod<ILocalSymbol, int>("ScopedKind");
 
 			public static readonly Func<IMethodSymbol, bool> GetMethodIsInitOnly = ReflectionHelper.CreateGetPropertyMethod<IMethodSymbol, bool>("IsInitOnly");
 
 			public static readonly Func<IMethodSymbol, bool> GetMethodIsReadOnly = ReflectionHelper.CreateGetPropertyMethod<IMethodSymbol, bool>("IsReadOnly");
 
-			public static readonly Func<IMethodSymbol, byte> GetMethodCallingConvention = ReflectionHelper.CreateGetPropertyMethod<IMethodSymbol, byte>("CallingConvention");
+			public static readonly Func<IMethodSymbol, int> GetMethodCallingConvention = ReflectionHelper.CreateGetPropertyMethod<IMethodSymbol, int>("CallingConvention");
+
+			public static readonly Func<IPropertySymbol, IPropertySymbol> GetPropertyPartialDefinitionPart = ReflectionHelper.CreateGetPropertyMethod<IPropertySymbol, IPropertySymbol>("PartialDefinitionPart");
+
+			public static readonly Func<IPropertySymbol, IPropertySymbol> GetPropertyPartialImplementationPart = ReflectionHelper.CreateGetPropertyMethod<IPropertySymbol, IPropertySymbol>("PartialImplementationPart");
+
+			public static readonly Func<IParameterSymbol, int> GetParameterScopedKind = ReflectionHelper.CreateGetPropertyMethod<IParameterSymbol, int>("ScopedKind");
+
+			public static readonly Func<ITypeParameterSymbol, bool> GetTypeParameterHasNotNullConstraint = ReflectionHelper.CreateGetPropertyMethod<ITypeParameterSymbol, bool>("HasNotNullConstraint");
 
 			public static readonly Func<ITypeSymbol, IMethodSymbol> GetFunctionPointerTypeSignature = ReflectionHelper.CreateGetPropertyMethod<ITypeSymbol, IMethodSymbol>("Signature", typeof(ITypeSymbol).Assembly.GetType("Microsoft.CodeAnalysis.IFunctionPointerTypeSymbol"));
 
@@ -1604,6 +1742,50 @@ namespace Codist
 					il.Emit(OpCodes.Ret);
 				}
 				return m.CreateDelegate<Func<IAssemblySymbol, int>>();
+			}
+
+			public static readonly Func<ExpressionSyntax, int> GetSwitchExpressionArmsCount = CreateSyntaxListCountFunc<ExpressionSyntax>("GetSwitchExpressionArmsCount", "Microsoft.CodeAnalysis.CSharp.Syntax.SwitchExpressionSyntax", "Arms");
+			public static readonly Func<CSharpSyntaxNode, int> GetPropertyPatternSubPatternsCount = CreateSyntaxListCountFunc<CSharpSyntaxNode>("GetPropertyPatternClauseSubPatternsCount", "Microsoft.CodeAnalysis.CSharp.Syntax.PropertyPatternClauseSyntax", "Subpatterns");
+			public static readonly Func<ExpressionSyntax, int> GetCollectionExpressionElementsCount = CreateSyntaxListCountFunc<CSharpSyntaxNode>("GetCollectionExpressionElementsCount", "Microsoft.CodeAnalysis.CSharp.Syntax.CollectionExpressionSyntax", "Elements");
+			public static readonly Func<PatternSyntax, int> GetListPatternsCount = CreateSyntaxListCountFunc<CSharpSyntaxNode>("GetListPatternsCount", "Microsoft.CodeAnalysis.CSharp.Syntax.ListPatternSyntax", "Patterns");
+
+			static Func<TNode, int> CreateSyntaxListCountFunc<TNode>(string methodName, string type, string listPropertyName) where TNode : SyntaxNode {
+				var m = new DynamicMethod(methodName, typeof(int), new Type[] { typeof(TNode) }, true);
+				var il = m.GetILGenerator();
+				var asm = typeof(TNode).Assembly;
+				var t = asm.GetType(type);
+				if (t is null) {
+					goto RETURN_0;
+				}
+				var list = t.GetProperty(listPropertyName);
+				if (list is null) {
+					goto RETURN_0;
+				}
+				var count = list.PropertyType.GetProperty("Count");
+				if (count is null) {
+					goto RETURN_0;
+				}
+				var isNotExpression = il.DefineLabel();
+				var temp = il.DeclareLocal(list.PropertyType);
+
+				il.Emit(OpCodes.Ldarg_0);
+				il.Emit(OpCodes.Isinst, t);
+				il.Emit(OpCodes.Dup);
+				il.Emit(OpCodes.Brfalse_S, isNotExpression);
+
+				il.Emit(OpCodes.Callvirt, list.GetGetMethod());
+				il.Emit(OpCodes.Stloc_S, temp);
+				il.Emit(OpCodes.Ldloca_S, temp);
+				il.Emit(OpCodes.Call, count.GetGetMethod());
+				il.Emit(OpCodes.Ret);
+
+				il.MarkLabel(isNotExpression);
+				il.Emit(OpCodes.Pop);
+			RETURN_0:
+				il.Emit(OpCodes.Ldc_I4_0);
+				il.Emit(OpCodes.Ret);
+
+				return m.CreateDelegate<Func<TNode, int>>();
 			}
 		}
 

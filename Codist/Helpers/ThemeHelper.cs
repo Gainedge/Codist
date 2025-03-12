@@ -38,6 +38,7 @@ namespace Codist
 		public static WpfBrush DocumentPageBrush { get; private set; }
 		public static GdiColor DocumentTextColor { get; private set; }
 		public static WpfBrush DocumentTextBrush { get; private set; }
+		public static WpfBrush HyperlinkBrush { get; private set; }
 		public static WpfBrush FileTabProvisionalSelectionBrush { get; private set; }
 		public static WpfColor ToolWindowBackgroundColor { get; private set; }
 		public static WpfColor TitleBackgroundColor { get; private set; }
@@ -65,7 +66,6 @@ namespace Codist
 
 		#region Theme events
 		static KeyValuePair<Guid, string> GetCurrentThemeInfo() {
-			ThreadHelper.ThrowIfNotOnUIThread();
 			var i = ServicesHelper.Get<Interop.IVsColorThemeService, Interop.SVsColorThemeService>();
 			if (i == null) {
 				"Failed to cast IVsColorThemeService.".Log();
@@ -79,7 +79,6 @@ namespace Codist
 		// in VS 2022, SVsColorThemeService somehow can't be cast to IVsColorThemeService,
 		// we have to use dynamic in this case
 		static KeyValuePair<Guid, string> CompatibleGetThemeInfo() {
-			ThreadHelper.ThrowIfNotOnUIThread();
 			dynamic s = ServiceProvider.GlobalProvider.GetService(new Guid("0D915B59-2ED7-472A-9DE8-9161737EA1C5"));
 			if (s == null) {
 				return new KeyValuePair<Guid, string>(Guid.Empty, String.Empty);
@@ -154,6 +153,7 @@ namespace Codist
 			DocumentPageBrush = new WpfBrush(DocumentPageColor.ToWpfColor());
 			DocumentTextColor = CommonDocumentColors.PageTextColorKey.GetGdiColor();
 			DocumentTextBrush = new WpfBrush(DocumentTextColor.ToWpfColor());
+			HyperlinkBrush = CommonDocumentColors.HyperlinkBrushKey.GetWpfBrush();
 			FileTabProvisionalSelectionBrush = EnvironmentColors.FileTabProvisionalSelectedActiveBrushKey.GetWpfBrush();
 			ToolWindowBackgroundColor = EnvironmentColors.ToolWindowBackgroundColorKey.GetWpfColor();
 			TitleBackgroundColor = EnvironmentColors.MainWindowActiveCaptionColorKey.GetWpfColor();

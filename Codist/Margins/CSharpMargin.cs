@@ -428,13 +428,13 @@ namespace Codist.Margins {
         }
       }
 
-      static bool IsType(CodeMemberType type) {
-        return type > CodeMemberType.Root && type < CodeMemberType.Member;
-      }
+			static bool IsType(CodeMemberType type) {
+				return type.IsInside(CodeMemberType.Root, CodeMemberType.Member);
+			}
 
-      static bool IsMember(CodeMemberType type) {
-        return type > CodeMemberType.Member && type < CodeMemberType.Other;
-      }
+			static bool IsMember(CodeMemberType type) {
+				return type.IsInside(CodeMemberType.Member, CodeMemberType.Other);
+			}
 
       [DebuggerDisplay("{GetDebuggerString()}")]
       sealed class CodeBlock {
@@ -634,31 +634,30 @@ namespace Codist.Margins {
         }
       }
 
-      public async Task<bool> UpdateAsync(SemanticState state, CancellationToken cancellationToken) {
-        var margin = _Margin;
-        ISymbol symbol = null;
-        if (state != null || margin._Parser.TryGetSemanticState(margin._View.TextSnapshot, out state)) {
-          symbol = await state.GetSymbolAsync(margin._View.GetCaretPosition(), cancellationToken).ConfigureAwait(false);
-        }
-        if (ReferenceEquals(Interlocked.Exchange(ref _ActiveSymbol, symbol), symbol)) {
-          return false;
-        }
-        if (symbol == null) {
-          if (_References != null) {
-            _References = null;
-            return true;
-          } else {
-            return false;
-          }
-        }
-        _References = GetReferenceItems(
-          await SymbolFinder.FindReferencesAsync(symbol.GetAliasTarget(), state.Document.Project.Solution, ImmutableSortedSet.Create(state.Document), cancellationToken).ConfigureAwait(false),
-          state.Model.SyntaxTree,
-          state.GetCompilationUnit(cancellationToken),
-          cancellationToken
-          );
-        return true;
-      }
+			public async Task<bool> UpdateAsync(SemanticState state, CancellationToken cancellationToken) {
+				var margin = _Margin;
+				ISymbol symbol = null;
+				if (state != null || margin._Parser.TryGetSemanticState(margin._View.TextSnapshot, out state)) {
+					symbol = await state.GetSymbolAsync(margin._View.GetCaretPosition(), cancellationToken).ConfigureAwait(false);
+				}
+				if (ReferenceEquals(Interlocked.Exchange(ref _ActiveSymbol, symbol), symbol)) {
+					return false;
+				}
+				if (symbol == null) {
+					if (_References == null) {
+						return false;
+					}
+					_References = null;
+					return true;
+				}
+				_References = GetReferenceItems(
+					await SymbolFinder.FindReferencesAsync(symbol.GetAliasTarget(), state.Document.Project.Solution, ImmutableSortedSet.Create(state.Document), cancellationToken).ConfigureAwait(false),
+					state.Model.SyntaxTree,
+					state.GetCompilationUnit(cancellationToken),
+					cancellationToken
+					);
+				return true;
+			}
 
       static List<ReferenceItem> GetReferenceItems(IEnumerable<ReferencedSymbol> referencePoints, SyntaxTree syntaxTree, CompilationUnitSyntax compilationUnit, CancellationToken cancellationToken) {
         var r = new List<ReferenceItem>();

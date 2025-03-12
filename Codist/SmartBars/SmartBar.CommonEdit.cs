@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
 using CLR;
@@ -22,6 +24,7 @@ namespace Codist.SmartBars
 		static readonly CommandItem[] __WebCommands = GetWebCommands();
 		static readonly CommandItem[] __SurroundingCommands = GetSurroundingCommands();
 		static readonly CommandItem[] __DebugCommands = GetDebugCommands();
+		static readonly Regex __CapitalizeExpression = new Regex(@"(^|\b|[^\w\s])?_?([a-zA-Z])([a-zA-Z]*)(?=_|\b|$)", RegexOptions.Compiled);
 
 		WrapText _RecentWrapText;
 
@@ -54,6 +57,24 @@ namespace Codist.SmartBars
 				}
 				return null;
 			});
+			if (edited != null) {
+				if (t != null && ctx.ModifierKeys.HasAnyFlag(ModifierKeys.Control | ModifierKeys.Shift) && FindNext(ctx, t) == false) {
+					ctx.HideToolBar();
+				}
+				else if (selectModified) {
+					ctx.View.SelectSpans(edited);
+				}
+			}
+			return edited;
+		}
+
+		protected static IEnumerable<SnapshotSpan> Replace(CommandContext ctx, Func<CommandContext, ITextEdit, SnapshotSpan, IEnumerable<Span>> replaceHandler, bool selectModified) {
+			ctx.KeepToolBar(false);
+			string t = ctx.View.GetFirstSelectionText();
+			if (t.Length == 0) {
+				return null;
+			}
+			var edited = ctx.View.EditSelection((view, edit, item) => replaceHandler(ctx, edit, item));
 			if (edited != null) {
 				if (t != null && ctx.ModifierKeys.HasAnyFlag(ModifierKeys.Control | ModifierKeys.Shift) && FindNext(ctx, t) == false) {
 					ctx.HideToolBar();
@@ -174,15 +195,14 @@ namespace Codist.SmartBars
 
 		void AddEditAllMatchingCommand() {
 			AddCommand(ToolBar, IconIds.EditMatches, R.CMD_EditMatches, ctx => {
-				var spans = ctx.View.Selection.SelectedSpans;
-				if (spans.Count < 1) {
+				var b = ctx.View.GetMultiSelectionBroker();
+				if (b.HasMultipleSelections || b.PrimarySelection.IsEmpty) {
 					return;
 				}
-				var s = spans[0];
+				var s = b.PrimarySelection.Extent.SnapshotSpan;
 				if (s.Length == 0) {
 					return;
 				}
-				var b = ctx.View.GetMultiSelectionBroker();
 				var option = FindOptions.Wrap | FindOptions.OrdinalComparison;
 				var m = ctx.ModifierKeys;
 				if (m.MatchFlags(ModifierKeys.Control)) {
@@ -208,7 +228,7 @@ namespace Codist.SmartBars
 
 		void AddFindAndReplaceCommands() {
 			AddCommands(ToolBar, IconIds.FindNext, R.CMD_FindReplace, QuickFind, ctx => __FindAndReplaceCommands.Concat(
-				Config.Instance.SearchEngines.ConvertAll(s => new CommandItem(IconIds.SearchWebSite, R.CMD_SearchWith.Replace("<NAME>", s.Name), c => SearchSelection(s.Pattern, c))))
+				Config.Instance.SearchEngines.ConvertAll(s => new CommandItem(IconIds.SearchWebSite, R.CMD_SearchWith.Replace("<NAME>", s.Name), c => SearchSelection(s.Pattern, c)) { QuickAccessCondition = CommandItem.HasSelection }))
 			);
 		}
 
@@ -251,7 +271,7 @@ namespace Codist.SmartBars
 			var tokenType = View.GetSelectedTokenType();
 			switch (tokenType) {
 				case TokenType.None:
-					AddCommands(ToolBar, IconIds.FormatSelection, R.CMD_Formatting, null, GetFormatItems);
+					AddCommands(ToolBar, IconIds.EditSelection, R.CMD_Formatting, null, GetFormatItems);
 					break;
 				case TokenType.Digit:
 				case TokenType.Digit | TokenType.Hex:
@@ -303,10 +323,10 @@ namespace Codist.SmartBars
 							ctx.View.SelectSpans(m);
 						}
 					});
-					AddCommands(ToolBar, IconIds.FormatSelection, R.CMD_Formatting, null, _ => __CaseCommands);
+					AddCommands(ToolBar, IconIds.EditSelection, R.CMD_Formatting, null, _ => __CaseCommands);
 					break;
 				default:
-					AddCommands(ToolBar, IconIds.FormatSelection, R.CMD_Formatting, null, _ => __CaseCommands);
+					AddCommands(ToolBar, IconIds.EditSelection, R.CMD_Formatting, null, _ => __CaseCommands);
 					break;
 			}
 		}
@@ -330,7 +350,7 @@ namespace Codist.SmartBars
 			foreach (var item in Config.Instance.WrapTexts) {
 				yield return new CommandItem(IconIds.WrapText, String.IsNullOrEmpty(item.Name) ? item.Pattern : item.Name, ctx => {
 					if (WrapWith(ctx, item, true) != Enumerable.Empty<SnapshotSpan>()) {
-						_RecentWrapText = item;
+						ctx.Bar._RecentWrapText = item;
 					}
 				});
 			}
@@ -374,14 +394,18 @@ namespace Codist.SmartBars
 			var selection = View.Selection;
 			if (selection.Mode == TextSelectionMode.Stream) {
 				r.AddRange(__SurroundingCommands);
-				r.Add(new CommandItem(IconIds.FormatSelection, R.CMD_FormatSelection, _ => TextEditorHelper.ExecuteEditorCommand("Edit.FormatSelection")));
-				if (View.IsMultilineSelected()) {
-					r.Add(new CommandItem(IconIds.JoinLines, R.CMD_JoinLines, ctx => ctx.View.JoinSelectedLines()));
+				r.Add(new CommandItem(IconIds.FormatSelection, R.CMD_FormatSelection, _ => TextEditorHelper.ExecuteEditorCommand("Edit.FormatSelection")) { QuickAccessCondition = CommandItem.HasEditableSelection });
+				if (arg.HasMultiLineSelection) {
+					r.Add(new CommandItem(IconIds.JoinLines, R.CMD_JoinLines, ctx => ctx.View.JoinSelectedLines()) { QuickAccessCondition = CommandItem.EditableAndMultiline });
 					if (TextEditorHelper.IsCommandAvailable("Edit.SortLines")) {
-						r.Add(new CommandItem(IconIds.SortLines, R.CMD_SortLines, ctx => TextEditorHelper.ExecuteEditorCommand("Edit.SortLines")));
+						r.Add(new CommandItem(IconIds.SortLines, R.CMD_SortLines, ctx => TextEditorHelper.ExecuteEditorCommand("Edit.SortLines")) { QuickAccessCondition = CommandItem.EditableAndMultiline });
 					}
 				}
 			}
+			if (arg.HasMultiLineSelection) {
+				r.Add(new CommandItem(IconIds.DeleteEmptyLines, R.CMD_DeleteEmptyLines, ctx => ctx.View.DeleteEmptyLinesInSelection()) { QuickAccessCondition = CommandItem.EditableAndMultiline });
+			}
+			r.Add(new CommandItem(IconIds.TrimTrailingSpaces, R.CMD_TrimTrailingSpaces, ctx => ctx.View.TrimTrailingSpaces()) { QuickAccessCondition = CommandItem.HasEditableSelection });
 			r.AddRange(__WebCommands);
 			r.AddRange(__CaseCommands);
 			return r;
@@ -431,16 +455,25 @@ namespace Codist.SmartBars
 			return new CommandItem[] {
 				new CommandItem(IconIds.Capitalize, R.CMD_Capitalize, ctx => {
 					ctx.KeepToolBarOnClick = true;
-					TextEditorHelper.ExecuteEditorCommand("Edit.Capitalize");
-				}),
+					if (ctx.ModifierKeys.MatchFlags(ModifierKeys.Control)) {
+						Replace(ctx, t => {
+							return __CapitalizeExpression.Replace(t, m => {
+								var g = m.Groups;
+								return String.Concat(g[1].Value, g[2].Value.ToUpperInvariant(), g[3].Value.ToLowerInvariant());
+							});}, true);
+					}
+					else {
+						TextEditorHelper.ExecuteEditorCommand("Edit.Capitalize");
+					}
+				}) { ToolTip = R.CMDT_Capitalize, QuickAccessCondition = CommandItem.HasEditableSelection },
 				new CommandItem(IconIds.Uppercase, R.CMD_Uppercase, ctx => {
 					ctx.KeepToolBarOnClick = true;
 					TextEditorHelper.ExecuteEditorCommand("Edit.MakeUppercase");
-				}),
-				new CommandItem(IconIds.None, R.CMD_Lowercase, ctx => {
+				}) { QuickAccessCondition = CommandItem.HasEditableSelection },
+				new CommandItem(IconIds.Lowercase, R.CMD_Lowercase, ctx => {
 					ctx.KeepToolBarOnClick = true;
 					TextEditorHelper.ExecuteEditorCommand("Edit.MakeLowercase");
-				}),
+				}) { QuickAccessCondition = CommandItem.HasEditableSelection },
 			};
 		}
 		static CommandItem[] GetWebCommands() {
@@ -448,21 +481,116 @@ namespace Codist.SmartBars
 				new CommandItem(IconIds.UrlEncode, R.CMD_UrlEncode, ctx => {
 					ctx.KeepToolBarOnClick = true;
 					Replace(ctx, System.Net.WebUtility.UrlEncode, true);
-				}),
+				}) { QuickAccessCondition = CommandItem.HasEditableSelection },
 				new CommandItem(IconIds.UrlEncode, R.CMD_UrlDecode, ctx => {
 					ctx.KeepToolBarOnClick = true;
 					Replace(ctx, System.Net.WebUtility.UrlDecode, true);
-				}),
+				}) { QuickAccessCondition = CommandItem.HasEditableSelection },
 				new CommandItem(IconIds.HtmlEncode, R.CMD_HtmlEncode, ctx => {
 					ctx.KeepToolBarOnClick = true;
 					Replace(ctx, System.Net.WebUtility.HtmlEncode, true);
-				}),
+				}) { QuickAccessCondition = CommandItem.HasEditableSelection },
 				new CommandItem(IconIds.HtmlEncode, R.CMD_HtmlDecode, ctx => {
 					ctx.KeepToolBarOnClick = true;
 					Replace(ctx, System.Net.WebUtility.HtmlDecode, true);
-				}),
+				}) { QuickAccessCondition = CommandItem.HasEditableSelection },
+				new CommandItem(IconIds.EntityDecode, R.CMD_DecodeNumericEntity, ctx => {
+					ctx.KeepToolBarOnClick = true;
+					Replace(ctx, DecodeEntity, true);
+				}) { QuickAccessCondition = CommandItem.HasEditableSelection, ToolTip = R.CMDT_DecodeNumericEntity },
 			};
 		}
+
+		static IEnumerable<Span> DecodeEntity(CommandContext ctx, ITextEdit edit, SnapshotSpan span) {
+			var ts = ctx.TextSearchService;
+			var start = span.Start;
+			var s = edit.Snapshot;
+			var l = span.End;
+			SnapshotSpan? f;
+			char c;
+			int en = 0;
+			int hex;
+			const int VALID_UNICODE = 0x1FFFFF;
+			while ((f = ts.Find(span, start, "&#", FindOptions.MatchCase)).HasValue) {
+				start = f.Value.Start;
+				var p = start.Position + 2;
+				en = 0;
+				START:
+				if (p == l) {
+					yield break;
+				}
+				hex = s[p].CeqAny('x', 'X') ? 16 : 10;
+				if (hex == 16) {
+					++p;
+				}
+				do {
+					if ((c = s[p]).IsBetween('0', '9')) {
+						en = en * hex + c - '0';
+						if (en > VALID_UNICODE) {
+							goto NEXT;
+						}
+						continue;
+					}
+					else if (hex == 16) {
+						if (c.IsBetween('A', 'F')) {
+							en = en * hex + c + 10 - 'A';
+							continue;
+						}
+						else if (c.IsBetween('a', 'f')) {
+							en = en * hex + c + 10 - 'a';
+							continue;
+						}
+					}
+					if (c == ';') {
+						++p;
+						break;
+					}
+					else if (c == '&') {
+						if (++p < l) {
+							if (s[p] == '#') {
+								start = new SnapshotPoint(s, p - 2);
+								en = 0;
+								goto START;
+							}
+						}
+						else {
+							yield break;
+						}
+					}
+					else {
+						goto NEXT;
+					}
+				} while (++p < l);
+				if (c == ';') {
+					if (en > 65535) {
+						if (en <= VALID_UNICODE) {
+							edit.Replace(new Span(start, p - start.Position), Char.ConvertFromUtf32(en));
+							yield return new Span(start, 2);
+						}
+					}
+					else {
+						edit.Replace(new Span(start, p - start.Position), ((char)en).ToString());
+						if (en.IsBetween(0xD800, 0xDBFF)) {
+							yield return new Span(start, 2);
+						}
+						else if (en.IsBetween(0xDC00, 0xDFFF)) {
+							// do nothing
+						}
+						else {
+							yield return new Span(start, 1);
+						}
+					}
+				}
+			NEXT:
+				if (p < l) {
+					start = new SnapshotPoint(s, p);
+				}
+				else {
+					break;
+				}
+			}
+		}
+
 		static CommandItem[] GetDebugCommands() {
 			return new CommandItem[] {
 				new CommandItem(IconIds.Watch, R.CMD_AddWatch, c => TextEditorHelper.ExecuteEditorCommand("Debug.AddWatch")),
@@ -472,15 +600,21 @@ namespace Codist.SmartBars
 		}
 		static CommandItem[] GetFindAndReplaceCommands() {
 			return new CommandItem[] {
-				new CommandItem(IconIds.Find, R.CMD_Find, _ => TextEditorHelper.ExecuteEditorCommand("Edit.Find")),
-				new CommandItem(IconIds.Replace, R.CMD_Replace, _ => TextEditorHelper.ExecuteEditorCommand("Edit.Replace")),
-				new CommandItem(IconIds.FindInFile, R.CMD_FindInFiles, _ => TextEditorHelper.ExecuteEditorCommand("Edit.FindinFiles")),
-				new CommandItem(IconIds.ReplaceInFolder, R.CMD_ReplaceInFiles, _ => TextEditorHelper.ExecuteEditorCommand("Edit.ReplaceinFiles")),
+				new CommandItem(IconIds.Find, R.CMD_Find, _ => TextEditorHelper.ExecuteEditorCommand("Edit.Find")) { QuickAccessCondition = CommandItem.HasSelection },
+				new CommandItem(IconIds.Replace, R.CMD_Replace, _ => TextEditorHelper.ExecuteEditorCommand("Edit.Replace")){ QuickAccessCondition = CommandItem.HasSelection },
+				new CommandItem(IconIds.FindInFile, R.CMD_FindInFiles, _ => TextEditorHelper.ExecuteEditorCommand("Edit.FindinFiles")){ QuickAccessCondition = CommandItem.HasSelection },
+				new CommandItem(IconIds.ReplaceInFolder, R.CMD_ReplaceInFiles, _ => TextEditorHelper.ExecuteEditorCommand("Edit.ReplaceinFiles")){ QuickAccessCondition = CommandItem.HasSelection },
 				new CommandItem(IconIds.SelectCode, R.CMD_ExtractLinesContainingSelection, ctx => {
 					ThreadHelper.ThrowIfNotOnUIThread();
 					var snapshot = ctx.View.TextSnapshot;
 					var selection = ctx.View.GetFirstSelectionText();
-					var w = CodistPackage.DTE.ItemOperations.NewFile("General\\Text File", selection.Length > 30 ? selection.Substring(0, 30) : selection);
+					var name = selection.Length > 30 ? selection.Substring(0, 30) : selection;
+					try {
+						name += Path.GetExtension(ctx.View.TextBuffer.GetTextDocument().FilePath);
+					}
+					catch (NullReferenceException) {}
+					catch (ArgumentException) {}
+					var w = CodistPackage.DTE.ItemOperations.NewFile("General\\Text File", name);
 					using (var sbr = ReusableStringBuilder.AcquireDefault(1000)) {
 						var sb = sbr.Resource;
 						var option = FindOptions.OrdinalComparison | FindOptions.SingleLine;
@@ -498,23 +632,25 @@ namespace Codist.SmartBars
 							sb.Append(line.GetTextIncludingLineBreak());
 						}
 						var view = w.Document.GetActiveWpfDocumentView();
+						view.TextBuffer.ChangeContentType(ctx.View.TextBuffer.ContentType, null);
 						using (var edit = view.TextBuffer.CreateEdit()) {
 							edit.Insert(0, sb.ToString());
 							edit.Apply();
 						}
 						w.Document.Saved = true;
+						view.TextBuffer.ClearUndoHistory();
 					}
-				}) { ToolTip = R.CMDT_ExtractLinesContainingSelection }
+				}) { ToolTip = R.CMDT_ExtractLinesContainingSelection, QuickAccessCondition = CommandItem.HasSelection }
 			};
 		}
 		static CommandItem[] GetSurroundingCommands() {
 			return new CommandItem[] {
-				new CommandItem(IconIds.SurroundWith, R.CMD_SurroundWith, ctx => TextEditorHelper.ExecuteEditorCommand("Edit.SurroundWith")),
+				new CommandItem(IconIds.SurroundWith, R.CMD_SurroundWith, ctx => TextEditorHelper.ExecuteEditorCommand("Edit.SurroundWith")){ QuickAccessCondition = CommandItem.HasEditableSelection },
 				new CommandItem(IconIds.ToggleParentheses, R.CMD_ToggleParentheses, ctx => {
 					if (ctx.View.TryGetFirstSelectionSpan(out var span)) {
 						WrapWith(ctx, "(", ")", true);
 					}
-				}),
+				}) { QuickAccessCondition = CommandItem.HasEditableSelection },
 			};
 		}
 		static void SearchSelection(string url, CommandContext ctx) {

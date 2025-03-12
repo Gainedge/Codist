@@ -23,14 +23,15 @@ namespace Codist.Taggers
 		protected ITextView TextView => _TextView;
 		public TaggerResult Result => _Tags;
 		protected abstract bool DoFullParseAtFirstLoad { get; }
+		public bool Disabled { get; set; }
 
 		public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
 
 		public IEnumerable<ITagSpan<IClassificationTag>> GetTags(NormalizedSnapshotSpanCollection spans) {
-			if (spans.Count == 0) {
+			if (Disabled || spans.Count == 0) {
 				return Array.Empty<ITagSpan<IClassificationTag>>();
 			}
-			if (_Tags.LastParsed == 0 && DoFullParseAtFirstLoad) {
+			if (_Tags.LastParsed == 0 && DoFullParseAtFirstLoad && _Tags.Version == 0) {
 				return ParseSnapshot();
 			}
 			var parseSpans = spans;
@@ -40,7 +41,7 @@ namespace Codist.Taggers
 
 		// perform a full parse for the first time
 		IEnumerable<ITagSpan<IClassificationTag>> ParseSnapshot() {
-			System.Diagnostics.Debug.WriteLine("Full parse");
+			"Full parse".Log();
 			var snapshot = _TextView.TextSnapshot;
 			foreach (var span in snapshot.Lines.Select(l => l.Extent)) {
 				Parse(span, _TaggedContents);
@@ -59,6 +60,13 @@ namespace Codist.Taggers
 			}
 		}
 
+		protected void OnTagsChanged(SnapshotSpanEventArgs args) {
+			if (args == null) {
+				args = new SnapshotSpanEventArgs(_TextView.VisualSnapshot.ToSnapshotSpan());
+			}
+			TagsChanged?.Invoke(this, args);
+		}
+
 		protected abstract void Parse(SnapshotSpan span, ICollection<TaggedContentSpan> results);
 
 		void TextView_TextBufferChanged(object sender, TextContentChangedEventArgs args) {
@@ -66,6 +74,25 @@ namespace Codist.Taggers
 				return;
 			}
 			_Tags.PurgeOutdatedTags(args);
+			if (DoFullParseAtFirstLoad) {
+				ReparseChangedLines(args);
+			}
+		}
+
+		void ReparseChangedLines(TextContentChangedEventArgs args) {
+			var changedLines = new NormalizedSnapshotSpanCollection(GetLinesOfChanges(args));
+			if (changedLines.Count > Math.Max(1000, _TextView.TextSnapshot.LineCount / 3)) {
+				// if too many lines are changed, we reparse the whole document,
+				// when full parse is required to cache parse results
+				_Tags.Reset();
+				_Tags.Version = 0;
+				_TaggedContents.Clear();
+				ParseSnapshot();
+			}
+			else {
+				foreach (var dummy in GetTags(changedLines)) {
+				}
+			}
 		}
 
 		void TextView_Closed(object sender, EventArgs e) {
@@ -76,6 +103,25 @@ namespace Codist.Taggers
 				_TextView.Closed -= TextView_Closed;
 				_TextView = null;
 				_Tags = null;
+			}
+		}
+
+		static IEnumerable<SnapshotSpan> GetLinesOfChanges(TextContentChangedEventArgs args) {
+			var ss = args.After;
+			int lastEnd = 0;
+			foreach (var item in args.Changes) {
+				var line = ss.GetLineFromPosition(item.NewPosition);
+				if (line.Start.Position < lastEnd) {
+					continue;
+				}
+				yield return line.Extent;
+				int lineEnd = line.EndIncludingLineBreak.Position;
+				while (lineEnd < item.NewEnd) {
+					line = ss.GetLineFromPosition(lineEnd);
+					yield return line.Extent;
+					lineEnd = line.EndIncludingLineBreak.Position;
+				}
+				lastEnd = lineEnd;
 			}
 		}
 	}

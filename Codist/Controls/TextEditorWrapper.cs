@@ -69,6 +69,9 @@ namespace Codist.Controls
 			uiScope.Unloaded += Detach;
 		}
 
+		public bool IsEmpty => __IsInitialized
+			&& (bool)__TextRangeIsEmptyProp.GetValue(__TextSelectionProp.GetValue(_Editor));
+
 		public bool Copy() {
 			if (__CanCopy) {
 				__CopyMethod.Invoke(null, new object[] { _Editor, true });
@@ -160,7 +163,7 @@ namespace Codist.Controls
 				&& _Editor != null
 				&& Copy()) {
 				e.Handled = true;
-				System.Diagnostics.Debug.WriteLine("Copied: " + Clipboard.GetText());
+				$"Copied: {Clipboard.GetText()}".Log();
 			}
 		}
 

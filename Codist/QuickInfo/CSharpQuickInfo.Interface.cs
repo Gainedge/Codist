@@ -10,9 +10,11 @@ namespace Codist.QuickInfo
 {
 	partial class CSharpQuickInfo
 	{
-		static void ShowInterfaceImplementation<TSymbol>(InfoContainer qiContent, TSymbol symbol, IEnumerable<TSymbol> explicitImplementations)
+		static void ShowInterfaceImplementation<TSymbol>(InfoContainer qiContent, TSymbol symbol, IReadOnlyList<TSymbol> explicitImplementations)
 			where TSymbol : class, ISymbol {
-			if (symbol.DeclaredAccessibility != Accessibility.Public && explicitImplementations.Any() == false) {
+			if (symbol.DeclaredAccessibility != Accessibility.Public
+				&& explicitImplementations.Count == 0
+				|| symbol.ContainingType is null) {
 				return;
 			}
 			var interfaces = symbol.ContainingType.AllInterfaces;
@@ -21,6 +23,7 @@ namespace Codist.QuickInfo
 			}
 			var implementedIntfs = ImmutableArray.CreateBuilder<ITypeSymbol>(3);
 			ThemedTipDocument info = null;
+			var refKind = symbol.GetRefKind();
 			var returnType = symbol.GetReturnType();
 			var parameters = symbol.GetParameters();
 			var typeParams = symbol.GetTypeParameters();
@@ -28,6 +31,7 @@ namespace Codist.QuickInfo
 				foreach (var member in intf.GetMembers(symbol.Name)) {
 					if (member.Kind == symbol.Kind
 						&& member.DeclaredAccessibility == Accessibility.Public
+						&& member.GetRefKind() == refKind
 						&& member.MatchSignature(symbol.Kind, returnType, parameters, typeParams)) {
 						implementedIntfs.Add(intf);
 					}
