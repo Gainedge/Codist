@@ -74,24 +74,7 @@ namespace Codist.QuickInfo
 				case SyntaxKind.MultiLineCommentTrivia:
 					return null;
 				case SyntaxKind.OpenBraceToken:
-					if ((node = unitCompilation.FindNode(token.Span))
-						.Kind().CeqAny(SyntaxKind.ArrayInitializerExpression,
-							SyntaxKind.CollectionInitializerExpression,
-							SyntaxKind.ComplexElementInitializerExpression,
-							SyntaxKind.ObjectInitializerExpression,
-							CodeAnalysisHelper.WithInitializerExpression)) {
-						container.Add(new ThemedTipText()
-							.SetGlyph(IconIds.InstanceMember)
-							.Append(R.T_ExpressionCount)
-							.Append(((InitializerExpressionSyntax)node).Expressions.Count.ToText(), true, false, __SymbolFormatter.Number));
-					}
-					else if (node.IsKind(CodeAnalysisHelper.PropertyPatternClause)) {
-						container.Add(new ThemedTipText().SetGlyph(IconIds.InstanceMember)
-							.Append(R.T_SubPatternCount)
-							.Append(((CSharpSyntaxNode)node).GetPropertyPatternSubPatternsCount().ToText())
-							);
-					}
-					else if (node.IsKind(SyntaxKind.Interpolation)) {
+					if ((node = unitCompilation.FindNode(token.Span)).IsKind(SyntaxKind.Interpolation)) {
 						symbol = semanticModel.Compilation.GetSpecialType(SpecialType.System_String);
 						isConvertedType = symbol != null;
 						goto PROCESS;
@@ -137,11 +120,8 @@ namespace Codist.QuickInfo
 				case SyntaxKind.SwitchKeyword:
 					node = unitCompilation.FindNode(token.Span, false, true);
 					if (node.IsKind(CodeAnalysisHelper.SwitchExpression)) {
-						symbol = semanticModel.GetTypeInfo(node.ChildNodes().First()).Type;
-						if (symbol != null) {
-							container.Add(new ThemedTipText().SetGlyph(IconIds.ReadVariables).AddSymbol(symbol, false, __SymbolFormatter));
-						}
-						ShowMiscInfo(container, node);
+						symbol = semanticModel.GetTypeInfo(node.ChildNodes().First(), cancellationToken).Type;
+						ShowSwitchExpression(container, symbol, node);
 						symbol = semanticModel.GetTypeInfo(node, cancellationToken).ConvertedType;
 						if (symbol == null) {
 							return null;
@@ -375,6 +355,7 @@ namespace Codist.QuickInfo
 					container.Add(await ShowAvailabilityAsync(ctx.Document, token, cancellationToken).ConfigureAwait(false));
 				}
 				ctor = node.Parent.UnqualifyExceptNamespace() as ObjectCreationExpressionSyntax;
+				await SyncHelper.SwitchToMainThreadAsync(cancellationToken);
 				OverrideDocumentation(node,
 					o,
 					ctor != null
@@ -706,12 +687,6 @@ namespace Codist.QuickInfo
 					if (c > 1) {
 						qiContent.Add(new ThemedTipText(R.T_1SectionCases.Replace("<C>", c.ToText())).SetGlyph(IconIds.Switch));
 					}
-				}
-			}
-			else if (nodeKind == CodeAnalysisHelper.SwitchExpression) {
-				c = ((ExpressionSyntax)node).GetSwitchExpressionArmsCount();
-				if (c > 1) {
-					qiContent.Add(new ThemedTipText(R.T_SwitchCases.Replace("<C>", c.ToText())).SetGlyph(IconIds.Switch));
 				}
 			}
 			else if (nodeKind == SyntaxKind.StringLiteralExpression) {

@@ -1219,6 +1219,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Make Readonly.
+        /// </summary>
+        internal static string CMD_MakeReadonly {
+            get {
+                return ResourceManager.GetString("CMD_MakeReadonly", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Make Static.
         /// </summary>
         internal static string CMD_MakeStatic {
@@ -3032,7 +3041,7 @@ namespace Codist.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to This page changes the behavior of the auto surround feature, which automatically insert paired punctuations around selections when typing the leading punctuation.
+        ///   Looks up a localized string similar to This page changes the behavior of the auto surround feature, which automatically inserts paired punctuations around selections when typing the leading punctuation.
         /// </summary>
         internal static string OT_AutoSurroundSelectionNote {
             get {
@@ -6593,6 +6602,15 @@ namespace Codist.Properties {
         internal static string T_ExpressionCount {
             get {
                 return ResourceManager.GetString("T_ExpressionCount", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Expression &lt;N&gt; of initializer.
+        /// </summary>
+        internal static string T_ExpressionNOfInitializer {
+            get {
+                return ResourceManager.GetString("T_ExpressionNOfInitializer", resourceCulture);
             }
         }
         

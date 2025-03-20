@@ -62,6 +62,7 @@ namespace Codist.Options
 		readonly RadioBox _TagApplyOnTagBox, _TagApplyOnContentBox, _TagApplyOnWholeBox;
 		readonly ThemedButton _ImportThemeButton, _ExportThemeButton, _ResetThemeButton;
 		readonly UiLock _Lock = new UiLock();
+		readonly IConfigManager _ConfigManager;
 		IWpfTextView _WpfTextView;
 		string _CurrentViewCategory;
 		string _ThemeFolder;
@@ -221,13 +222,12 @@ namespace Codist.Options
 											Child = new StackPanel {
 												Orientation = Orientation.Horizontal,
 												Children = {
+													new ThemedControlGroup(_AddTagButton, _RemoveTagButton) { Margin = WpfHelper.SmallVerticalMargin },
 													VsImageHelper.GetImage(IconIds.Filter)
 														.ReferenceCrispImageBackground(EnvironmentColors.ToolWindowBackgroundColorKey)
 														.WrapMargin(WpfHelper.GlyphMargin),
 													_SettingsFilterBox,
 													new ThemedControlGroup(_OverriddenStyleFilterButton,
-														_AddTagButton,
-														_RemoveTagButton,
 														_ClearFilterButton) { Margin = WpfHelper.SmallVerticalMargin },
 												}
 											}
@@ -365,7 +365,7 @@ namespace Codist.Options
 			FormatStore.ClassificationFormatMapChanged += RefreshList;
 			IsVisibleChanged += WindowIsVisibleChanged;
 			_ThemeFolder = Config.Instance.SyntaxHighlightThemeFolder;
-			Config.Instance.BeginUpdate();
+			_ConfigManager = Config.Instance.BeginUpdate();
 		}
 
 		public bool IsClosing { get; private set; }
@@ -1304,7 +1304,7 @@ namespace Codist.Options
 			try {
 				var fullExport = WpfHelper.IsShiftDown;
 				if (d.ShowDialog() == true) {
-					Config.Instance.SaveConfig(d.FileName, true, fullExport);
+					Config.Instance.SaveConfig(d.FileName, true, fullExport || WpfHelper.IsShiftDown);
 					_ThemeFolder = System.IO.Path.GetDirectoryName(d.FileName);
 				}
 			}
@@ -1352,7 +1352,7 @@ namespace Codist.Options
 			_WpfTextView = null;
 			_FormatCache = null;
 			if (IsClosing == false) {
-				Config.Instance.EndUpdate(false);
+				_ConfigManager.Quit(false);
 			}
 			base.OnClosed(e);
 		}
@@ -1362,13 +1362,13 @@ namespace Codist.Options
 				Config.Instance.SyntaxHighlightThemeFolder = _ThemeFolder;
 				Config.Instance.FireConfigChangedEvent(Features.None);
 			}
-			Config.Instance.EndUpdate(true);
+			_ConfigManager.Quit(true);
 			Close();
 		}
 		void Cancel() {
 			IsClosing = true;
 			Close();
-			Config.Instance.EndUpdate(false);
+			_ConfigManager.Quit(false);
 		}
 
 		sealed class StyleSettingsButton : Button

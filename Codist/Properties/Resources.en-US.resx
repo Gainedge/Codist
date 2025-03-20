@@ -2690,7 +2690,7 @@ Ctrl: Directly inherited interfaces only</value>
     <value>Make Static</value>
   </data>
   <data name="OT_AutoSurroundSelectionNote" xml:space="preserve">
-    <value>This page changes the behavior of the auto surround feature, which automatically insert paired punctuations around selections when typing the leading punctuation</value>
+    <value>This page changes the behavior of the auto surround feature, which automatically inserts paired punctuations around selections when typing the leading punctuation</value>
   </data>
   <data name="OT_TrimBeforeSurround" xml:space="preserve">
     <value>Trim whitespace before surrounding punctuations</value>
@@ -2862,5 +2862,11 @@ Discard its changes?</value>
   </data>
   <data name="T_ErrorNavigatingToSource" xml:space="preserve">
     <value>Error occurred when navigating to source code:</value>
+  </data>
+  <data name="T_ExpressionNOfInitializer" xml:space="preserve">
+    <value>Expression &lt;N&gt; of initializer</value>
+  </data>
+  <data name="CMD_MakeReadonly" xml:space="preserve">
+    <value>Make Readonly</value>
   </data>
 </root>
