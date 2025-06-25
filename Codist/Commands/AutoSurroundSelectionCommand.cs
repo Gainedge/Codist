@@ -63,20 +63,22 @@ namespace Codist.Commands
 		bool ProcessChar(TypeCharCommandArgs args) {
 			ITextView view = args.TextView;
 			string endText;
-			if (view.Selection.IsEmpty || (endText = GetEndTextForTypedChar(args.TypedChar)) == null) {
-				return false;
-			}
+			return !view.Selection.IsEmpty
+				&& (endText = GetEndTextForTypedChar(args.TypedChar)) != null
+				&& SurroundSelection(args, view, endText);
+		}
 
+		static bool SurroundSelection(TypeCharCommandArgs args, ITextView view, string endText) {
 			ITextSnapshot newText;
 			var oldSpans = view.Selection.SelectedSpans;
 			var startText = args.TypedChar.ToString();
 			var history = ServicesHelper.Instance.TextUndoHistoryService.GetHistory(view.TextBuffer);
-			var trim = Config.Instance.AutoSurroundSelectionOptions.MatchFlags(AutoSurroundSelectionOptions.Trim);
-			using (var transaction = history.CreateTransaction(startText + R.T_AutoSurround + endText))
+			var trim = Config.Instance.PunctuationOptions.MatchFlags(PunctuationOptions.Trim);
+			using (var transaction = history.CreateTransaction(R.T_AutoSurround + startText + endText))
 			using (var edit = view.TextBuffer.CreateEdit()) {
 				foreach (var span in oldSpans) {
 					if (trim
-						&& span.IsEmpty == false
+						&& span.Length != 0
 						&& TryTrimSpan(span, out var trimStart, out var trimEnd)) {
 						edit.Delete(Span.FromBounds(span.Start.Position, trimStart));
 						edit.Delete(Span.FromBounds(trimEnd, span.End.Position));
@@ -117,7 +119,7 @@ namespace Codist.Commands
 			return from != span.Start.Position || trimEnd != span.End.Position;
 		}
 
-		public CommandState GetCommandState(TypeCharCommandArgs args) {
+		CommandState ICommandHandler<TypeCharCommandArgs>.GetCommandState(TypeCharCommandArgs args) {
 			return CommandState.Available;
 		}
 

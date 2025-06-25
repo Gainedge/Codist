@@ -172,6 +172,22 @@ namespace Codist
 			block.Inlines.Add(new FileLink(folder, file));
 			return block;
 		}
+		public static InlineCollection Append(this InlineCollection inlines, string text) {
+			inlines.Add(text);
+			return inlines;
+		}
+		public static InlineCollection Append(this InlineCollection inlines, string text, Brush foreground) {
+			inlines.Add(text.Render(foreground));
+			return inlines;
+		}
+		public static InlineCollection AppendFileLink(this InlineCollection inlines, string file, string folder) {
+			inlines.Add(new FileLink(folder, file));
+			return inlines;
+		}
+		public static InlineCollection AppendLine(this InlineCollection inlines) {
+			inlines.Add(new LineBreak());
+			return inlines;
+		}
 
 		/// <summary>
 		/// Gets the <see cref="TextBlock.Text"/> of a <see cref="TextBlock"/>, or the concatenated <see cref="Run.Text"/>s of <see cref="Run"/> instances in the <see cref="TextBlock.Inlines"/>.
@@ -495,8 +511,6 @@ namespace Codist
 		#endregion
 
 		#region Others
-		public static bool IsControlDown => (Keyboard.Modifiers & ModifierKeys.Control) != 0;
-		public static bool IsShiftDown => (Keyboard.Modifiers & ModifierKeys.Shift) != 0;
 		public static void Toggle(this UIElement control, bool visible) {
 			control.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
 		}

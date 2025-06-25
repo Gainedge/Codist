@@ -95,16 +95,10 @@ namespace Codist
 			};
 
 			#region Signature
-			var signature = ShowSymbolSignature(Keyboard.Modifiers == ModifierKeys.Shift ? symbol : s);
+			var signature = ShowSymbolSignature(UIHelper.IsShiftDown ? symbol : s);
 			p.Add(signature);
 			if (s.IsObsolete()) {
-				p.Opacity = TransparentLevel;
-				signature.Inlines.AddRange(new object[] {
-					new LineBreak(),
-					new InlineUIContainer (new TextBlock { Margin = WpfHelper.SmallHorizontalMargin, FontSize = ThemeHelper.ToolTipFontSize, FontFamily = ThemeHelper.ToolTipFont }
-						.Append(VsImageHelper.GetImage(IconIds.Obsoleted).WrapMargin(WpfHelper.GlyphMargin))
-						.Append(R.T_Deprecated))
-				});
+				MarkSignatureObsolete(p, signature);
 			}
 			#endregion
 
@@ -114,27 +108,35 @@ namespace Codist
 			if (cs != null) {
 				var showNs = Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.SymbolLocation) == false && cs.Kind == SymbolKind.Namespace;
 				var showContainer = showNs == false && s.Kind != SymbolKind.Namespace && cs.Kind != SymbolKind.Namespace;
-				b = new ThemedTipText { FontSize = ThemeHelper.ToolTipFontSize, FontFamily = ThemeHelper.ToolTipFont };
+				b = new ThemedTipText { FontSize = ThemeCache.ToolTipFontSize, FontFamily = ThemeCache.ToolTipFont };
 				if (showContainer) {
-					b.Append(VsImageHelper.GetImage(cs.GetImageId()).WrapMargin(WpfHelper.GlyphMargin));
+					b.Append(VsImageHelper.GetImage(cs.GetImageId()).WrapMargin(WpfHelper.GlyphMargin))
+						.AddSymbol(cs, false, this)
+						.Append(" ");
 				}
+				ShowSymbolDeclaration(b.Inlines, s, true, false);
+				p.Add(b);
 
-				if (showContainer) {
-					b.AddSymbol(cs, false, this).Append(" ");
-				}
-
-				p.Add(ShowSymbolDeclaration(s, b, true, false));
 				if (showNs && ((INamespaceSymbol)cs).IsGlobalNamespace == false) {
-					b = new ThemedTipText { FontSize = ThemeHelper.ToolTipFontSize, FontFamily = ThemeHelper.ToolTipFont }.Append(VsImageHelper.GetImage(IconIds.Namespace)
+					b = new ThemedTipText { FontSize = ThemeCache.ToolTipFontSize, FontFamily = ThemeCache.ToolTipFont }.Append(VsImageHelper.GetImage(IconIds.Namespace)
 						.WrapMargin(WpfHelper.GlyphMargin));
 					ShowContainingNamespace(symbol, b);
 					p.Add(b);
 				}
-				else if (s.Kind == SymbolKind.Method
-					&& (m = (IMethodSymbol)s).MethodKind == MethodKind.ReducedExtension) {
-					b.AddImage(IconIds.ExtensionMethod)
-						.Append(" ")
-						.AddSymbol(m.ReducedFrom.Parameters[0].Type, false, this);
+				else if (s.Kind == SymbolKind.Method) {
+					if ((m = (IMethodSymbol)s).MethodKind == MethodKind.ReducedExtension) {
+						b.AddImage(IconIds.ExtensionMethod)
+							.Append(" ")
+							.AddSymbol(m.ReceiverType, false, this);
+					}
+				}
+
+				if (s.Kind.CeqAny(SymbolKind.Method, SymbolKind.Property, SymbolKind.NamedType)) {
+					var ep = (cs as INamedTypeSymbol).GetExtensionParameter()
+						?? (s as INamedTypeSymbol).GetExtensionParameter();
+					if (ep != null) {
+						ShowExtensionParameter(p, ep);
+					}
 				}
 			}
 			#endregion
@@ -143,13 +145,13 @@ namespace Codist
 			var rt = s.GetReturnType();
 			if (rt == null) {
 				if (s.Kind == SymbolKind.Discard) {
-					p.Add(new ThemedTipText { FontSize = ThemeHelper.ToolTipFontSize, FontFamily = ThemeHelper.ToolTipFont }
+					p.Add(new ThemedTipText { FontSize = ThemeCache.ToolTipFontSize, FontFamily = ThemeCache.ToolTipFont }
 						.AddSymbol(((IDiscardSymbol)s).Type, false, this)
 						.Append($" ({R.T_Discard})"));
 				}
 			}
 			else if (s.Kind != SymbolKind.Method || ((IMethodSymbol)s).IsTypeSpecialMethod() == false) {
-				b = new ThemedTipText { FontSize = ThemeHelper.ToolTipFontSize, FontFamily = ThemeHelper.ToolTipFont }
+				b = new ThemedTipText { FontSize = ThemeCache.ToolTipFontSize, FontFamily = ThemeCache.ToolTipFont }
 					.Append(VsImageHelper.GetImage(IconIds.Return).WrapMargin(WpfHelper.GlyphMargin));
 				if (rt.TypeKind != TypeKind.Delegate) {
 					b.Append(GetRefType(s), Keyword);
@@ -206,12 +208,12 @@ namespace Codist
 				Margin = WpfHelper.MiddleBottomMargin,
 				TextWrapping = TextWrapping.Wrap,
 				Foreground = PlainText,
-				FontFamily = ThemeHelper.ToolTipFont,
-				FontSize = ThemeHelper.ToolTipFontSize
+				FontFamily = ThemeCache.ToolTipFont,
+				FontSize = ThemeCache.ToolTipFontSize
 			};
 			Format(signature.Inlines, symbol, null, true, true);
 			TextEditorWrapper.CreateFor(signature);
-			signature.Inlines.FirstInline.FontSize = ThemeHelper.ToolTipFontSize * 1.2;
+			signature.Inlines.FirstInline.FontSize = ThemeCache.ToolTipFontSize * 1.2;
 
 			switch (symbol.Kind) {
 				case SymbolKind.Property:
@@ -220,6 +222,8 @@ namespace Codist
 					}
 					break;
 				case SymbolKind.Method:
+					ShowParameters(signature, symbol.GetParameters(), true, true, -1, ((IMethodSymbol)symbol).IsVararg ? ParameterListKind.ArgList : ParameterListKind.Normal);
+					break;
 				case SymbolKind.Event:
 					ShowParameters(signature, symbol.GetParameters(), true, true);
 					break;
@@ -248,8 +252,10 @@ namespace Codist
 					}
 					break;
 				case SymbolKind.Local:
-					if (symbol is ILocalSymbol l && l.HasConstantValue) {
-						AppendValue(signature.Inlines, symbol, l.ConstantValue);
+					if (symbol is ILocalSymbol l) {
+						if (l.HasConstantValue) {
+							AppendValue(signature.Inlines, symbol, l.ConstantValue);
+						}
 					}
 					break;
 				case SymbolKind.TypeParameter:
@@ -269,6 +275,16 @@ namespace Codist
 			return signature;
 		}
 
+		static void MarkSignatureObsolete(StackPanel panel, TextBlock signature) {
+			panel.Opacity = TransparentLevel;
+			signature.Inlines.AddRange(new object[] {
+					new LineBreak(),
+					new InlineUIContainer (new TextBlock { Margin = WpfHelper.SmallHorizontalMargin, FontSize = ThemeCache.ToolTipFontSize, FontFamily = ThemeCache.ToolTipFont }
+						.Append(VsImageHelper.GetImage(IconIds.Obsoleted).WrapMargin(WpfHelper.GlyphMargin))
+						.Append(R.T_Deprecated))
+				});
+		}
+
 		void ShowContainingTypes(INamedTypeSymbol type, InlineCollection text) {
 			var n = new Stack<INamedTypeSymbol>();
 			do {
@@ -281,6 +297,19 @@ namespace Codist
 			while (n.Count != 0) {
 				FormatTypeName(text, n.Pop(), null, false);
 				text.Add(".");
+			}
+		}
+
+		void ShowExtensionParameter(StackPanel panel, IParameterSymbol ep) {
+			var epa = ep.GetAttributes();
+			if (epa.Length != 0) {
+				var b = new ThemedTipText(IconIds.ExtensionParameter).Append("(".Render(PlainText));
+				foreach (var item in epa) {
+					Format(b.Inlines, item, 0);
+					b.Append(" ");
+				}
+				b.AddSymbol(ep, false, Instance.Parameter).Append(")".Render(PlainText));
+				panel.Add(b);
 			}
 		}
 
@@ -311,13 +340,17 @@ namespace Codist
 		public TextBlock ShowParameters(TextBlock block, ImmutableArray<IParameterSymbol> parameters) {
 			return ShowParameters(block, parameters, false, false);
 		}
-		public TextBlock ShowParameters(TextBlock block, ImmutableArray<IParameterSymbol> parameters, bool showParameterName, bool showDefault, int argIndex = -1, bool isProperty = false) {
-			var inlines = block.Inlines;
+		public TextBlock ShowParameters(TextBlock block, ImmutableArray<IParameterSymbol> parameters, bool showParameterName, bool showDefault, int argIndex = -1, ParameterListKind listKind = ParameterListKind.Normal) {
+			ShowParameters(block.Inlines, parameters, showParameterName, showDefault, argIndex, listKind);
+			return block;
+		}
+
+		public void ShowParameters(InlineCollection inlines, ImmutableArray<IParameterSymbol> parameters, bool showParameterName, bool showDefault, int argIndex, ParameterListKind listKind) {
 			inlines.Add(new TextBlock {
-				Text = isProperty ? " [" : " (",
+				Text = listKind == ParameterListKind.Property ? " [" : " (",
 				VerticalAlignment = VerticalAlignment.Top,
-				FontFamily = ThemeHelper.ToolTipFont,
-				FontSize = ThemeHelper.ToolTipFontSize,
+				FontFamily = ThemeCache.ToolTipFont,
+				FontSize = ThemeCache.ToolTipFontSize,
 			});
 			var pl = parameters.Length;
 			TextBlock inlineBlock = null;
@@ -337,14 +370,14 @@ namespace Codist
 					inlines.Add("[");
 				}
 				AddParameterModifier(inlines, p);
-				Format(inlines, p.Type, null, false);
+				inlines.AddSymbol(p.Type, this);
 				if (showParameterName) {
 					inlines.Add(" ");
 					if (String.IsNullOrEmpty(p.Name)) {
 						inlines.Add(("@" + i.ToString()).Render(i == argIndex, false, Parameter));
 					}
 					else {
-						inlines.Add(p.Render(null, i == argIndex, Parameter));
+						inlines.Add(p.Render(i == argIndex, Parameter));
 					}
 					if (showDefault && p.HasExplicitDefaultValue) {
 						AppendValue(inlines, p, p.ExplicitDefaultValue);
@@ -361,27 +394,33 @@ namespace Codist
 					inlines.Add(inlineBlock);
 				}
 			}
-			inlines.Add(isProperty ? "]" : ")");
-			return block;
+			switch (listKind) {
+				case ParameterListKind.Property: inlines.Add("]"); break;
+				case ParameterListKind.ArgList: inlines.Append("__arglist", Keyword).Add(")"); break;
+				default: inlines.Add(")"); break;
+			}
 		}
 
 		void AddParameterModifier(InlineCollection inlines, IParameterSymbol p) {
 			if (p.GetScopedKind() != 0) {
-				inlines.Add(new Run("scoped ") { Foreground = Keyword });
+				inlines.Append("scoped ", Keyword);
 			}
 			switch (p.RefKind) {
 				case RefKind.Ref:
-					inlines.Add(new Run("ref ") { Foreground = Keyword });
+					inlines.Append("ref ", Keyword);
 					return;
 				case RefKind.Out:
-					inlines.Add(new Run("out ") { Foreground = Keyword });
+					inlines.Append("out ", Keyword);
 					return;
 				case RefKind.In:
-					inlines.Add(new Run("in ") { Foreground = Keyword });
+					inlines.Append("in ", Keyword);
+					return;
+				case CodeAnalysisHelper.RefReadonly:
+					inlines.Append("ref readonly ", Keyword);
 					return;
 			}
 			if (p.IsParams) {
-				inlines.Add(new Run("params ") { Foreground = Keyword });
+				inlines.Append("params ", Keyword);
 			}
 		}
 
@@ -389,7 +428,7 @@ namespace Codist
 			IMethodSymbol m;
 			ExpressionSyntax exp, init = null;
 			if (p.Parameters.Length > 0) {
-				ShowParameters(signature, p.Parameters, true, true, -1, true);
+				ShowParameters(signature, p.Parameters, true, true, -1, ParameterListKind.Property);
 			}
 			if (p.IsReadOnly) {
 				var r = p.DeclaringSyntaxReferences;
@@ -466,86 +505,86 @@ namespace Codist
 			}
 		}
 
-		static void ShowTruncatedExpression(InlineCollection text, ExpressionSyntax exp) {
+		static void ShowTruncatedExpression(InlineCollection inlines, ExpressionSyntax exp) {
 			var t = exp.ToString();
-			text.AddRange(new object[] {
+			inlines.AddRange(new Run[] {
 					new Run(t.Substring(0, Math.Min(t.Length, 300))),
 					new Run(R.T_ExpressionTooLong)
 				});
 		}
 
-		bool ShowCommonExpression(InlineCollection text, SyntaxNode node) {
+		bool ShowCommonExpression(InlineCollection inlines, SyntaxNode node) {
 			switch (node.Kind()) {
 				case SyntaxKind.DefaultLiteralExpression:
-					text.Add("default".Render(Keyword)); return true;
+					inlines.Add("default".Render(Keyword)); return true;
 				case SyntaxKind.CharacterLiteralExpression:
 				case SyntaxKind.StringLiteralExpression:
-					text.Add(node.ToString().Render(Text)); return true;
+					inlines.Add(node.ToString().Render(Text)); return true;
 				case SyntaxKind.NumericLiteralExpression:
-					text.Add(node.ToString().Render(Number)); return true;
+					inlines.Add(node.ToString().Render(Number)); return true;
 				case SyntaxKind.TrueLiteralExpression:
-					text.Add("true".Render(Keyword)); return true;
+					inlines.Add("true".Render(Keyword)); return true;
 				case SyntaxKind.FalseLiteralExpression:
-					text.Add("false".Render(Keyword)); return true;
+					inlines.Add("false".Render(Keyword)); return true;
 				case SyntaxKind.NullLiteralExpression:
-					text.Add("null".Render(Keyword)); return true;
+					inlines.Add("null".Render(Keyword)); return true;
 				case SyntaxKind.IdentifierName:
-					text.Add(new NodeLink(node)); return true;
+					inlines.Add(new NodeLink(node)); return true;
 			}
 			return false;
 		}
-		void ShowExpressionRecursive(InlineCollection text, SyntaxNode node, string whitespace, bool ws) {
+		void ShowExpressionRecursive(InlineCollection inlines, SyntaxNode node, string whitespace, bool ws) {
 			foreach (var item in node.ChildNodesAndTokens()) {
 				if (item.IsToken) {
 					var t = item.AsToken();
 					if (t.HasLeadingTrivia && t.LeadingTrivia.Span.Length > 0) {
 						foreach (var lt in t.LeadingTrivia) {
-							ShowTrivia(text, whitespace, ref ws, lt);
+							ShowTrivia(inlines, whitespace, ref ws, lt);
 						}
 					}
 					if (t.IsReservedKeyword()) {
-						text.Add(t.ToString().Render(Keyword));
+						inlines.Add(t.ToString().Render(Keyword));
 					}
 					else {
 						switch (t.Kind()) {
 							case SyntaxKind.CharacterLiteralToken:
 							case SyntaxKind.StringLiteralToken:
-								text.Add(t.ToString().Render(Text)); break;
+								inlines.Add(t.ToString().Render(Text)); break;
 							case SyntaxKind.NumericLiteralToken:
-								text.Add(t.ToString().Render(Number)); break;
+								inlines.Add(t.ToString().Render(Number)); break;
 							default:
-								text.Add(t.ToString()); break;
+								inlines.Add(t.ToString()); break;
 						}
 					}
 					if (t.HasTrailingTrivia) {
 						ws = false;
 						foreach (var tt in t.TrailingTrivia) {
-							ShowTrivia(text, whitespace, ref ws, tt);
+							ShowTrivia(inlines, whitespace, ref ws, tt);
 						}
 					}
 				}
 				else if (item.IsNode) {
-					if (ShowCommonExpression(text, item.AsNode())) {
+					if (ShowCommonExpression(inlines, item.AsNode())) {
 						if (item.HasTrailingTrivia) {
 							ws = false;
 							foreach (var tt in item.GetTrailingTrivia()) {
-								ShowTrivia(text, whitespace, ref ws, tt);
+								ShowTrivia(inlines, whitespace, ref ws, tt);
 							}
 						}
 					}
 					else {
-						ShowExpressionRecursive(text, item.AsNode(), " ", ws);
+						ShowExpressionRecursive(inlines, item.AsNode(), " ", ws);
 					}
 				}
 			}
 		}
 
-		static void ShowTrivia(InlineCollection text, string whitespace, ref bool ws, SyntaxTrivia trivia) {
+		static void ShowTrivia(InlineCollection inlines, string whitespace, ref bool ws, SyntaxTrivia trivia) {
 			switch (trivia.Kind()) {
 				case SyntaxKind.WhitespaceTrivia:
 				case SyntaxKind.EndOfLineTrivia:
 					if (ws == false) {
-						text.Add(whitespace ?? trivia.ToString());
+						inlines.Add(whitespace ?? trivia.ToString());
 						ws = true;
 					}
 					break;
@@ -590,9 +629,9 @@ namespace Codist
 		void ShowTypeParameters(StackPanel panel, ImmutableArray<ITypeParameterSymbol> tp, ImmutableArray<ITypeSymbol> ta) {
 			var tpl = tp.Length;
 			for (int i = 0; i < tpl; i++) {
-				var b = new TextBlock { TextWrapping = TextWrapping.Wrap, Foreground = ThemeHelper.ToolTipTextBrush, FontFamily = ThemeHelper.ToolTipFont, FontSize = ThemeHelper.ToolTipFontSize }
+				var b = new TextBlock { TextWrapping = TextWrapping.Wrap, Foreground = ThemeCache.ToolTipTextBrush, FontFamily = ThemeCache.ToolTipFont, FontSize = ThemeCache.ToolTipFontSize }
 					.SetGlyph(IconIds.GenericDefinition);
-				ShowTypeArgumentInfo(tp[i], ta[i], b);
+				ShowTypeArgumentInfo(tp[i], ta[i], b.Inlines);
 				panel.Add(b);
 			}
 		}
@@ -606,7 +645,7 @@ namespace Codist
 		}
 
 		TextBlock ShowTypeParameterConstraints(ITypeParameterSymbol item) {
-			var b = new TextBlock { TextWrapping = TextWrapping.Wrap, Foreground = ThemeHelper.ToolTipTextBrush, FontFamily = ThemeHelper.ToolTipFont, FontSize = ThemeHelper.ToolTipFontSize }
+			var b = new TextBlock { TextWrapping = TextWrapping.Wrap, Foreground = ThemeCache.ToolTipTextBrush, FontFamily = ThemeCache.ToolTipFont, FontSize = ThemeCache.ToolTipFontSize }
 				.SetGlyph(IconIds.GenericDefinition)
 				.AddSymbol(item, false, TypeParameter)
 				.Append(": ");
@@ -614,72 +653,79 @@ namespace Codist
 			return b;
 		}
 
-		public TextBlock ShowSymbolDeclaration(ISymbol symbol, TextBlock info, bool defaultPublic, bool hideTypeKind) {
+		public void ShowSymbolDeclaration(InlineCollection inlines, ISymbol symbol, bool defaultPublic, bool hideTypeKind) {
 			if (defaultPublic == false || symbol.DeclaredAccessibility != Accessibility.Public) {
-				info.Append(symbol.GetAccessibility(), Keyword);
+				inlines.Append(symbol.GetAccessibility(), Keyword);
 			}
-			if (symbol.Kind == SymbolKind.Field) {
-				ShowFieldDeclaration(symbol as IFieldSymbol, info);
-			}
-			else if (symbol.Kind == SymbolKind.Local) {
-				ShowLocalDeclaration(symbol as ILocalSymbol, info);
-			}
-			else if (symbol.Kind == SymbolKind.Parameter) {
-				ShowParameterDeclaration(symbol as IParameterSymbol, info);
-			}
-			else {
-				ShowSymbolDeclaration(symbol, info);
+			switch (symbol.Kind) {
+				case SymbolKind.Field: ShowFieldDeclaration(symbol as IFieldSymbol, inlines); break;
+				case SymbolKind.Local: ShowLocalDeclaration(symbol as ILocalSymbol, inlines); break;
+				case SymbolKind.Parameter: ShowParameterDeclaration(symbol as IParameterSymbol, inlines); break;
+				default: ShowSymbolDeclaration(symbol, inlines); break;
 			}
 			if (hideTypeKind == false) {
-				info.Append(symbol.GetSymbolKindName(), symbol.Kind == SymbolKind.NamedType ? Keyword : null).Append(" ");
+				inlines.Append(symbol.GetSymbolKindName(), symbol.Kind == SymbolKind.NamedType ? Keyword : null)
+					.Append(" ");
 			}
-			return info;
 		}
 
-		public void ShowTypeArgumentInfo(ITypeParameterSymbol typeParameter, ITypeSymbol typeArgument, TextBlock text) {
-			text.AddSymbol(typeParameter, false, TypeParameter).Append(" is ")
+		public void ShowTypeArgumentInfo(ITypeParameterSymbol typeParameter, ITypeSymbol typeArgument, InlineCollection inlines) {
+			inlines.Add(typeParameter.Render(null, TypeParameter));
+			inlines.Append(" is ", PlainText)
 				.AddSymbol(typeArgument, true, this);
 			if (typeParameter.HasConstraint()) {
-				text.Append(" (");
-				ShowTypeConstraints(typeParameter, text);
-				text.Append(")");
+				inlines.Append(" (", PlainText);
+				ShowTypeConstraints(typeParameter, inlines);
+				inlines.Append(")", PlainText);
 			}
 		}
 
 		public void ShowTypeConstraints(ITypeParameterSymbol typeParameter, TextBlock text) {
+			ShowTypeConstraints(typeParameter, text.Inlines);
+		}
+
+		public void ShowTypeConstraints(ITypeParameterSymbol typeParameter, InlineCollection inlines) {
 			bool hasConstraint = false;
 			if (typeParameter.HasReferenceTypeConstraint) {
-				text.Append("class", Keyword);
+				inlines.Append("class", Keyword);
 				hasConstraint = true;
 			}
 			else if (typeParameter.HasValueTypeConstraint) {
-				text.Append("struct", Keyword);
+				inlines.Append("struct", Keyword);
 				hasConstraint = true;
 			}
 			if (typeParameter.HasUnmanagedTypeConstraint) {
-				AppendSeparatorIfHasConstraint(text, hasConstraint).Append("unmanaged", Keyword);
+				AppendSeparatorIfHasConstraint(inlines, hasConstraint);
+				inlines.Append("unmanaged", Keyword);
 				hasConstraint = true;
 			}
 			if (typeParameter.HasNotNullConstraint()) {
-				AppendSeparatorIfHasConstraint(text, hasConstraint).Append("notnull", Keyword);
+				AppendSeparatorIfHasConstraint(inlines, hasConstraint);
+				inlines.Append("notnull", Keyword);
 				hasConstraint = true;
 			}
 			if (typeParameter.AllowRefLikeType()) {
-				AppendSeparatorIfHasConstraint(text, hasConstraint).Append("allows ref struct", Keyword);
+				AppendSeparatorIfHasConstraint(inlines, hasConstraint);
+				inlines.Append("allows ref struct", Keyword);
 				hasConstraint = true;
 			}
 			if (typeParameter.HasConstructorConstraint) {
-				AppendSeparatorIfHasConstraint(text, hasConstraint).Append("new", Keyword).Append("()", PlainText);
+				AppendSeparatorIfHasConstraint(inlines, hasConstraint);
+				inlines.Append("new", Keyword);
+				inlines.Append("()", PlainText);
 				hasConstraint = true;
 			}
 			foreach (var constraint in typeParameter.ConstraintTypes) {
-				AppendSeparatorIfHasConstraint(text, hasConstraint).AddSymbol(constraint, false, this);
+				AppendSeparatorIfHasConstraint(inlines, hasConstraint);
+				Format(inlines, constraint, null, false);
 				hasConstraint = true;
 			}
 		}
 
-		TextBlock AppendSeparatorIfHasConstraint(TextBlock text, bool c) {
-			return c ? text.Append(", ".Render(PlainText)) : text;
+		void AppendSeparatorIfHasConstraint(InlineCollection inlines, bool c) {
+			if (c) {
+				inlines.Append(", ", PlainText);
+			}
 		}
 
 		static string GetRefType(ISymbol symbol) {
@@ -702,84 +748,84 @@ namespace Codist
 			return null;
 		}
 
-		internal void Format(InlineCollection text, ISymbol symbol, string alias, bool bold, bool excludeContainingTypes = false) {
+		internal void Format(InlineCollection inlines, ISymbol symbol, string alias, bool bold, bool excludeContainingTypes = false) {
 			switch (symbol.Kind) {
 				case SymbolKind.ArrayType:
-					FormatArrayType(text, (IArrayTypeSymbol)symbol, alias, bold);
+					FormatArrayType(inlines, (IArrayTypeSymbol)symbol, alias, bold);
 					return;
-				case SymbolKind.Event: FormatEventName(text, (IEventSymbol)symbol, alias, bold);
+				case SymbolKind.Event: FormatEventName(inlines, (IEventSymbol)symbol, alias, bold);
 					return;
 				case SymbolKind.Field:
-					text.Add(symbol.Render(alias, bold, ((IFieldSymbol)symbol).IsConst ? Const : Field));
+					inlines.Add(symbol.Render(alias, bold, ((IFieldSymbol)symbol).IsConst ? Const : Field));
 					return;
 				case SymbolKind.Method:
-					FormatMethodName(text, symbol, alias, bold);
+					FormatMethodName(inlines, symbol, alias, bold);
 					return;
 				case SymbolKind.NamedType:
 					if (excludeContainingTypes == false && symbol.ContainingType != null) {
-						ShowContainingTypes(symbol.ContainingType, text);
+						ShowContainingTypes(symbol.ContainingType, inlines);
 					}
-					FormatTypeName(text, symbol, alias, bold);
+					FormatTypeName(inlines, symbol, alias, bold);
 					return;
 				case SymbolKind.Namespace:
-					text.Add(symbol.Render(alias, bold, Namespace));
+					inlines.Add(symbol.Render(alias, bold, Namespace));
 					return;
 				case SymbolKind.Parameter:
-					text.Add(symbol.Render(null, bold, Parameter));
+					inlines.Add(symbol.Render(bold, Parameter));
 					return;
 				case SymbolKind.Property:
-					FormatPropertyName(text, (IPropertySymbol)symbol, alias, bold);
+					FormatPropertyName(inlines, (IPropertySymbol)symbol, alias, bold);
 					return;
 				case SymbolKind.Local:
 				case SymbolKind.RangeVariable:
-					text.Add(symbol.Render(null, bold, Local));
+					inlines.Add(symbol.Render(bold, Local));
 					return;
 				case SymbolKind.TypeParameter:
-					FormatTypeParameter(text, (ITypeParameterSymbol)symbol, alias, bold);
+					FormatTypeParameter(inlines, (ITypeParameterSymbol)symbol, alias, bold);
 					return;
 				case SymbolKind.PointerType:
-					Format(text, ((IPointerTypeSymbol)symbol).PointedAtType, alias, bold);
+					Format(inlines, ((IPointerTypeSymbol)symbol).PointedAtType, alias, bold);
 					if (alias == null) {
-						text.Add("*".Render(PlainText));
+						inlines.Add("*".Render(PlainText));
 					}
 					return;
 				case SymbolKind.ErrorType:
-					text.Add(((symbol as INamedTypeSymbol).GetTypeName() ?? "?").Render(PlainText));
+					inlines.Append((symbol as INamedTypeSymbol).GetTypeName() ?? "?", PlainText);
 					return;
 				case CodeAnalysisHelper.FunctionPointerType:
-					text.Add((symbol as ITypeSymbol).GetTypeName());
+					inlines.Add((symbol as ITypeSymbol).GetTypeName());
 					return;
 				case SymbolKind.Label:
-					text.Add(symbol.Render(null, bold, null))
-						; return;
+					inlines.Add(symbol.Render(bold, null));
+					return;
 				case SymbolKind.Discard:
-					text.Add("_".Render(Keyword));
+					inlines.Add("_".Render(Keyword));
 					return;
 				default:
-					text.Add(symbol.Name);
+					inlines.Add(symbol.Name);
 					return;
 			}
 		}
 
-		void FormatArrayType(InlineCollection text, IArrayTypeSymbol a, string alias, bool bold) {
-			Format(text, a.ElementType, alias, bold);
+		void FormatArrayType(InlineCollection inlines, IArrayTypeSymbol a, string alias, bool bold) {
+			Format(inlines, a.ElementType, alias, bold);
 			if (alias == null) {
-				text.Add((a.Rank == 1 ? "[]" : $"[{new string(',', a.Rank - 1)}]").Render(PlainText));
+				inlines.Add((a.Rank == 1 ? "[]" : $"[{new string(',', a.Rank - 1)}]").Render(PlainText));
 			}
 		}
 
-		void FormatEventName(InlineCollection text, IEventSymbol e, string alias, bool bold) {
-			text.Add(e.Render(alias ?? e.ExplicitInterfaceImplementations.FirstOrDefault()?.Name, bold, Event));
+		void FormatEventName(InlineCollection inlines, IEventSymbol e, string alias, bool bold) {
+			inlines.Add(e.Render(alias ?? e.ExplicitInterfaceImplementations.FirstOrDefault()?.Name, bold, Event));
 		}
 
-		void FormatTypeParameter(InlineCollection text, ITypeParameterSymbol t, string alias, bool bold) {
+		void FormatTypeParameter(InlineCollection inlines, ITypeParameterSymbol t, string alias, bool bold) {
 			if (alias != null && t.Variance != VarianceKind.None) {
-				text.Add((t.Variance == VarianceKind.Out ? "out " : "in ").Render(Keyword));
+				inlines.Add((t.Variance == VarianceKind.Out ? "out " : "in ").Render(Keyword));
 			}
-			text.Add(t.Render(null, bold, TypeParameter));
+			inlines.Add(t.Render(null, bold, TypeParameter));
 		}
 
-		void FormatMethodName(InlineCollection text, ISymbol symbol, string alias, bool bold) {
+		void FormatMethodName(InlineCollection inlines, ISymbol symbol, string alias, bool bold) {
 			var method = (IMethodSymbol)symbol;
 			Inline inline;
 			switch (method.MethodKind) {
@@ -800,86 +846,103 @@ namespace Codist
 					inline = symbol.Render(alias, bold, Method);
 					break;
 			}
-			text.Add(inline);
+			inlines.Add(inline);
 			if (method.IsGenericMethod) {
-				AddTypeArguments(text, method.TypeArguments);
+				AddTypeArguments(inlines, method.TypeArguments);
 			}
 		}
 
-		void FormatPropertyName(InlineCollection text, IPropertySymbol p, string alias, bool bold) {
-			text.Add(p.Render(alias ?? p.GetOriginalName(), bold, Property));
+		void FormatPropertyName(InlineCollection inlines, IPropertySymbol p, string alias, bool bold) {
+			inlines.Add(p.Render(alias ?? p.GetOriginalName(), bold, Property));
 		}
 
-		void FormatTypeName(InlineCollection text, ISymbol symbol, string alias, bool bold) {
+		void FormatTypeName(InlineCollection inlines, ISymbol symbol, string alias, bool bold) {
 			var type = (INamedTypeSymbol)symbol;
 			var specialType = type.GetSpecialTypeAlias();
 			if (specialType != null) {
-				text.Add((alias ?? specialType).Render(Keyword));
-				if (type.GetNullableAnnotation() == 2) {
-					text.Add("?".Render(PlainText));
-				}
+				FormatSpecialType(inlines, alias, type, specialType);
 				return;
 			}
 			switch (type.TypeKind) {
 				case TypeKind.Class:
-					text.Add(symbol.Render(alias ?? (type.IsAnonymousType ? "{anonymous}" : null), bold, Class));
+					inlines.Add(symbol.Render(alias ?? (type.IsAnonymousType ? "{anonymous}" : null), bold, Class));
 					break;
 				case TypeKind.Delegate:
-					text.Add(symbol.Render(alias, bold, Delegate));
+					inlines.Add(symbol.Render(alias, bold, Delegate));
 					break;
 				case TypeKind.Dynamic:
-					text.Add(symbol.Render(alias ?? symbol.Name, bold, Keyword));
+					inlines.Add(symbol.Render(alias ?? symbol.Name, bold, Keyword));
 					return;
 				case TypeKind.Enum:
-					text.Add(symbol.Render(alias, bold, Enum));
+					inlines.Add(symbol.Render(alias, bold, Enum));
 					return;
 				case TypeKind.Interface:
-					text.Add(symbol.Render(alias, bold, Interface));
+					inlines.Add(symbol.Render(alias, bold, Interface));
 					break;
 				case TypeKind.Struct:
-					ITypeSymbol nullable;
-					if (type.IsTupleType) {
-						text.Add("(".Render(PlainText));
-						for (int i = 0; i < type.TupleElements.Length; i++) {
-							if (i > 0) {
-								text.Add(", ".Render(PlainText));
-							}
-							Format(text, type.TupleElements[i].Type, null, false);
-							text.Add(" ");
-							text.Add(type.TupleElements[i].Render(null, Field));
-						}
-						text.Add(")".Render(PlainText));
-					}
-					else if ((nullable = type.GetNullableValueType()) != null) {
-						Format(text, nullable, null, false);
-						text.Add("?".Render(PlainText));
+					if (!FormatStructName(inlines, symbol, alias, bold, type)) {
 						return;
-					}
-					else {
-						text.Add(symbol.Render(alias, bold, Struct));
 					}
 					break;
 				case TypeKind.TypeParameter:
-					text.Add(symbol.Render(alias ?? symbol.Name, bold, TypeParameter));
+					inlines.Add(symbol.Render(alias ?? symbol.Name, bold, TypeParameter));
+					return;
+				case CodeAnalysisHelper.Extension:
+					FormatExtensionType(inlines, symbol, bold, type);
 					return;
 				default:
-					text.Add(symbol.MetadataName.Render(bold, false, Class));
+					inlines.Add(symbol.MetadataName.Render(bold, false, Class));
 					return;
 			}
 			if (type.GetNullableAnnotation() == 2) {
-				text.Add("?".Render(PlainText));
+				inlines.Add("?".Render(PlainText));
 			}
 			if (type.IsGenericType && type.IsTupleType == false) {
-				AddTypeArguments(text, type.TypeArguments);
+				AddTypeArguments(inlines, type.TypeArguments);
 			}
 		}
 
-		Brush GetBrushForMethod(IMethodSymbol m) {
-			switch (m.ContainingType?.TypeKind) {
-				case TypeKind.Class: return Class;
-				case TypeKind.Struct: return Struct;
+		void FormatSpecialType(InlineCollection inlines, string alias, INamedTypeSymbol type, string specialType) {
+			inlines.Add((alias ?? specialType).Render(Keyword));
+			if (type.GetNullableAnnotation() == 2) {
+				inlines.Add("?".Render(PlainText));
 			}
-			return Method;
+		}
+
+		bool FormatStructName(InlineCollection inlines, ISymbol symbol, string alias, bool bold, INamedTypeSymbol type) {
+			ITypeSymbol nullable;
+			if (type.IsTupleType) {
+				inlines.Add("(".Render(PlainText));
+				var tupleElements = type.TupleElements;
+				for (int i = 0; i < tupleElements.Length; i++) {
+					if (i > 0) {
+						inlines.Add(", ".Render(PlainText));
+					}
+					inlines.AddSymbol(tupleElements[i].Type, this)
+						.Append(" ")
+						.Add(tupleElements[i].Render(null, Field));
+				}
+				inlines.Add(")".Render(PlainText));
+			}
+			else if ((nullable = type.GetNullableValueType()) != null) {
+				inlines.AddSymbol(nullable, this).Add("?".Render(PlainText));
+				return false;
+			}
+			else {
+				inlines.Add(symbol.Render(alias, bold, Struct));
+			}
+
+			return true;
+		}
+
+		void FormatExtensionType(InlineCollection inlines, ISymbol symbol, bool bold, INamedTypeSymbol type) {
+			inlines.Add(symbol.Render(symbol.MetadataName, bold, Class));
+			if (type.IsGenericType && type.IsTupleType == false) {
+				AddTypeArguments(inlines, type.TypeArguments);
+			}
+			inlines.Add("(".Render(PlainText));
+			Format(inlines, type.GetExtensionParameter().Type, null, true, true);
+			inlines.Add(")".Render(PlainText));
 		}
 
 		internal Brush GetBrush(ISymbol symbol) {
@@ -894,21 +957,7 @@ namespace Codist
 						? Method
 						: GetBrushForMethod(method);
 				case SymbolKind.NamedType:
-					var type = (INamedTypeSymbol)symbol;
-					var specialType = type.GetSpecialTypeAlias();
-					if (specialType != null) {
-						return Keyword;
-					}
-					switch (type.TypeKind) {
-						case TypeKind.Class: return Class;
-						case TypeKind.Delegate: return Delegate;
-						case TypeKind.Dynamic: return Keyword;
-						case TypeKind.Enum: return Enum;
-						case TypeKind.Interface: return Interface;
-						case TypeKind.Struct: return Struct;
-						case TypeKind.TypeParameter: return TypeParameter;
-						default: return Class;
-					}
+					return GetBrushForType(symbol);
 				case SymbolKind.Namespace: return Namespace;
 				case SymbolKind.Parameter: return Parameter;
 				case SymbolKind.Property: return Property;
@@ -916,6 +965,32 @@ namespace Codist
 				case SymbolKind.TypeParameter: return TypeParameter;
 				case SymbolKind.PointerType: return GetBrush(((IPointerTypeSymbol)symbol).PointedAtType);
 				default: return null;
+			}
+		}
+
+		Brush GetBrushForMethod(IMethodSymbol m) {
+			switch (m.ContainingType?.TypeKind) {
+				case TypeKind.Class: return Class;
+				case TypeKind.Struct: return Struct;
+			}
+			return Method;
+		}
+
+		Brush GetBrushForType(ISymbol symbol) {
+			var type = (INamedTypeSymbol)symbol;
+			var specialType = type.GetSpecialTypeAlias();
+			if (specialType != null) {
+				return Keyword;
+			}
+			switch (type.TypeKind) {
+				case TypeKind.Class: return Class;
+				case TypeKind.Delegate: return Delegate;
+				case TypeKind.Dynamic: return Keyword;
+				case TypeKind.Enum: return Enum;
+				case TypeKind.Interface: return Interface;
+				case TypeKind.Struct: return Struct;
+				case TypeKind.TypeParameter: return TypeParameter;
+				default: return Class;
 			}
 		}
 
@@ -945,7 +1020,11 @@ namespace Codist
 			}
 		}
 
-		internal TextBlock Format(TextBlock block, ImmutableArray<SymbolDisplayPart> parts, int argIndex) {
+		internal TextBlock Format(TextBlock textBlock, ImmutableArray<SymbolDisplayPart> parts, int argIndex) {
+			Format(textBlock.Inlines, parts, argIndex);
+			return textBlock;
+		}
+		internal void Format(InlineCollection inlines, ImmutableArray<SymbolDisplayPart> parts, int argIndex) {
 			const SymbolDisplayPartKind ExtensionName = (SymbolDisplayPartKind)29;
 
 			foreach (var part in parts) {
@@ -955,69 +1034,68 @@ namespace Codist
 						goto default;
 					case SymbolDisplayPartKind.ClassName:
 						if (part.Symbol.Kind == SymbolKind.Method) {
-							block.AddSymbol(part.Symbol, true, Method);
+							inlines.Add(part.Symbol.Render(null, true, Method));
 						}
 						else if (((INamedTypeSymbol)part.Symbol).IsAnonymousType) {
-							block.Append("?", Class);
+							inlines.Append("?", Class);
 						}
 						else {
-							block.AddSymbol(part.Symbol, argIndex == Int32.MinValue, Class);
+							inlines.Add(part.Symbol.Render(null, argIndex == Int32.MinValue, Class));
 						}
 						break;
 					case SymbolDisplayPartKind.EnumName:
-						block.AddSymbol(part.Symbol, argIndex == Int32.MinValue, Enum);
+						inlines.Add(part.Symbol.Render(null, argIndex == Int32.MinValue, Enum));
 						break;
 					case SymbolDisplayPartKind.InterfaceName:
-						block.AddSymbol(part.Symbol, argIndex == Int32.MinValue, Interface);
+						inlines.Add(part.Symbol.Render(null, argIndex == Int32.MinValue, Interface));
 						break;
 					case SymbolDisplayPartKind.MethodName:
-						block.AddSymbol(part.Symbol, argIndex != Int32.MinValue, Method);
+						inlines.Add(part.Symbol.Render(null, argIndex != Int32.MinValue, Method));
 						break;
 					case SymbolDisplayPartKind.ParameterName:
 						var p = part.Symbol as IParameterSymbol;
-						block.AddSymbol(p, p.Ordinal == argIndex || p.IsParams && argIndex > p.Ordinal, Parameter);
+						inlines.Add(p.Render(null, p.Ordinal == argIndex || p.IsParams && argIndex > p.Ordinal, Parameter));
 						break;
 					case SymbolDisplayPartKind.StructName:
 						if (part.Symbol.Kind == SymbolKind.Method) {
-							block.AddSymbol(part.Symbol, true, Method);
+							inlines.Add(part.Symbol.Render(null, true, Method));
 						}
 						else {
-							block.AddSymbol(part.Symbol, argIndex == Int32.MinValue, Struct);
+							inlines.Add(part.Symbol.Render(null, argIndex == Int32.MinValue, Struct));
 						}
 						break;
 					case SymbolDisplayPartKind.DelegateName:
-						block.AddSymbol(part.Symbol, argIndex == Int32.MinValue, Delegate);
+						inlines.Add(part.Symbol.Render(null, argIndex == Int32.MinValue, Delegate));
 						break;
 					case SymbolDisplayPartKind.StringLiteral:
-						block.Append(part.ToString(), false, false, Text);
+						inlines.Add(part.ToString().Render(Text));
 						break;
 					case SymbolDisplayPartKind.Keyword:
-						block.Append(part.ToString(), false, false, Keyword);
+						inlines.Add(part.ToString().Render(Keyword));
 						break;
 					case SymbolDisplayPartKind.NamespaceName:
-						block.AddSymbol(part.Symbol, false, Namespace);
+						inlines.Add(part.Symbol.Render(null, false, Namespace));
 						break;
 					case SymbolDisplayPartKind.TypeParameterName:
-						block.AddSymbol(part.Symbol, argIndex == Int32.MinValue, TypeParameter);
+						inlines.Add(part.Symbol.Render(null, argIndex == Int32.MinValue, TypeParameter));
 						break;
 					case SymbolDisplayPartKind.FieldName:
-						block.AddSymbol(part.Symbol, argIndex == Int32.MinValue, Field);
+						inlines.Add(part.Symbol.Render(null, argIndex == Int32.MinValue, Field));
 						break;
 					case SymbolDisplayPartKind.PropertyName:
-						block.Append(part.Symbol.Name, Property);
+						inlines.Add(part.Symbol.Name.Render(Property));
 						break;
 					case SymbolDisplayPartKind.EventName:
-						block.Append(part.Symbol.Name, Event);
+						inlines.Add(part.Symbol.Name.Render(Event));
 						break;
 					case ExtensionName:
-						block.AddSymbol(part.Symbol, true, Method);
+						inlines.Add(part.Symbol.Render(null, true, Method));
 						break;
 					default:
-						block.Append(part.ToString(), PlainText);
+						inlines.Add(part.ToString().Render(PlainText));
 						break;
 				}
 			}
-			return block;
 		}
 
 		internal void Format(InlineCollection block, AttributeData item, int attributeType) {
@@ -1032,7 +1110,7 @@ namespace Codist
 			if (cas.Length == 0 && item.NamedArguments.Length == 0) {
 				var node = item.ApplicationSyntaxReference?.GetSyntax() as AttributeSyntax;
 				if (node?.ArgumentList?.Arguments.Count > 0) {
-					block.Add(node.ArgumentList.ToString().Render(ThemeHelper.SystemGrayTextBrush));
+					block.Add(node.ArgumentList.ToString().Render(ThemeCache.SystemGrayTextBrush));
 				}
 				block.Add("]".Render(PlainText));
 				return;
@@ -1097,21 +1175,21 @@ namespace Codist
 			text.Add(">".Render(PlainText));
 		}
 
-		void Format(InlineCollection block, TypedConstant constant, bool isParams) {
+		void Format(InlineCollection inlines, TypedConstant constant, bool isParams) {
 			if (constant.IsNull) {
-				block.Add("null".Render(Keyword));
+				inlines.Add("null".Render(Keyword));
 				return;
 			}
 			switch (constant.Kind) {
 				case TypedConstantKind.Primitive:
 					if (constant.Value is bool b) {
-						block.Add(WpfHelper.Render(b ? "true" : "false", Keyword));
+						inlines.Add(WpfHelper.Render(b ? "true" : "false", Keyword));
 					}
 					else if (constant.Value is string) {
-						block.Add(constant.ToCSharpString().Render(Text));
+						inlines.Add(constant.ToCSharpString().Render(Text));
 					}
 					else {
-						block.Add(constant.ToCSharpString().Render(Number));
+						inlines.Add(constant.ToCSharpString().Render(Number));
 					}
 					break;
 				case TypedConstantKind.Enum:
@@ -1121,103 +1199,105 @@ namespace Codist
 						var flags = (constant.Type as INamedTypeSymbol).GetFlaggedEnumFields(constant.Value).ToArray();
 						for (int i = 0; i < flags.Length; i++) {
 							if (i > 0) {
-								block.Add(" | ".Render(PlainText));
+								inlines.Add(" | ".Render(PlainText));
 							}
-							block.Add(constant.Type.Render(null, Enum));
-							block.Add(".".Render(PlainText));
-							block.Add(flags[i].Render(null, EnumField));
+							inlines.Add(constant.Type.Render(null, Enum));
+							inlines.Add(".".Render(PlainText));
+							inlines.Add(flags[i].Render(null, EnumField));
 						}
 					}
 					else if ((d = en.LastIndexOf('.')) != -1)  {
-						block.Add(constant.Type.Render(null, Enum));
-						block.Add(".".Render(PlainText));
-						block.Add(en.Substring(d + 1).Render(EnumField));
+						inlines.Add(constant.Type.Render(null, Enum));
+						inlines.Add(".".Render(PlainText));
+						inlines.Add(en.Substring(d + 1).Render(EnumField));
 					}
 					else {
-						block.Add(en.Render(Enum));
+						inlines.Add(en.Render(Enum));
 					}
 					break;
 				case TypedConstantKind.Type:
-					block.Add("typeof".Render(Keyword));
-					block.Add("(".Render(PlainText));
-					Format(block, constant.Value as ISymbol, null, false);
-					block.Add(")".Render(PlainText));
+					inlines.Add("typeof".Render(Keyword));
+					inlines.Add("(".Render(PlainText));
+					Format(inlines, constant.Value as ISymbol, null, false);
+					inlines.Add(")".Render(PlainText));
 					break;
 				case TypedConstantKind.Array:
 					if (isParams == false) {
-						block.Add("new".Render(Keyword));
-						block.Add("[] { ".Render(PlainText));
+						inlines.Add("new".Render(Keyword));
+						inlines.Add("[] { ".Render(PlainText));
 					}
 					bool c = false;
 					foreach (var item in constant.Values) {
 						if (c) {
-							block.Add(", ".Render(PlainText));
+							inlines.Add(", ".Render(PlainText));
 						}
 						else {
 							c = true;
 						}
-						Format(block, item, false);
+						Format(inlines, item, false);
 					}
 
 					if (isParams == false) {
-						block.Add(" }".Render(PlainText));
+						inlines.Add(" }".Render(PlainText));
 					}
 					break;
 				default:
-					block.Add(constant.ToCSharpString());
+					inlines.Add(constant.ToCSharpString());
 					break;
 			}
 		}
 
-		void ShowFieldDeclaration(IFieldSymbol field, TextBlock info) {
+		void ShowFieldDeclaration(IFieldSymbol field, InlineCollection inlines) {
 			if (field.IsConst) {
-				info.Append("const ", Keyword);
+				inlines.Append("const ", Keyword);
 			}
 			else {
 				if (field.IsStatic) {
-					info.Append("static ", Keyword);
+					inlines.Append("static ", Keyword);
 				}
 				if (field.IsReadOnly) {
-					info.Append("readonly ", Keyword);
+					inlines.Append("readonly ", Keyword);
 				}
 				else if (field.IsVolatile) {
-					info.Append("volatile ", Keyword);
+					inlines.Append("volatile ", Keyword);
 				}
 			}
 		}
 
-		void ShowLocalDeclaration(ILocalSymbol local, TextBlock info) {
+		void ShowLocalDeclaration(ILocalSymbol local, InlineCollection inlines) {
 			if (local.IsConst) {
-				info.Append("const ", Keyword);
+				inlines.Append("const ", Keyword);
 			}
 			else {
 				if (local.IsStatic) {
-					info.Append("static ", Keyword);
+					inlines.Append("static ", Keyword);
 				}
 				if (local.GetScopedKind() != 0) {
-					info.Append("scoped ");
+					inlines.Append("scoped ");
 				}
 				if (local.IsRef) {
-					info.Append(local.RefKind == RefKind.RefReadOnly ? "ref readonly " : "ref ", Keyword);
+					inlines.Append(local.RefKind == RefKind.RefReadOnly ? "ref readonly " : "ref ", Keyword);
 				}
 				if (local.IsFixed) {
-					info.Append("fixed ", Keyword);
+					inlines.Append("fixed ", Keyword);
 				}
 			}
 		}
 
-		static void ShowParameterDeclaration(IParameterSymbol parameter, TextBlock info) {
+		void ShowParameterDeclaration(IParameterSymbol parameter, InlineCollection inlines) {
 			if (parameter.GetScopedKind() != 0) {
-				info.Append("scoped ");
+				inlines.Append("scoped ", Keyword);
 			}
 			switch (parameter.RefKind) {
-				case RefKind.Ref: info.Append("ref "); break;
-				case RefKind.Out: info.Append("out "); break;
-				case RefKind.In: info.Append("in "); break;
+				case RefKind.Ref: inlines.Append("ref ", Keyword); break;
+				case RefKind.Out: inlines.Append("out ", Keyword); break;
+				case RefKind.In: inlines.Append("in ", Keyword); break;
+				case CodeAnalysisHelper.RefReadonly: inlines.Append("ref readonly ", Keyword); break;
 			}
 		}
 
-		void ShowSymbolDeclaration(ISymbol symbol, TextBlock info) {
+		void ShowSymbolDeclaration(ISymbol symbol, InlineCollection info) {
+			INamedTypeSymbol t;
 			if (symbol.IsStatic) {
 				if (symbol.Kind != SymbolKind.Namespace) {
 					info.Append("static ", Keyword);
@@ -1243,23 +1323,27 @@ namespace Codist
 					case SymbolKind.Event: o = ((IEventSymbol)symbol).OverriddenEvent; break;
 				}
 				if (o != null) {
-					var t = o.ContainingType;
+					t = o.ContainingType;
 					if (t?.IsCommonBaseType() == false) {
-						info.AddSymbol(t, null, this).Append(".").AddSymbol(o, null, this).Append(" ");
+						Format(info, symbol, null, false);
+						info.Add(".");
+						Format(info, o, null, false);
+						info.Add(" ");
 					}
 				}
 			}
 			else if (symbol.IsSealed) {
 				switch (symbol.Kind) {
 					case SymbolKind.NamedType:
-						switch (((INamedTypeSymbol)symbol).TypeKind) {
+						t = (INamedTypeSymbol)symbol;
+						switch (t.TypeKind) {
 							case TypeKind.Class:
 								info.Append("sealed ", Keyword); break;
 							case TypeKind.Struct:
-								if (((INamedTypeSymbol)symbol).IsReadOnly()) {
+								if (t.IsReadOnly()) {
 									info.Append("readonly ", Keyword);
 								}
-								if (((INamedTypeSymbol)symbol).IsRefLike()) {
+								if (t.IsRefLike()) {
 									info.Append("ref ", Keyword);
 								}
 								break;
@@ -1280,11 +1364,17 @@ namespace Codist
 					if (m.IsReadOnly()) {
 						info.Append("readonly ", Keyword);
 					}
+					if (m.IsExtensionMember()) {
+						info.Append("extension ", Keyword);
+					}
 				}
 			}
 			else if (symbol.Kind == SymbolKind.Property && symbol is IPropertySymbol p) {
 				if (p.IsRequired()) {
 					info.Append("required ", Keyword);
+				}
+				else if (p.IsExtensionMember()) {
+					info.Append("extension ", Keyword);
 				}
 			}
 		}
@@ -1370,5 +1460,12 @@ namespace Codist
 				Background = SystemColors.GrayTextBrush.Alpha(WpfHelper.DimmedOpacity);
 			}
 		}
+	}
+
+	enum ParameterListKind
+	{
+		Normal,
+		Property,
+		ArgList
 	}
 }

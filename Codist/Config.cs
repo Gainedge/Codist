@@ -16,7 +16,7 @@ namespace Codist
 {
 	sealed class Config
 	{
-		internal const string CurrentVersion = "7.9.0";
+		internal const string CurrentVersion = "8.0.0";
 		const string ThemePrefix = "res:";
 		const int DefaultIconSize = 20;
 		internal const string LightTheme = ThemePrefix + "Light",
@@ -72,7 +72,14 @@ namespace Codist
 		[DefaultValue(JumpListOptions.Default)]
 		public JumpListOptions JumpListOptions { get; set; } = JumpListOptions.Default;
 
-		public AutoSurroundSelectionOptions AutoSurroundSelectionOptions { get; set; }
+		[Obsolete]
+		public PunctuationOptions AutoSurroundSelectionOptions {
+			get => PunctuationOptions; set { }
+		}
+		public bool ShouldSerializeAutoSurroundSelectionOptions() => false;
+
+		[DefaultValue(PunctuationOptions.Default)]
+		public PunctuationOptions PunctuationOptions { get; set; } = PunctuationOptions.Default;
 
 		[DefaultValue(0d)]
 		public double TopSpace { get; set; }
@@ -177,7 +184,7 @@ namespace Codist
 				return config;
 			}
 			try {
-				"Begin load config".Log();
+				"Begin load config".Log(LogCategory.Config);
 				var config = InternalLoadConfig(ConfigPath, StyleFilters.None);
 				if (System.Version.TryParse(config.Version, out var v) == false
 					|| v < System.Version.Parse(CurrentVersion)) {
@@ -208,7 +215,7 @@ namespace Codist
 			if (Interlocked.Exchange(ref __LoadingConfig, 1) != 0) {
 				return;
 			}
-			$"Load config: {configPath}".Log();
+			$"Load config: {configPath}".Log(LogCategory.Config);
 			try {
 				Instance = InternalLoadConfig(configPath, styleFilter);
 				__Loaded?.Invoke(Instance);
@@ -280,7 +287,7 @@ namespace Codist
 				&& Application.Current.MainWindow.Visibility == Visibility.Visible) {
 				UpdateDisplay(config);
 			}
-			"Config loaded".Log();
+			"Config loaded".Log(LogCategory.Config);
 			return config;
 		}
 
@@ -304,7 +311,6 @@ namespace Codist
 				new SearchEngine("Google", "https://www.google.com/search?q=%s"),
 				new SearchEngine("StackOverflow", "https://stackoverflow.com/search?q=%s"),
 				new SearchEngine("GitHub", "https://github.com/search?q=%s"),
-				new SearchEngine("CodeProject", "https://www.codeproject.com/search.aspx?q=%s&x=0&y=0&sbo=kw"),
 				new SearchEngine(".NET Core Source", "https://source.dot.net/#q=%s"),
 				new SearchEngine(".NET Framework Source", "https://referencesource.microsoft.com/#q=%s"),
 			});
@@ -356,7 +362,7 @@ namespace Codist
 						Converters = { new Newtonsoft.Json.Converters.StringEnumConverter() }
 					}));
 				if (path == ConfigPath) {
-					"Config saved".Log();
+					"Config saved".Log(LogCategory.Config);
 				}
 			}
 			catch (Exception ex) {
@@ -445,8 +451,8 @@ namespace Codist
 		internal void Set(JumpListOptions options, bool set) {
 			JumpListOptions = JumpListOptions.SetFlags(options, set);
 		}
-		internal void Set(AutoSurroundSelectionOptions options, bool set) {
-			AutoSurroundSelectionOptions = AutoSurroundSelectionOptions.SetFlags(options, set);
+		internal void Set(PunctuationOptions options, bool set) {
+			PunctuationOptions = PunctuationOptions.SetFlags(options, set);
 		}
 
 		static void LoadStyleEntries<TStyle, TStyleType> (List<TStyle> styles, bool removeFontNames)
@@ -815,9 +821,14 @@ namespace Codist
 		CtrlQuickInfo = 1 << 30,
 		AlternativeStyle = 1L << 31,
 		UseCodeFontForXmlDocSymbol = 1L << 32,
+		SymbolReassignment = 1L << 33,
+		ControlFlow = 1L << 34,
+		DataFlow = 1L << 35,
+		SyntaxNodePath = 1L << 36,
+		CodeFlow = ControlFlow | DataFlow,
 		DocumentationOverride = OverrideDefaultDocumentation | DocumentationFromBaseType | DocumentationFromInheritDoc,
 		QuickInfoOverride = DocumentationOverride | AlternativeStyle,
-		Default = NodeRange | AlternativeStyle | Attributes | BaseType | Interfaces | Enum | NumericValues | InterfaceImplementations | MethodOverload | Parameter | OverrideDefaultDocumentation | DocumentationFromBaseType | DocumentationFromInheritDoc | SeeAlsoDoc | ExceptionDoc | ReturnsDoc | RemarksDoc,
+		Default = NodeRange | AlternativeStyle | Attributes | BaseType | Interfaces | Enum | NumericValues | InterfaceImplementations | MethodOverload | Parameter | OverrideDefaultDocumentation | DocumentationFromBaseType | SymbolReassignment | DocumentationFromInheritDoc | SeeAlsoDoc | ExceptionDoc | ReturnsDoc | RemarksDoc,
 	}
 
 	[Flags]
@@ -860,6 +871,7 @@ namespace Codist
 		NonPrivateField = 1 << 11,
 		UseTypeStyleOnConstructor = 1 << 12,
 		CapturingLambdaExpression = 1 << 13,
+		UseTypeStyleOnVarKeyword = 1 << 14,
 		SearchResult = 1 << 20,
 		Default = SpecialComment,
 		AllParentheses = ParameterBrace | CastBrace | BranchBrace | LoopBrace | ResourceBrace,
@@ -953,6 +965,7 @@ namespace Codist
 		ShowDocumentContentType = 1,
 		ShowSyntaxClassificationInfo = 1 << 1,
 		ShowSupportedFileTypes = 1 << 2,
+		ShowActivityLog = 1　<< 3,
 		Default = None
 	}
 
@@ -969,10 +982,13 @@ namespace Codist
 	}
 
 	[Flags]
-	public enum AutoSurroundSelectionOptions
+	public enum PunctuationOptions
 	{
 		None,
-		Trim
+		Trim,
+		MethodParentheses = 1 << 1,
+		ShowParameterInfo = 1 << 2,
+		Default = Trim | MethodParentheses | ShowParameterInfo
 	}
 
 	public enum ScrollbarMarkerStyle

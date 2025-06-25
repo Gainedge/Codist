@@ -87,6 +87,8 @@
     <Compile Include="AutoBuildVersion\BuildSetting.cs" />
     <Compile Include="AutoBuildVersion\VersionRewriteMode.cs" />
     <Compile Include="AutoBuildVersion\VersionSetting.cs" />
+    <Compile Include="Commands\AutoParenthesisHandler.cs" />
+    <Compile Include="Commands\OpenActivityLogCommand.cs" />
     <Compile Include="Commands\TransformDocumentCommand.cs" />
     <Compile Include="Commands\ShowSupportedFileTypesCommand.cs" />
     <Compile Include="Commands\TransformDocumentWindow.cs" />
@@ -95,9 +97,15 @@
     <Compile Include="Commands\CancelRepeatingActionCommand.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="Helpers\VsImageHelper.cs" />
+    <Compile Include="Helpers\ThemeHelper.cs" />
+    <Compile Include="QuickInfo\CSharpQuickInfo.AssignmentWalker.cs" />
+    <Compile Include="QuickInfo\CSharpQuickInfo.Node.cs" />
+    <Compile Include="QuickInfo\CSharpQuickInfo.Token.cs" />
+    <Compile Include="QuickInfo\InfoBlock.cs" />
     <Compile Include="Semantics\ArgumentAssignment.cs" />
     <Compile Include="Semantics\MarkdownHelper.cs" />
     <Compile Include="SmartBars\MarkupSmartBar.cs" />
+    <Compile Include="Suppression.cs" />
     <Compile Include="SyntaxHighlight\ClassificationTypeExporter.cs" />
     <Compile Include="SyntaxHighlight\CodeStyleTypes.cs" />
     <Compile Include="Commands\AutoBuildVersionWindow.cs" />
@@ -152,7 +160,7 @@
     <Compile Include="QuickInfo\CSharpQuickInfo.Interface.cs" />
     <Compile Include="QuickInfo\CSharpQuickInfo.Block.cs" />
     <Compile Include="QuickInfo\CSharpQuickInfo.Overloads.cs" />
-    <Compile Include="QuickInfo\CSharpQuickInfo.Parameter.cs" />
+    <Compile Include="QuickInfo\CSharpQuickInfo.Argument.cs" />
     <Compile Include="Semantics\AssemblySource.cs" />
     <Compile Include="Helpers\Chain.cs" />
     <Compile Include="Helpers\FileHelper.cs" />
@@ -216,6 +224,7 @@
     <Compile Include="SyntaxHighlight\SymbolMarkerStyle.cs" />
     <Compile Include="SyntaxHighlight\XmlCodeStyle.cs" />
     <Compile Include="Semantics\CSharpParser.cs" />
+    <Compile Include="Taggers\CSharpTagger.Url.cs" />
     <Compile Include="Taggers\MarkdownHeadingTag.cs" />
     <Compile Include="Taggers\TaggedContentSpan.cs" />
     <Compile Include="Taggers\TaggerFactories.cs" />
@@ -269,7 +278,7 @@
     <Compile Include="Semantics\SemanticContext.cs" />
     <Compile Include="Helpers\ServicesHelper.cs" />
     <Compile Include="Helpers\TextEditorHelper.cs" />
-    <Compile Include="Helpers\ThemeHelper.cs" />
+    <Compile Include="Helpers\ThemeCache.cs" />
     <Compile Include="Helpers\ToolTipHelper.cs" />
     <Compile Include="Helpers\UIHelper.cs" />
     <Compile Include="Helpers\WpfHelper.cs" />
@@ -461,7 +470,7 @@
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </PackageReference>
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers">
-      <Version>3.3.3</Version>
+      <Version>4.14.0</Version>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
@@ -487,7 +496,7 @@
       <Version>17.0.31902.203</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.SDK.Analyzers">
-      <Version>17.7.41</Version>
+      <Version>17.7.79</Version>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>

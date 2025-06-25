@@ -94,15 +94,15 @@ namespace Codist.Controls
 				_UiScope.PreviewKeyUp += HandleCopyShortcut;
 				_UiScope.Style = new Style(_UiScope.GetType()) {
 					Setters = {
-						new Setter(System.Windows.Controls.Primitives.TextBoxBase.SelectionBrushProperty, ThemeHelper.TextSelectionHighlightBrush)
+						new Setter(System.Windows.Controls.Primitives.TextBoxBase.SelectionBrushProperty, ThemeCache.TextSelectionHighlightBrush)
 					}
 				};
 				var m = new ContextMenu {
 					Resources = SharedDictionaryManager.ContextMenu,
-					Foreground = ThemeHelper.ToolWindowTextBrush,
+					Foreground = ThemeCache.ToolWindowTextBrush,
 					IsEnabled = true
 				};
-				m.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
+				m.SetBackgroundForCrispImage(ThemeCache.TitleBackgroundColor);
 				var newItem = new ThemedMenuItem {
 					Icon = VsImageHelper.GetImage(IconIds.Copy),
 					Header = R.CMD_CopySelection
@@ -159,7 +159,7 @@ namespace Codist.Controls
 			}
 		}
 		void HandleCopyShortcut(object sender, KeyEventArgs e) {
-			if (e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control
+			if (e.Key == Key.C && UIHelper.IsCtrlDown
 				&& _Editor != null
 				&& Copy()) {
 				e.Handled = true;

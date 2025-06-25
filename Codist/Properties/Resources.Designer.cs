@@ -1627,6 +1627,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Show Quick Info....
+        /// </summary>
+        internal static string CMD_QuickInfo {
+            get {
+                return ResourceManager.GetString("CMD_QuickInfo", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Refactor selection.
         /// </summary>
         internal static string CMD_RefactorSelection {
@@ -2243,6 +2252,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Web Search with Symbol Name....
+        /// </summary>
+        internal static string CMD_WebSearchWithSymbolName {
+            get {
+                return ResourceManager.GetString("CMD_WebSearchWithSymbolName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Donate via Wechat.
         /// </summary>
         internal static string CMD_WechatDonateLink {
@@ -2466,6 +2484,16 @@ namespace Codist.Properties {
         internal static string CMDT_FindDerivedClasses {
             get {
                 return ResourceManager.GetString("CMDT_FindDerivedClasses", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Search for implementations of current interface type or member
+        ///Ctrl: Direct implementation types only.
+        /// </summary>
+        internal static string CMDT_FindImplementations {
+            get {
+                return ResourceManager.GetString("CMDT_FindImplementations", resourceCulture);
             }
         }
         
@@ -2739,6 +2767,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Shift: Search with fully qualified symbol name.
+        /// </summary>
+        internal static string CMDT_WebSearchWithSymbolName {
+            get {
+                return ResourceManager.GetString("CMDT_WebSearchWithSymbolName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to {
         ///  &quot;CommentStyles&quot;: [
         ///    {
@@ -2870,6 +2907,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Add &quot;Open ActivityLog.xml&quot; command to the File Menu.
+        /// </summary>
+        internal static string OT_AddOpenActivityLog {
+            get {
+                return ResourceManager.GetString("OT_AddOpenActivityLog", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Add &quot;Show Active Window Properties&quot; command to File menu.
         /// </summary>
         internal static string OT_AddShowActiveWindowProperties {
@@ -2956,6 +3002,15 @@ namespace Codist.Properties {
         internal static string OT_AlternativeStyleTip {
             get {
                 return ResourceManager.GetString("OT_AlternativeStyleTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Append parentheses on completing method names.
+        /// </summary>
+        internal static string OT_AppendParenthesesOnMethodName {
+            get {
+                return ResourceManager.GetString("OT_AppendParenthesesOnMethodName", resourceCulture);
             }
         }
         
@@ -3313,6 +3368,24 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Control flow statistics.
+        /// </summary>
+        internal static string OT_ControlFlow {
+            get {
+                return ResourceManager.GetString("OT_ControlFlow", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Counts numbers of return, throw, yield, etc. statements within statements.
+        /// </summary>
+        internal static string OT_ControlFlowTip {
+            get {
+                return ResourceManager.GetString("OT_ControlFlowTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Monitor CPU.
         /// </summary>
         internal static string OT_CpuUsage {
@@ -3403,6 +3476,24 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Data flow statistics.
+        /// </summary>
+        internal static string OT_DataFlow {
+            get {
+                return ResourceManager.GetString("OT_DataFlow", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Displays read and written of variables in code statements.
+        /// </summary>
+        internal static string OT_DataFlowTip {
+            get {
+                return ResourceManager.GetString("OT_DataFlowTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Declaration.
         /// </summary>
         internal static string OT_Declaration {
@@ -3444,6 +3535,24 @@ namespace Codist.Properties {
         internal static string OT_DelayTime {
             get {
                 return ResourceManager.GetString("OT_DelayTime", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Variable reassignment.
+        /// </summary>
+        internal static string OT_DenoteVariableReassignment {
+            get {
+                return ResourceManager.GetString("OT_DenoteVariableReassignment", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Displays information whether a variable or a parameter is not being reassigned after it is declared.
+        /// </summary>
+        internal static string OT_DenoteVariableReassignmentTip {
+            get {
+                return ResourceManager.GetString("OT_DenoteVariableReassignmentTip", resourceCulture);
             }
         }
         
@@ -4874,6 +4983,24 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Show parameter information.
+        /// </summary>
+        internal static string OT_ShowParameterInfo {
+            get {
+                return ResourceManager.GetString("OT_ShowParameterInfo", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Displays parameter information after appending parentheses.
+        /// </summary>
+        internal static string OT_ShowParameterInfoTip {
+            get {
+                return ResourceManager.GetString("OT_ShowParameterInfoTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Show &lt;remarks/&gt; XML Doc.
         /// </summary>
         internal static string OT_ShowRemarksXmlDoc {
@@ -4982,6 +5109,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Highlight var keyword with actual type style.
+        /// </summary>
+        internal static string OT_StyleVarAsType {
+            get {
+                return ResourceManager.GetString("OT_StyleVarAsType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Support Codist!.
         /// </summary>
         internal static string OT_SupportCodst {
@@ -5077,6 +5213,24 @@ namespace Codist.Properties {
         internal static string OT_SyntaxHighlightTip {
             get {
                 return ResourceManager.GetString("OT_SyntaxHighlightTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Syntax node structure.
+        /// </summary>
+        internal static string OT_SyntaxNodePath {
+            get {
+                return ResourceManager.GetString("OT_SyntaxNodePath", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Displays types of containing syntax nodes, from innermost to outermost.
+        /// </summary>
+        internal static string OT_SyntaxNodePathTip {
+            get {
+                return ResourceManager.GetString("OT_SyntaxNodePathTip", resourceCulture);
             }
         }
         
@@ -5360,6 +5514,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Visual Studio.
+        /// </summary>
+        internal static string OT_VisualStudio {
+            get {
+                return ResourceManager.GetString("OT_VisualStudio", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Web Search.
         /// </summary>
         internal static string OT_WebSearch {
@@ -5595,7 +5758,7 @@ namespace Codist.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to 1 switch section, &lt;C&gt;cases.
+        ///   Looks up a localized string similar to 1 switch section, &lt;C&gt; cases.
         /// </summary>
         internal static string T_1SectionCases {
             get {
@@ -5636,6 +5799,15 @@ namespace Codist.Properties {
         internal static string T_ActiveWindowProperties {
             get {
                 return ResourceManager.GetString("T_ActiveWindowProperties", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ActivityLog.xml does not exist..
+        /// </summary>
+        internal static string T_ActivityLogNotExists {
+            get {
+                return ResourceManager.GetString("T_ActivityLogNotExists", resourceCulture);
             }
         }
         
@@ -5910,6 +6082,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Captured variable: .
+        /// </summary>
+        internal static string T_CapturedVariable {
+            get {
+                return ResourceManager.GetString("T_CapturedVariable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Captured variables.
         /// </summary>
         internal static string T_CapturedVariables {
@@ -6090,6 +6271,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Conditional branch: .
+        /// </summary>
+        internal static string T_ConditionalBranch {
+            get {
+                return ResourceManager.GetString("T_ConditionalBranch", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Configuration:.
         /// </summary>
         internal static string T_Configuration {
@@ -6126,6 +6316,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Control flow:.
+        /// </summary>
+        internal static string T_ControlFlow {
+            get {
+                return ResourceManager.GetString("T_ControlFlow", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Copy after &lt;NAME&gt;.
         /// </summary>
         internal static string T_CopyAfter {
@@ -6140,6 +6339,15 @@ namespace Codist.Properties {
         internal static string T_CopyBefore {
             get {
                 return ResourceManager.GetString("T_CopyBefore", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Could not determine version directory of Visual Studio..
+        /// </summary>
+        internal static string T_CouldNotDetermineVSDataDir {
+            get {
+                return ResourceManager.GetString("T_CouldNotDetermineVSDataDir", resourceCulture);
             }
         }
         
@@ -6204,6 +6412,15 @@ namespace Codist.Properties {
         internal static string T_DashDot {
             get {
                 return ResourceManager.GetString("T_DashDot", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Data flow:.
+        /// </summary>
+        internal static string T_DataFlow {
+            get {
+                return ResourceManager.GetString("T_DataFlow", resourceCulture);
             }
         }
         
@@ -6778,6 +6995,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Array enumeration will be optimized at runtime.
+        /// </summary>
+        internal static string T_ForEachOnArrayWillBeOptimized {
+            get {
+                return ResourceManager.GetString("T_ForEachOnArrayWillBeOptimized", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Foreground.
         /// </summary>
         internal static string T_Foreground {
@@ -7293,6 +7519,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Not reassigned.
+        /// </summary>
+        internal static string T_NoReassignment {
+            get {
+                return ResourceManager.GetString("T_NoReassignment", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Normal.
         /// </summary>
         internal static string T_Normal {
@@ -7316,6 +7551,15 @@ namespace Codist.Properties {
         internal static string T_NoSyntaxHighlightSelected {
             get {
                 return ResourceManager.GetString("T_NoSyntaxHighlightSelected", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing interesting in the ActivityLog.xml file.
+        /// </summary>
+        internal static string T_NothingInterestingInActivityLog {
+            get {
+                return ResourceManager.GetString("T_NothingInterestingInActivityLog", resourceCulture);
             }
         }
         
@@ -7523,6 +7767,15 @@ namespace Codist.Properties {
         internal static string T_ReadVariable {
             get {
                 return ResourceManager.GetString("T_ReadVariable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Reassigned.
+        /// </summary>
+        internal static string T_Reassigned {
+            get {
+                return ResourceManager.GetString("T_Reassigned", resourceCulture);
             }
         }
         
@@ -8071,6 +8324,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Syntax path:.
+        /// </summary>
+        internal static string T_SyntaxPath {
+            get {
+                return ResourceManager.GetString("T_SyntaxPath", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Syntax styles:.
         /// </summary>
         internal static string T_SyntaxStyles {
@@ -8152,6 +8414,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Too many overloads (&lt;N&gt;). The reset are hidden..
+        /// </summary>
+        internal static string T_TooManyOverloads {
+            get {
+                return ResourceManager.GetString("T_TooManyOverloads", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Top gradient.
         /// </summary>
         internal static string T_TopGradient {
@@ -8175,6 +8446,15 @@ namespace Codist.Properties {
         internal static string T_TriggerEvent {
             get {
                 return ResourceManager.GetString("T_TriggerEvent", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Tuple element &lt;N&gt;.
+        /// </summary>
+        internal static string T_TupleElementN {
+            get {
+                return ResourceManager.GetString("T_TupleElementN", resourceCulture);
             }
         }
         

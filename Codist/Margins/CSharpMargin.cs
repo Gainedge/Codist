@@ -17,7 +17,6 @@ using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Classification;
 using Microsoft.VisualStudio.Text.Editor;
-using ThreadHelper = Microsoft.VisualStudio.Shell.ThreadHelper;
 
 namespace Codist.Margins {
   /// <summary>
@@ -142,19 +141,19 @@ namespace Codist.Margins {
       }
     }
 
-    public override void Dispose() {
-      if (_View != null) {
-        Config.UnregisterUpdateHandler(UpdateCSharpMembersMarginConfig);
-        _MemberMarker.Dispose();
-        _SymbolReferenceMarker.Dispose();
-        SyncHelper.CancelAndDispose(ref _Cancellation, false);
-        _Parser.Dispose();
-        _Parser = null;
-        _MemberMarker = null;
-        _SymbolReferenceMarker = null;
-        _View = null;
-      }
-    }
+		public override void Dispose() {
+			if (_View != null) {
+				Config.UnregisterUpdateHandler(UpdateCSharpMembersMarginConfig);
+				_MemberMarker.Dispose();
+				_SymbolReferenceMarker.Dispose();
+				_Cancellation.CancelAndDispose();
+				_Parser.Dispose();
+				_Parser = null;
+				_MemberMarker = null;
+				_SymbolReferenceMarker = null;
+				_View = null;
+			}
+		}
 
     sealed class MemberMarker {
       // a lazy cache for related brushes, which should has its fields initialized or updated only in the Main thread
@@ -558,24 +557,24 @@ namespace Codist.Margins {
         __PenStore = null;
       }
 
-      internal void HookEvents() {
-        var view = _Margin._View;
-        view.Selection.SelectionChanged -= UpdateReferences;
-        view.Selection.SelectionChanged += UpdateReferences;
-      }
-      internal void UnhookEvents() {
-        _Margin._View.Selection.SelectionChanged -= UpdateReferences;
-      }
-      internal void Dispose() {
-        if (_Margin != null) {
-          UnhookEvents();
-          SyncHelper.CancelAndDispose(ref _Cancellation, false);
-          _ScrollBar = null;
-          _Margin = null;
-          _References = null;
-          _ActiveSymbol = null;
-        }
-      }
+			internal void HookEvents() {
+				var view = _Margin._View;
+				view.Selection.SelectionChanged -= UpdateReferences;
+				view.Selection.SelectionChanged += UpdateReferences;
+			}
+			internal void UnhookEvents() {
+				_Margin._View.Selection.SelectionChanged -= UpdateReferences;
+			}
+			internal void Dispose() {
+				if (_Margin != null) {
+					UnhookEvents();
+					_Cancellation.CancelAndDispose();
+					_ScrollBar = null;
+					_Margin = null;
+					_References = null;
+					_ActiveSymbol = null;
+				}
+			}
 
       internal void Render(DrawingContext drawingContext) {
         var refs = _References;
@@ -619,20 +618,30 @@ namespace Codist.Margins {
         }
       }
 
-      [SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
-      async void UpdateReferences(object sender, EventArgs e) {
-        var ct = SyncHelper.CancelAndRetainToken(ref _Cancellation);
-        try {
-          if (await Task.Run(() => UpdateAsync(null, ct))) {
-            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(default);
-            _Margin?.InvalidateVisual();
-          }
-        } catch (ObjectDisposedException) {
-          // ignore exception
-        } catch (OperationCanceledException) {
-          // ignore canceled
-        }
-      }
+			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
+			async void UpdateReferences(object sender, EventArgs e) {
+				var ct = SyncHelper.CancelAndRetainToken(ref _Cancellation);
+				try {
+					if (await Task.Run(() => UpdateAsync(null, ct))) {
+						await SyncHelper.SwitchToMainThreadAsync(ct);
+						_Margin?.InvalidateVisual();
+					}
+				}
+				catch (ObjectDisposedException) {
+					// ignore exception
+				}
+				catch (OperationCanceledException) {
+					// ignore canceled
+				}
+				catch (Exception ex) {
+					try {
+						await SyncHelper.SwitchToMainThreadAsync(ct);
+						Controls.MessageWindow.Error(ex, null, null, this);
+					}
+					catch (OperationCanceledException) {
+					}
+				}
+			}
 
 			public async Task<bool> UpdateAsync(SemanticState state, CancellationToken cancellationToken) {
 				var margin = _Margin;

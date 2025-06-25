@@ -2,6 +2,7 @@
 using System.ComponentModel.Composition;
 using Microsoft.VisualStudio.ComponentModelHost;
 using Microsoft.VisualStudio.Language.Intellisense;
+using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text.Classification;
 using Microsoft.VisualStudio.Text.Formatting;
@@ -61,6 +62,15 @@ namespace Codist
 		public Microsoft.VisualStudio.Text.Outlining.IOutliningManagerService OutliningManager { get; private set; }
 
 		[Import]
+		public IAsyncQuickInfoBroker QuickInfoBroker { get; private set; }
+
+		[Import]
+		public IAsyncCompletionBroker CompletionBroker { get; private set; }
+
+		[Import]
+		public Microsoft.VisualStudio.Text.Adornments.IToolTipService ToolTipService { get; private set; }
+
+		[Import]
 		public ITextStructureNavigatorSelectorService TextStructureNavigator { get; private set; }
 
 		[Import]
@@ -83,7 +93,7 @@ namespace Codist
 
 		static void PostInitialization(SyntaxHighlight.ClassificationTypeExporter cte) {
 			#region Create classification types for syntax highlight
-			"Registering classification types".Log();
+			"Registering classification types".Log(LogCategory.FormatStore);
 			cte.RegisterClassificationTypes<SyntaxHighlight.SymbolMarkerStyleTypes>();
 			cte.RegisterClassificationTypes<SyntaxHighlight.CommentStyleTypes>();
 			cte.RegisterClassificationTypes<SyntaxHighlight.CSharpStyleTypes>();
@@ -93,7 +103,7 @@ namespace Codist
 			//e.RegisterClassificationTypes<SyntaxHighlight.CppStyleTypes>();
 			cte.RegisterCustomizedClassificationTypes();
 			cte.ExportClassificationTypes();
-			"Classification types exported".Log();
+			"Classification types exported".Log(LogCategory.FormatStore);
 			#endregion
 		}
 	}

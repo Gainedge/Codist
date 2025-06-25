@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using CLR;
 using Microsoft.VisualStudio.Language.Intellisense;
 using Microsoft.VisualStudio.Text;
+using Microsoft.VisualStudio.Text.Adornments;
+using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Utilities;
 
 namespace Codist.QuickInfo
@@ -117,18 +119,17 @@ namespace Codist.QuickInfo
 	abstract class SingletonQuickInfoSource : IAsyncQuickInfoSource
 	{
 		Task<QuickInfoItem> IAsyncQuickInfoSource.GetQuickInfoItemAsync(IAsyncQuickInfoSession session, CancellationToken cancellationToken) {
-			if (Config.Instance.Features.MatchFlags(Features.SuperQuickInfo) == false
-				|| session.Properties.ContainsProperty(GetType())) {
-				return Task.FromResult<QuickInfoItem>(null);
-			}
-			return InternalGetQuickInfoItemAsync(session, cancellationToken);
+			return Config.Instance.Features.MatchFlags(Features.SuperQuickInfo) == false
+				|| QuickInfoOverride.CheckCtrlSuppression()
+				|| session.Properties.ContainsProperty(GetType())
+				? Task.FromResult<QuickInfoItem>(null)
+				: InternalGetQuickInfoItemAsync(session, cancellationToken);
 		}
 
 		protected abstract Task<QuickInfoItem> GetQuickInfoItemAsync(IAsyncQuickInfoSession session, CancellationToken cancellationToken);
 
 		async Task<QuickInfoItem> InternalGetQuickInfoItemAsync(IAsyncQuickInfoSession session, CancellationToken cancellationToken) {
 			QuickInfoItem item;
-			await SyncHelper.SwitchToMainThreadAsync(cancellationToken);
 			try {
 				item = await GetQuickInfoItemAsync(session, cancellationToken);
 			}
@@ -136,6 +137,7 @@ namespace Codist.QuickInfo
 				throw;
 			}
 			catch (Exception ex) {
+				await SyncHelper.SwitchToMainThreadAsync(cancellationToken);
 				Controls.MessageWindow.Error(ex, null, Properties.Resources.T_SuperQuickInfo, this);
 				return null;
 			}
@@ -146,5 +148,19 @@ namespace Codist.QuickInfo
 		}
 
 		public virtual void Dispose() { }
+	}
+
+	[Export(typeof(IViewElementFactory))]
+	[Name("InfoBlock Quick Info Factory")]
+	[TypeConversion(from: typeof(InfoBlock), to: typeof(System.Windows.UIElement))]
+	[Order(Before = "Default object converter")]
+	public class InfoBlockQuickInfoFactory : IViewElementFactory
+	{
+		public TView CreateViewElement<TView>(ITextView textView, object model)
+			where TView : class {
+			return model is InfoBlock data
+				? data.ToUI().Tag() as TView
+				: null;
+		}
 	}
 }

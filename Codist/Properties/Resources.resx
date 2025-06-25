@@ -2834,7 +2834,7 @@ Discard its changes?</value>
     <value>Sub-pattern count: </value>
   </data>
   <data name="T_1SectionCases" xml:space="preserve">
-    <value>1 switch section, &lt;C&gt;cases</value>
+    <value>1 switch section, &lt;C&gt; cases</value>
   </data>
   <data name="T_SectionsCases" xml:space="preserve">
     <value>&lt;C&gt; switch sections, &lt;S&gt; cases</value>
@@ -2868,5 +2868,99 @@ Discard its changes?</value>
   </data>
   <data name="CMD_MakeReadonly" xml:space="preserve">
     <value>Make Readonly</value>
+  </data>
+  <data name="T_TupleElementN" xml:space="preserve">
+    <value>Tuple element &lt;N&gt;</value>
+  </data>
+  <data name="OT_DenoteVariableReassignment" xml:space="preserve">
+    <value>Variable reassignment</value>
+  </data>
+  <data name="OT_DenoteVariableReassignmentTip" xml:space="preserve">
+    <value>Displays information whether a variable or a parameter is not being reassigned after it is declared</value>
+  </data>
+  <data name="T_NoReassignment" xml:space="preserve">
+    <value>Not reassigned</value>
+  </data>
+  <data name="T_Reassigned" xml:space="preserve">
+    <value>Reassigned</value>
+  </data>
+  <data name="OT_StyleVarAsType" xml:space="preserve">
+    <value>Highlight var keyword with actual type style</value>
+  </data>
+  <data name="T_ForEachOnArrayWillBeOptimized" xml:space="preserve">
+    <value>Array enumeration will be optimized at runtime</value>
+  </data>
+  <data name="T_CapturedVariable" xml:space="preserve">
+    <value>Captured variable: </value>
+  </data>
+  <data name="OT_ControlFlow" xml:space="preserve">
+    <value>Control flow statistics</value>
+  </data>
+  <data name="OT_ControlFlowTip" xml:space="preserve">
+    <value>Counts numbers of return, throw, yield, etc. statements within statements</value>
+  </data>
+  <data name="OT_SyntaxNodePath" xml:space="preserve">
+    <value>Syntax node structure</value>
+  </data>
+  <data name="OT_SyntaxNodePathTip" xml:space="preserve">
+    <value>Displays types of containing syntax nodes, from innermost to outermost</value>
+  </data>
+  <data name="OT_DataFlow" xml:space="preserve">
+    <value>Data flow statistics</value>
+  </data>
+  <data name="OT_DataFlowTip" xml:space="preserve">
+    <value>Displays read and written of variables in code statements</value>
+  </data>
+  <data name="T_DataFlow" xml:space="preserve">
+    <value>Data flow:</value>
+  </data>
+  <data name="T_ControlFlow" xml:space="preserve">
+    <value>Control flow:</value>
+  </data>
+  <data name="T_ConditionalBranch" xml:space="preserve">
+    <value>Conditional branch: </value>
+  </data>
+  <data name="T_SyntaxPath" xml:space="preserve">
+    <value>Syntax path:</value>
+  </data>
+  <data name="CMDT_FindImplementations" xml:space="preserve">
+    <value>Search for implementations of current interface type or member
+Ctrl: Direct implementation types only</value>
+  </data>
+  <data name="CMD_WebSearchWithSymbolName" xml:space="preserve">
+    <value>Web Search with Symbol Name...</value>
+  </data>
+  <data name="CMDT_WebSearchWithSymbolName" xml:space="preserve">
+    <value>Shift: Search with fully qualified symbol name</value>
+  </data>
+  <data name="OT_AddOpenActivityLog" xml:space="preserve">
+    <value>Add "Open ActivityLog.xml" command to the File Menu</value>
+  </data>
+  <data name="OT_VisualStudio" xml:space="preserve">
+    <value>Visual Studio</value>
+  </data>
+  <data name="T_NothingInterestingInActivityLog" xml:space="preserve">
+    <value>Nothing interesting in the ActivityLog.xml file</value>
+  </data>
+  <data name="T_ActivityLogNotExists" xml:space="preserve">
+    <value>ActivityLog.xml does not exist.</value>
+  </data>
+  <data name="T_CouldNotDetermineVSDataDir" xml:space="preserve">
+    <value>Could not determine version directory of Visual Studio.</value>
+  </data>
+  <data name="CMD_QuickInfo" xml:space="preserve">
+    <value>Show Quick Info...</value>
+  </data>
+  <data name="T_TooManyOverloads" xml:space="preserve">
+    <value>Too many overloads (&lt;N&gt;). The reset are hidden.</value>
+  </data>
+  <data name="OT_AppendParenthesesOnMethodName" xml:space="preserve">
+    <value>Append parentheses on completing method names</value>
+  </data>
+  <data name="OT_ShowParameterInfo" xml:space="preserve">
+    <value>Show parameter information</value>
+  </data>
+  <data name="OT_ShowParameterInfoTip" xml:space="preserve">
+    <value>Displays parameter information after appending parentheses</value>
   </data>
 </root>

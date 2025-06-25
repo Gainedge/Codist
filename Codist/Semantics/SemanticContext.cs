@@ -217,14 +217,14 @@ namespace Codist
 		}
 
 		public Task<bool> UpdateAsync(CancellationToken cancellationToken) {
-			return UpdateAsync(View.TextBuffer, cancellationToken);
+			return UpdateAsync(View.TextBuffer, __DummyPosition, cancellationToken);
 		}
 
-		public Task<bool> UpdateAsync(ITextBuffer textBuffer, CancellationToken cancellationToken) {
-			if (UpdateDocumentAndWorkspace(ref __DummyPosition, ref textBuffer, out Document doc, out Workspace workspace) == false) {
-				return Task.FromResult(false);
-			}
-			return UpdateAsync(textBuffer, doc, workspace, cancellationToken);
+		public Task<bool> UpdateAsync(ITextBuffer textBuffer, SnapshotPoint snapshotPoint, CancellationToken cancellationToken) {
+			return UpdateDocumentAndWorkspace(ref snapshotPoint, ref textBuffer, out var doc, out var workspace)
+				&& doc != null
+				? UpdateAsync(textBuffer, doc, workspace, cancellationToken)
+				: Task.FromResult(false);
 		}
 
 		async Task<bool> UpdateAsync(ITextBuffer textBuffer, Document doc, Workspace workspace, CancellationToken cancellationToken) {
@@ -246,7 +246,7 @@ namespace Codist
 				return true;
 			}
 			catch (NullReferenceException) {
-				System.Diagnostics.Debug.WriteLine("Update semantic context failed.");
+				"Update semantic context failed.".Log();
 			}
 			return false;
 		}
@@ -263,10 +263,9 @@ namespace Codist
 		}
 
 		async Task<bool> UpdateAsync(SnapshotPoint position, ITextBuffer textBuffer, Document document, Workspace workspace, CancellationToken cancellationToken) {
-			bool versionChanged;
 			try {
 				var ver = await document.GetSyntaxVersionAsync(cancellationToken).ConfigureAwait(false);
-				if (versionChanged = ver != _Model.Version) {
+				if (ver != _Model.Version) {
 					var model = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
 					if (model == null) {
 						return Reset();
@@ -288,7 +287,7 @@ namespace Codist
 			return true;
 		}
 
-		bool UpdateDocumentAndWorkspace(ref SnapshotPoint position, ref ITextBuffer textBuffer, out Document document, out Workspace workspace) {
+		bool UpdateDocumentAndWorkspace(ref SnapshotPoint bufferGraphPosition, ref ITextBuffer textBuffer, out Document document, out Workspace workspace) {
 			SnapshotPoint? p;
 			var textContainer = textBuffer.AsTextContainer();
 			document = null;
@@ -296,21 +295,19 @@ namespace Codist
 				GetDocumentFromTextContainer(textContainer, workspace, ref document);
 				return true;
 			}
-			else {
-				foreach (var item in View.BufferGraph.GetTextBuffers(_ => true)) {
-					textContainer = item.AsTextContainer();
-					if (Workspace.TryGetWorkspace(textContainer, out workspace)) {
-						GetDocumentFromTextContainer(textContainer, workspace, ref document);
-						if (position.Snapshot != null
-							&& (p = View.BufferGraph.MapDownToBuffer(position, PointTrackingMode.Positive, item, PositionAffinity.Predecessor)).HasValue) {
-							position = p.Value;
-							textBuffer = item;
-							return true;
-						}
+			foreach (var item in View.BufferGraph.GetTextBuffers(_ => true)) {
+				textContainer = item.AsTextContainer();
+				if (Workspace.TryGetWorkspace(textContainer, out workspace)) {
+					GetDocumentFromTextContainer(textContainer, workspace, ref document);
+					if (bufferGraphPosition.Snapshot != null
+						&& (p = View.BufferGraph.MapDownToBuffer(bufferGraphPosition, PointTrackingMode.Positive, item, PositionAffinity.Predecessor)).HasValue) {
+						bufferGraphPosition = p.Value;
+						textBuffer = item;
+						return true;
 					}
 				}
-				return false;
 			}
+			return false;
 		}
 
 		static void GetDocumentFromTextContainer(SourceTextContainer textContainer, Workspace workspace, ref Document document) {
@@ -331,7 +328,9 @@ namespace Codist
 				if (node.FullSpan.Contains(position)) {
 					var nodeKind = node.Kind();
 					if (nodeKind != SyntaxKind.VariableDeclaration
-						&& (includeSyntaxDetails && nodeKind.IsSyntaxBlock() || nodeKind.IsDeclaration() || nodeKind == SyntaxKind.Attribute)) {
+						&& (includeSyntaxDetails && nodeKind.IsSyntaxBlock()
+							|| nodeKind.IsDeclaration()
+							|| nodeKind == SyntaxKind.Attribute)) {
 						nodes.Add(node);
 					}
 				}
@@ -375,8 +374,12 @@ namespace Codist
 
 		public SyntaxTrivia GetLineComment() {
 			var token = Token;
-			var triviaList = token.HasLeadingTrivia ? token.LeadingTrivia : token.HasTrailingTrivia ? token.TrailingTrivia : default;
-			return triviaList.Equals(SyntaxTriviaList.Empty) == false && triviaList.FullSpan.Contains(View.Selection.Start.Position)
+			var triviaList = token.HasLeadingTrivia
+				? token.LeadingTrivia
+				: token.HasTrailingTrivia
+					? token.TrailingTrivia
+					: default;
+			return !triviaList.Equals(SyntaxTriviaList.Empty) && triviaList.FullSpan.Contains(View.Selection.Start.Position)
 				? triviaList.FirstOrDefault(i => i.IsLineComment())
 				: default;
 		}
@@ -399,7 +402,7 @@ namespace Codist
 
 		readonly struct SyntaxModel
 		{
-			internal static readonly SyntaxModel Empty = new SyntaxModel(null, null, null, null, null, VersionStamp.Default);
+			internal static readonly SyntaxModel Empty = default;
 
 			public readonly Workspace Workspace;
 			public readonly ITextBuffer SourceBuffer;

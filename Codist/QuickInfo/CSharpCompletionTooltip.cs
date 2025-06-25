@@ -5,8 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
-using CLR;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -34,7 +32,7 @@ namespace Codist.QuickInfo
 			Completion3 completion;
 			if (elementType != UIElementType.Tooltip
 				|| (completion = itemToRender as Completion3) == null
-				|| Keyboard.Modifiers.MatchFlags(ModifierKeys.Control)
+				|| UIHelper.IsCtrlDown
 				|| (sc = SemanticContext.GetOrCreateSingletonInstance(context.TextView as IWpfTextView)) == null) {
 				return null;
 			}
@@ -159,12 +157,12 @@ namespace Codist.QuickInfo
 			}
 
 			void AfterUnload(object sender, EventArgs e) {
-				SyncHelper.CancelAndDispose(ref _CTS, false);
+				_CTS.CancelAndDispose();
 			}
 
 			static StackPanel Render(ImmutableArray<ISymbol> symbols, SemanticModel semanticModel, StackPanel content) {
 				var symbol = symbols[0];
-				content.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
+				content.SetBackgroundForCrispImage(ThemeCache.TitleBackgroundColor);
 				content.Add(SymbolFormatter.Instance.ShowSignature(symbol));
 				var doc = new XmlDoc(symbol, semanticModel.Compilation);
 				if (doc?.Summary?.FirstNode != null) {

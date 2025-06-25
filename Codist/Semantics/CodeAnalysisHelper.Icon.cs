@@ -32,12 +32,12 @@ namespace Codist
 					case Accessibility.Public: return KnownImageIds.EventPublic;
 					case Accessibility.Protected:
 					case Accessibility.ProtectedOrInternal:
+					case Accessibility.ProtectedAndInternal:
 						return KnownImageIds.EventProtected;
 					case Accessibility.Private:
 						return ev.ExplicitInterfaceImplementations.Length != 0
 							? IconIds.ExplicitInterfaceEvent
 							: KnownImageIds.EventPrivate;
-					case Accessibility.ProtectedAndInternal:
 					case Accessibility.Internal: return KnownImageIds.EventInternal;
 					default: return IconIds.Event;
 				}
@@ -52,9 +52,9 @@ namespace Codist
 						case Accessibility.Public: return KnownImageIds.ConstantPublic;
 						case Accessibility.Protected:
 						case Accessibility.ProtectedOrInternal:
+						case Accessibility.ProtectedAndInternal:
 							return KnownImageIds.ConstantProtected;
 						case Accessibility.Private: return KnownImageIds.ConstantPrivate;
-						case Accessibility.ProtectedAndInternal:
 						case Accessibility.Internal: return KnownImageIds.ConstantInternal;
 						default: return KnownImageIds.Constant;
 					}
@@ -63,9 +63,9 @@ namespace Codist
 					case Accessibility.Public: return KnownImageIds.FieldPublic;
 					case Accessibility.Protected:
 					case Accessibility.ProtectedOrInternal:
+					case Accessibility.ProtectedAndInternal:
 						return KnownImageIds.FieldProtected;
 					case Accessibility.Private: return KnownImageIds.FieldPrivate;
-					case Accessibility.ProtectedAndInternal:
 					case Accessibility.Internal: return KnownImageIds.FieldInternal;
 					default: return IconIds.Field;
 				}
@@ -79,9 +79,9 @@ namespace Codist
 							case Accessibility.Public: return IconIds.PublicConstructor;
 							case Accessibility.Protected:
 							case Accessibility.ProtectedOrInternal:
+							case Accessibility.ProtectedAndInternal:
 								return IconIds.ProtectedConstructor;
 							case Accessibility.Private: return IconIds.PrivateConstructor;
-							case Accessibility.ProtectedAndInternal:
 							case Accessibility.Internal: return IconIds.InternalConstructor;
 							default: return IconIds.Constructor;
 						}
@@ -92,9 +92,9 @@ namespace Codist
 							case Accessibility.Public: return KnownImageIds.OperatorPublic;
 							case Accessibility.Protected:
 							case Accessibility.ProtectedOrInternal:
+							case Accessibility.ProtectedAndInternal:
 								return KnownImageIds.OperatorProtected;
 							case Accessibility.Private: return KnownImageIds.OperatorPrivate;
-							case Accessibility.ProtectedAndInternal:
 							case Accessibility.Internal: return KnownImageIds.OperatorInternal;
 							default: return KnownImageIds.Operator;
 						}
@@ -107,12 +107,12 @@ namespace Codist
 					case Accessibility.Public: return KnownImageIds.MethodPublic;
 					case Accessibility.Protected:
 					case Accessibility.ProtectedOrInternal:
+					case Accessibility.ProtectedAndInternal:
 						return KnownImageIds.MethodProtected;
 					case Accessibility.Private:
 						return m.ExplicitInterfaceImplementations.Length != 0
 							? IconIds.ExplicitInterfaceMethod
 							: KnownImageIds.MethodPrivate;
-					case Accessibility.ProtectedAndInternal:
 					case Accessibility.Internal: return KnownImageIds.MethodInternal;
 					default: return IconIds.Method;
 				}
@@ -125,9 +125,9 @@ namespace Codist
 							case Accessibility.Public: return KnownImageIds.ClassPublic;
 							case Accessibility.Protected:
 							case Accessibility.ProtectedOrInternal:
+							case Accessibility.ProtectedAndInternal:
 								return KnownImageIds.ClassProtected;
 							case Accessibility.Private: return KnownImageIds.ClassPrivate;
-							case Accessibility.ProtectedAndInternal:
 							case Accessibility.Internal: return KnownImageIds.ClassInternal;
 							default: return IconIds.Class;
 						}
@@ -136,9 +136,9 @@ namespace Codist
 							case Accessibility.Public: return KnownImageIds.DelegatePublic;
 							case Accessibility.Protected:
 							case Accessibility.ProtectedOrInternal:
+							case Accessibility.ProtectedAndInternal:
 								return KnownImageIds.DelegateProtected;
 							case Accessibility.Private: return KnownImageIds.DelegatePrivate;
-							case Accessibility.ProtectedAndInternal:
 							case Accessibility.Internal: return KnownImageIds.DelegateInternal;
 							default: return IconIds.Delegate;
 						}
@@ -147,9 +147,9 @@ namespace Codist
 							case Accessibility.Public: return KnownImageIds.EnumerationPublic;
 							case Accessibility.Protected:
 							case Accessibility.ProtectedOrInternal:
+							case Accessibility.ProtectedAndInternal:
 								return KnownImageIds.EnumerationProtected;
 							case Accessibility.Private: return KnownImageIds.EnumerationPrivate;
-							case Accessibility.ProtectedAndInternal:
 							case Accessibility.Internal: return KnownImageIds.EnumerationInternal;
 							default: return IconIds.Enum;
 						}
@@ -161,9 +161,9 @@ namespace Codist
 									: KnownImageIds.InterfacePublic;
 							case Accessibility.Protected:
 							case Accessibility.ProtectedOrInternal:
+							case Accessibility.ProtectedAndInternal:
 								return KnownImageIds.InterfaceProtected;
 							case Accessibility.Private: return KnownImageIds.InterfacePrivate;
-							case Accessibility.ProtectedAndInternal:
 							case Accessibility.Internal: return KnownImageIds.InterfaceInternal;
 							default: return IconIds.Interface;
 						}
@@ -172,12 +172,14 @@ namespace Codist
 							case Accessibility.Public: return KnownImageIds.StructurePublic;
 							case Accessibility.Protected:
 							case Accessibility.ProtectedOrInternal:
+							case Accessibility.ProtectedAndInternal:
 								return KnownImageIds.StructureProtected;
 							case Accessibility.Private: return KnownImageIds.StructurePrivate;
-							case Accessibility.ProtectedAndInternal:
 							case Accessibility.Internal: return KnownImageIds.StructureInternal;
 							default: return IconIds.Structure;
 						}
+					case Extension:
+						return IconIds.ExtensionDeclaration;
 					case TypeKind.TypeParameter:
 					default: return KnownImageIds.Type;
 				}
@@ -188,12 +190,12 @@ namespace Codist
 					case Accessibility.Public: return KnownImageIds.PropertyPublic;
 					case Accessibility.Protected:
 					case Accessibility.ProtectedOrInternal:
+					case Accessibility.ProtectedAndInternal:
 						return KnownImageIds.PropertyProtected;
 					case Accessibility.Private:
 						return p.ExplicitInterfaceImplementations.Length != 0
 							? IconIds.ExplicitInterfaceProperty
 							: KnownImageIds.PropertyPrivate;
-					case Accessibility.ProtectedAndInternal:
 					case Accessibility.Internal: return KnownImageIds.PropertyInternal;
 					default: return KnownImageIds.Property;
 				}
@@ -229,8 +231,8 @@ namespace Codist
 				case SyntaxKind.AttributeArgumentList: return IconIds.Argument;
 				case SyntaxKind.DoStatement: return IconIds.DoWhile;
 				case SyntaxKind.FixedStatement: return IconIds.Pin;
-				case SyntaxKind.ForEachStatement: return KnownImageIds.ForEach;
-				case SyntaxKind.ForStatement: return KnownImageIds.ForEachLoop;
+				case SyntaxKind.ForEachStatement: return IconIds.ForEach;
+				case SyntaxKind.ForStatement: return IconIds.For;
 				case SyntaxKind.IfStatement: return IconIds.If;
 				case SyntaxKind.LockStatement: return KnownImageIds.Lock;
 				case SyntaxKind.SwitchStatement:
@@ -263,10 +265,11 @@ namespace Codist
 				case SyntaxKind.YieldReturnStatement: return KnownImageIds.Yield;
 				case SyntaxKind.GotoStatement:
 				case SyntaxKind.GotoCaseStatement:
-				case SyntaxKind.GotoDefaultStatement: return KnownImageIds.GoToSourceCode;
+				case SyntaxKind.GotoDefaultStatement: return IconIds.GoTo;
 				case SyntaxKind.LocalFunctionStatement: return IconIds.LocalFunction;
 				case SyntaxKind.RegionDirectiveTrivia: return IconIds.Region;
 				case SyntaxKind.EndRegionDirectiveTrivia: return KnownImageIds.ToolstripPanelBottom;
+				case CodeAnalysisHelper.ExtensionDeclaration: return IconIds.ExtensionDeclaration;
 			}
 			return KnownImageIds.UnknownMember;
 

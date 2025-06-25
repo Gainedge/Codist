@@ -65,6 +65,7 @@ namespace Codist.Display
 				__RamMeter?.Stop();
 				__DriveMeter?.Stop();
 				__NetworkMeter?.Stop();
+				__CancellationTokenSource.CancelAndDispose();
 			}
 		}
 

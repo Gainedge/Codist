@@ -16,6 +16,7 @@ namespace Codist.Taggers
 			Identifier = registry.GetClassificationTag(Constants.CodeIdentifier);
 			Keyword = registry.GetClassificationTag(Constants.CodeKeyword);
 			LoopKeyword = registry.GetClassificationTag(Constants.CSharpLoopKeyword);
+			Number = registry.GetClassificationTag(Constants.CodeNumber);
 			Operator = registry.GetClassificationTag(Constants.CodeOperator);
 			Punctuation = registry.GetClassificationTag(Constants.CodePunctuation);
 			ResourceKeyword = registry.GetClassificationTag(Constants.CSharpResourceKeyword);
@@ -29,6 +30,7 @@ namespace Codist.Taggers
 		public ClassificationTag Identifier { get; }
 		public ClassificationTag Keyword { get; }
 		public ClassificationTag LoopKeyword { get; }
+		public ClassificationTag Number { get; }
 		public ClassificationTag Operator { get; }
 		public ClassificationTag Punctuation { get; }
 		public ClassificationTag ResourceKeyword { get; }
@@ -53,6 +55,7 @@ namespace Codist.Taggers
 			EnumName = registry.GetClassificationTag(Constants.CodeEnumName);
 			EnumField = registry.GetClassificationTag(Constants.CSharpEnumFieldName);
 			Event = registry.GetClassificationTag(Constants.CSharpEventName);
+			ExtensionMember = registry.GetClassificationTag(Constants.CSharpExtensionMemberName);
 			ExtensionMethod = registry.GetClassificationTag(Constants.CSharpExtensionMethodName);
 			ExternMethod = registry.GetClassificationTag(Constants.CSharpExternMethodName);
 			Field = registry.GetClassificationTag(Constants.CSharpFieldName);
@@ -99,6 +102,7 @@ namespace Codist.Taggers
 		public ClassificationTag EnumName { get; }
 		public ClassificationTag EnumField { get; }
 		public ClassificationTag Event { get; }
+		public ClassificationTag ExtensionMember { get; }
 		public ClassificationTag ExtensionMethod { get; }
 		public ClassificationTag ExternMethod { get; }
 		public ClassificationTag Field { get; }
@@ -130,6 +134,33 @@ namespace Codist.Taggers
 		public ClassificationTag VirtualMember { get; }
 		public ClassificationTag VolatileField { get; }
 		public ClassificationTag XmlDoc { get; }
+	}
+
+	sealed class UrlClassifications
+	{
+		public static readonly UrlClassifications Instance = new UrlClassifications(ServicesHelper.Instance.ClassificationTypeRegistry);
+
+		UrlClassifications(IClassificationTypeRegistryService registry) {
+			Url = registry.GetClassificationTag(Constants.CodeUrl);
+			Scheme = registry.GetClassificationTag(Constants.UrlScheme);
+			Credential = registry.GetClassificationTag(Constants.UrlCredential);
+			Host = registry.GetClassificationTag(Constants.UrlHost);
+			File = registry.GetClassificationTag(Constants.UrlFile);
+			QueryName = registry.GetClassificationTag(Constants.UrlQueryName);
+			QueryValue = registry.GetClassificationTag(Constants.UrlQueryValue);
+			Punctuation = registry.GetClassificationTag(Constants.UrlPunctuation);
+			Fragment = registry.GetClassificationTag(Constants.UrlFragment);
+		}
+
+		public ClassificationTag Url { get; }
+		public ClassificationTag Scheme { get; }
+		public ClassificationTag Credential { get; }
+		public ClassificationTag Host { get; }
+		public ClassificationTag File { get; }
+		public ClassificationTag QueryName { get; }
+		public ClassificationTag QueryValue { get; }
+		public ClassificationTag Punctuation { get; }
+		public ClassificationTag Fragment { get; }
 	}
 
 	sealed class HighlightClassifications

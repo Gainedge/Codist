@@ -26,7 +26,7 @@ namespace Codist
 				tip.Title.Append(VsImageHelper.GetImage(symbol.GetImageId()).WrapMargin(WpfHelper.GlyphMargin));
 			}
 			tip.Title
-				.Append($"{symbol.GetAccessibility()}{symbol.GetAbstractionModifier()}{symbol.GetValueAccessModifier()}{symbol.GetSymbolKindName()} ")
+				.Append(symbol.GetAccessibility() + symbol.GetAbstractionModifier() + symbol.GetValueAccessModifier() + symbol.GetSymbolKindName() + " ")
 				.Append(symbol.GetOriginalName(), true)
 				.Append(symbol.GetParameterString(true));
 			var content = tip.Content;
@@ -111,7 +111,7 @@ namespace Codist
 			content.AppendLineBreak()
 				.Append(type.GetSymbolKindName(), SymbolFormatter.Instance.Keyword)
 				.Append(": ")
-				.Append(type.ToDisplayString(CodeAnalysisHelper.MemberNameFormat), true);
+				.Append((type.TypeKind != CodeAnalysisHelper.Extension ? type : type.GetExtensionParameter().Type).ToDisplayString(CodeAnalysisHelper.MemberNameFormat), true);
 		}
 
 		static void ShowNamespaceSource(TextBlock content, INamespaceSymbol symbol, SemanticContext context) {
@@ -160,14 +160,19 @@ namespace Codist
 		}
 
 		static void ShowAttributes(ISymbol symbol, TextBlock content) {
-			if (Config.Instance.SymbolToolTipOptions.MatchFlags(SymbolToolTipOptions.Attributes)) {
-				foreach (var attr in symbol.GetAttributes()) {
-					SymbolFormatter.Instance.Format(content.AppendLine().Inlines, attr, 0);
-				}
-				if (symbol.Kind == SymbolKind.Method) {
-					foreach (var attr in ((IMethodSymbol)symbol).GetReturnTypeAttributes()) {
-						SymbolFormatter.Instance.Format(content.AppendLine().Inlines, attr, 1);
-					}
+			IParameterSymbol parameter;
+			if (!Config.Instance.SymbolToolTipOptions.MatchFlags(SymbolToolTipOptions.Attributes)) {
+				return;
+			}
+			if (symbol.Kind == SymbolKind.NamedType && (parameter = ((ITypeSymbol)symbol).GetExtensionParameter()) != null) {
+				symbol = parameter;
+			}
+			foreach (var attr in symbol.GetAttributes()) {
+				SymbolFormatter.Instance.Format(content.AppendLine().Inlines, attr, 0);
+			}
+			if (symbol.Kind == SymbolKind.Method) {
+				foreach (var attr in ((IMethodSymbol)symbol).GetReturnTypeAttributes()) {
+					SymbolFormatter.Instance.Format(content.AppendLine().Inlines, attr, 1);
 				}
 			}
 		}
@@ -175,7 +180,7 @@ namespace Codist
 		static void ShowNumericRepresentations(ISymbol symbol, ThemedToolTip tip) {
 			if (Config.Instance.SymbolToolTipOptions.MatchFlags(SymbolToolTipOptions.NumericValues)
 				&& symbol is IFieldSymbol f && f.IsConst) {
-				var p = ShowNumericRepresentations(f);
+				var p = ShowNumericRepresentations(f.ConstantValue, NumericForm.None);
 				if (p != null) {
 					tip.AddBorder().Child = p;
 				}
@@ -227,16 +232,8 @@ namespace Codist
 			return target;
 		}
 
-		internal static Grid ShowNumericRepresentations(SyntaxNode node) {
-			return ShowNumericRepresentations(node.GetFirstToken().Value, node.Parent.IsKind(SyntaxKind.UnaryMinusExpression) ? NumericForm.Negative : NumericForm.None);
-		}
-
-		internal static Grid ShowNumericRepresentations(object value) {
-			return ShowNumericRepresentations(value, NumericForm.None);
-		}
-
-		internal static Grid ShowNumericRepresentations(IFieldSymbol symbol) {
-			return ShowNumericRepresentations(symbol.ConstantValue, NumericForm.None);
+		internal static Grid ShowNumericRepresentations(object value, bool isNegative) {
+			return ShowNumericRepresentations(value, isNegative ? NumericForm.Negative : NumericForm.None);
 		}
 
 		static Grid ShowNumericRepresentations(object value, NumericForm form) {
@@ -272,23 +269,23 @@ namespace Codist
 						new ThemedTipText(R.T_Hexadecimal, true) { Margin = WpfHelper.GlyphMargin, TextAlignment = TextAlignment.Right }.SetValue(Grid.SetRow, 1),
 						new ThemedTipText(R.T_Binary, true) { Margin = WpfHelper.GlyphMargin, TextAlignment = TextAlignment.Right }.SetValue(Grid.SetRow, 2),
 						new ThemedTipText(number) {
-							Background = ThemeHelper.TextBoxBackgroundBrush.Alpha(0.5),
-							Foreground = ThemeHelper.TextBoxBrush,
+							Background = ThemeCache.TextBoxBackgroundBrush.Alpha(0.5),
+							Foreground = ThemeCache.TextBoxBrush,
 							Padding = WpfHelper.SmallHorizontalMargin,
-							FontFamily = ThemeHelper.CodeTextFont
-						}.WrapBorder(ThemeHelper.TextBoxBorderBrush, WpfHelper.TinyMargin).SetValue(Grid.SetColumn, 1),
+							FontFamily = ThemeCache.CodeTextFont
+						}.WrapBorder(ThemeCache.TextBoxBorderBrush, WpfHelper.TinyMargin).SetValue(Grid.SetColumn, 1),
 						ToHexString(new ThemedTipText() {
-							Background = ThemeHelper.TextBoxBackgroundBrush.Alpha(0.5),
-							Foreground = ThemeHelper.TextBoxBrush,
+							Background = ThemeCache.TextBoxBackgroundBrush.Alpha(0.5),
+							Foreground = ThemeCache.TextBoxBrush,
 							Padding = WpfHelper.SmallHorizontalMargin,
-							FontFamily = ThemeHelper.CodeTextFont
-						}, bytes).WrapBorder(ThemeHelper.TextBoxBorderBrush, WpfHelper.TinyMargin).SetValue(Grid.SetColumn, 1).SetValue(Grid.SetRow, 1),
+							FontFamily = ThemeCache.CodeTextFont
+						}, bytes).WrapBorder(ThemeCache.TextBoxBorderBrush, WpfHelper.TinyMargin).SetValue(Grid.SetColumn, 1).SetValue(Grid.SetRow, 1),
 						ToBinString(new ThemedTipText() {
-							Background = ThemeHelper.TextBoxBackgroundBrush.Alpha(0.5),
-							Foreground = ThemeHelper.TextBoxBrush,
+							Background = ThemeCache.TextBoxBackgroundBrush.Alpha(0.5),
+							Foreground = ThemeCache.TextBoxBrush,
 							Padding = WpfHelper.SmallHorizontalMargin,
-							FontFamily = ThemeHelper.CodeTextFont
-						}, bytes).WrapBorder(ThemeHelper.TextBoxBorderBrush, WpfHelper.TinyMargin).SetValue(Grid.SetColumn, 1).SetValue(Grid.SetRow, 2),
+							FontFamily = ThemeCache.CodeTextFont
+						}, bytes).WrapBorder(ThemeCache.TextBoxBorderBrush, WpfHelper.TinyMargin).SetValue(Grid.SetColumn, 1).SetValue(Grid.SetRow, 2),
 					},
 					Margin = WpfHelper.MiddleBottomMargin,
 				};
@@ -333,7 +330,7 @@ namespace Codist
 			}
 
 			void AddBackground(InlineCollection inlines) {
-				inlines.LastInline.Background = ThemeHelper.TextSelectionHighlightBrush.Alpha(0.2);
+				inlines.LastInline.Background = ThemeCache.TextSelectionHighlightBrush.Alpha(0.2);
 			}
 
 			Grid ShowInt(int v, NumericForm f) {

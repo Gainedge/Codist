@@ -10,8 +10,9 @@ using System.Xml.Linq;
 using Codist.Controls;
 using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Text;
+using Microsoft.VisualStudio.Utilities;
 using WpfBrush = System.Windows.Media.Brush;
-using WpfBrushes = System.Windows.Media.Brushes;
 
 namespace Codist
 {
@@ -43,6 +44,18 @@ namespace Codist
 				formatter.Format(block.Inlines, symbol, null, bold);
 			}
 			return block;
+		}
+		public static InlineCollection AddSymbol(this InlineCollection inlines, ISymbol symbol, SymbolFormatter formatter) {
+			if (symbol != null) {
+				formatter.Format(inlines, symbol, null, false);
+			}
+			return inlines;
+		}
+		public static InlineCollection AddSymbol(this InlineCollection inlines, ISymbol symbol, bool bold, SymbolFormatter formatter) {
+			if (symbol != null) {
+				formatter.Format(inlines, symbol, null, bold);
+			}
+			return inlines;
 		}
 		public static TextBlock AddSymbol(this TextBlock block, ISymbol symbol, string alias, SymbolFormatter formatter) {
 			if (symbol != null) {
@@ -87,6 +100,9 @@ namespace Codist
 		public static Inline Render(this ISymbol symbol, string alias, WpfBrush brush) {
 			return symbol.Render(alias, brush == null, brush);
 		}
+		public static Inline Render(this ISymbol symbol, bool bold, WpfBrush brush) {
+			return symbol.Render(null, bold, brush);
+		}
 		public static Inline Render(this ISymbol symbol, string alias, bool bold, WpfBrush brush) {
 			var run = new SymbolLink(symbol, alias);
 			if (bold) {
@@ -97,6 +113,14 @@ namespace Codist
 			}
 			return run;
 		}
+		public static Inline Render(this SnapshotSpan span, string text) {
+			return new SpanLink(span, text);
+		}
+
+		public static Inline Render(this SyntaxNodeOrToken syntax, ITextSnapshot textSnapshot, string text) {
+			return new SyntaxNodeLink(syntax, textSnapshot, text);
+		}
+
 		public static ScrollViewer Scrollable<TElement>(this TElement element)
 			where TElement : DependencyObject {
 			if (element is TextBlock t && t.TextWrapping == TextWrapping.NoWrap) {
@@ -226,7 +250,7 @@ namespace Codist
 
 		sealed class SymbolLink : InteractiveRun
 		{
-			ISymbol _Symbol;
+			readonly ISymbol _Symbol;
 
 			public SymbolLink(ISymbol symbol, string alias) {
 				Text = alias ?? symbol.GetOriginalName();
@@ -279,8 +303,8 @@ namespace Codist
 						HoldQuickInfo();
 						m.Closed += ReleaseQuickInfo;
 						m.CommandExecuted += DismissQuickInfo;
-						m.SetProperty(TextBlock.FontFamilyProperty, ThemeHelper.ToolTipFont)
-							.SetProperty(TextBlock.FontSizeProperty, ThemeHelper.ToolTipFontSize);
+						m.SetProperty(TextBlock.FontFamilyProperty, ThemeCache.ToolTipFont)
+							.SetProperty(TextBlock.FontSizeProperty, ThemeCache.ToolTipFontSize);
 						ContextMenu = m;
 						m.IsOpen = true;
 					}
@@ -321,6 +345,95 @@ namespace Codist
 				async void FindMembersForNamespace(ISymbol symbol) {
 					await SemanticContext.GetHovered().FindMembersAsync(symbol);
 				}
+			}
+		}
+
+		class SpanLink : InteractiveRun
+		{
+			SnapshotSpan _Span;
+
+			public SpanLink(SnapshotSpan span, string text) {
+				Text = text ?? span.GetText();
+				_Span = span;
+			}
+
+			protected override object CreateToolTip() {
+				string t = CreateTipText();
+				return t != Text
+					? new ThemedToolTip(Text, t)
+					: base.CreateToolTip();
+			}
+
+			protected string CreateTipText() {
+				var truncated = _Span.Length > 512;
+				var t = (truncated ? new SnapshotSpan(_Span.Snapshot, _Span.Start, 512) : _Span).GetText();
+				if (t.IndexOf('\n') != -1) {
+					var ws = _Span.Snapshot.GetLineFromPosition(_Span.Start).GetLinePrecedingWhitespace();
+					var wsLength = ws.Length;
+					if (wsLength != 0) {
+						t = UnindentText(t, ws, wsLength);
+					}
+				}
+				if (truncated) {
+					t += Properties.Resources.T_ExpressionTooLong;
+				}
+				return t;
+			}
+
+			static string UnindentText(string t, string leadingWhitespace, int wsLength) {
+				using (var sbr = ReusableStringBuilder.AcquireDefault(t.Length)) {
+					var sb = sbr.Resource;
+					var sr = new System.IO.StringReader(t);
+					string l = sr.ReadLine();
+					sb.Append(l);
+					while ((l = sr.ReadLine()) != null) {
+						sb.AppendLine();
+						if (l.StartsWith(leadingWhitespace, StringComparison.Ordinal)) {
+							sb.Append(l, wsLength, l.Length - wsLength);
+						}
+						else {
+							sb.Append(l);
+						}
+					}
+					return sb.ToString();
+				}
+			}
+
+			protected override void OnInitInteraction() {
+				MouseLeftButtonDown += GoToSnapshotPoint;
+			}
+
+			protected override void OnUnload() {
+				_Span = default;
+			}
+
+			void GoToSnapshotPoint(object sender, MouseButtonEventArgs e) {
+				var view = TextEditorHelper.GetMouseOverDocumentView();
+				if (view != null) {
+					view.SelectSpan(_Span);
+					view.VisualElement.Focus();
+				}
+			}
+		}
+
+		sealed class SyntaxNodeLink : SpanLink
+		{
+			SyntaxNodeOrToken _NodeOrToken;
+
+			public SyntaxNodeLink(SyntaxNodeOrToken syntax, ITextSnapshot textSnapshot, string text) : base(syntax.Span.CreateSnapshotSpan(textSnapshot), text) {
+				_NodeOrToken = syntax;
+			}
+
+			protected override object CreateToolTip() {
+				var t = CreateTipText();
+				var tip = new ThemedToolTip(Text + " = " + _NodeOrToken.RawKind.ToText(), "Span.Length: " + _NodeOrToken.Span.Length);
+				tip.AddTextBlock().Text = t;
+				return tip;
+			}
+
+			protected override void OnUnload() {
+				_NodeOrToken = default;
+				base.OnUnload();
 			}
 		}
 	}

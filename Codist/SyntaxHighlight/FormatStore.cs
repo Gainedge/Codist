@@ -40,6 +40,10 @@ namespace Codist.SyntaxHighlight
 		/// </summary>
 		internal static bool IdentifySymbolSource { get; private set; }
 
+		internal static bool TagUrl { get; private set; }
+
+		internal static bool TagAttributeAnnotation { get; private set; }
+
 		internal static IClassificationFormatMap DefaultClassificationFormatMap => __DefaultClassificationFormatMap;
 
 		internal static TextFormattingRunProperties EditorDefaultTextProperties => __DefaultClassificationFormatMap.DefaultTextProperties;
@@ -84,7 +88,7 @@ namespace Codist.SyntaxHighlight
 				// since both EFM and CFM are shared between views with the same category,
 				//   we can avoid redundantly applying highlight styles to the same kinds of views
 				//   by caching applied categories
-				$"[{category}] highlighter created".Log();
+				$"[{category}] highlighter created".Log(LogCategory.FormatStore);
 				ServicesHelper.Instance.ClassificationTypeExporter.UpdateClassificationFormatMap(category);
 				highlighter.SubscribeConfigUpdateHandler();
 				highlighter.SubscribeFormatMappingChanges();
@@ -242,7 +246,7 @@ namespace Codist.SyntaxHighlight
 				item.Reset();
 			}
 			__SyntaxStyleCache.Clear();
-			IdentifySymbolSource = false;
+			IdentifySymbolSource = TagUrl = TagAttributeAnnotation = false;
 		}
 
 		public static void Reset(string classificationType) {
@@ -252,6 +256,7 @@ namespace Codist.SyntaxHighlight
 		}
 
 		static Dictionary<string, StyleBase> InitSyntaxStyleCache() {
+			"Initializing syntax style cache".Log(LogCategory.FormatStore);
 			var cache = new Dictionary<string, StyleBase>(100, StringComparer.OrdinalIgnoreCase);
 			__HighlightEnabled = Config.Instance.Features.MatchFlags(Features.SyntaxHighlight);
 			LoadSyntaxStyleCache(cache, Config.Instance);
@@ -350,9 +355,21 @@ namespace Codist.SyntaxHighlight
 		}
 
 		static void UpdateHighlightOptions(Dictionary<string, StyleBase> cache) {
-			StyleBase style;
-			IdentifySymbolSource = cache.TryGetValue(Constants.CSharpMetadataSymbol, out style) && style.IsSet
-				|| cache.TryGetValue(Constants.CSharpUserSymbol, out style) && style.IsSet;
+			IdentifySymbolSource = cache.IsStyleSet(Constants.CSharpMetadataSymbol) || cache.IsStyleSet(Constants.CSharpUserSymbol);
+			TagUrl = cache.IsAnyStyleSet(Constants.UrlHost, Constants.UrlFile, Constants.UrlQueryName, Constants.UrlQueryValue, Constants.UrlScheme, Constants.UrlFragment, Constants.UrlPunctuation, Constants.UrlCredential);
+			TagAttributeAnnotation = cache.IsAnyStyleSet(Constants.CSharpAttributeNotation);
+		}
+
+		static bool IsStyleSet(this Dictionary<string, StyleBase> cache, string styleName) {
+			return cache.TryGetValue(styleName, out var style) && style.IsSet;
+		}
+		static bool IsAnyStyleSet(this Dictionary<string, StyleBase> cache, params string[] styleNames) {
+			foreach (var styleName in styleNames) {
+				if (cache.TryGetValue(styleName, out var style) && style.IsSet) {
+					return true;
+				}
+			}
+			return false;
 		}
 
 		static void InitStyleClassificationCache<TStyleEnum, TCodeStyle>(Dictionary<string, StyleBase> styleCache, List<TCodeStyle> styles)
@@ -504,7 +521,7 @@ namespace Codist.SyntaxHighlight
 				try {
 					var formats = _ClassificationFormatMap.CurrentPriorityOrder;
 					KeyValuePair<string, ResourceDictionary> newStyle;
-					$"Refresh priority {formats.Count}".Log();
+					$"Refresh priority {formats.Count}".Log(LogCategory.FormatStore);
 					_PropertiesCache.Clear();
 					foreach (var item in formats) {
 						if (item.IsFormattableClassificationType()
@@ -517,7 +534,7 @@ namespace Codist.SyntaxHighlight
 							if (Highlight(item, out newStyle) != FormatChanges.None) {
 								p = newStyle.Value.MergeFormatProperties(p);
 							}
-							$"[{_Category}] refresh classification {item.Classification} ({p.Print()})".Log();
+							$"[{_Category}] refresh classification {item.Classification} ({p.Print()})".Log(LogCategory.FormatStore);
 							_ClassificationFormatMap.SetTextProperties(item, p);
 							_PropertiesCache[item] = p;
 						}
@@ -532,7 +549,7 @@ namespace Codist.SyntaxHighlight
 
 			public void Apply() {
 				var formats = _ClassificationFormatMap.CurrentPriorityOrder;
-				$"[{_Category}] apply priority {formats.Count}".Log();
+				$"[{_Category}] apply priority {formats.Count}".Log(LogCategory.FormatStore);
 				var newStyles = new List<KeyValuePair<string, ResourceDictionary>>(7);
 				foreach (var item in formats) {
 					if (item.IsFormattableClassificationType()
@@ -551,10 +568,10 @@ namespace Codist.SyntaxHighlight
 				_PropertiesCache.Clear();
 				LockEvent(nameof(Apply));
 				_EditorFormatMap.BeginBatchUpdate();
-				$"[{_Category}] update formats {newStyles.Count}".Log();
+				$"[{_Category}] update formats {newStyles.Count}".Log(LogCategory.FormatStore);
 				try {
 					foreach (var item in newStyles) {
-						$"[{_Category}] apply format {item.Key}".Log();
+						$"[{_Category}] apply format {item.Key}".Log(LogCategory.FormatStore);
 						_EditorFormatMap.SetProperties(item.Key, item.Value);
 					}
 					WorkaroundUnnecessaryCodeDiagnostic(_EditorFormatMap);
@@ -599,7 +616,7 @@ namespace Codist.SyntaxHighlight
 						}
 					}
 					else {
-						$"[{_Category}] update theme after config change".Log();
+						$"[{_Category}] update theme after config change".Log(LogCategory.FormatStore);
 						DetectThemeColorCompatibilityWithBackground();
 						Apply();
 					}
@@ -629,7 +646,7 @@ namespace Codist.SyntaxHighlight
 				try {
 					var currentTypeface = _ClassificationFormatMap.DefaultTextProperties.Typeface;
 					if (AreTypefaceEqual(currentTypeface, _DefaultTypeface) == false) {
-						$"[{_Category}] default font changed {_DefaultTypeface?.FontFamily.Source}->{currentTypeface.FontFamily.Source}".Log();
+						$"[{_Category}] default font changed {_DefaultTypeface?.FontFamily.Source}->{currentTypeface.FontFamily.Source}".Log(LogCategory.FormatStore);
 						if (_Lock == 1) {
 							UpdateDefaultTypeface(currentTypeface);
 							DefaultTextPropertiesChanged?.Invoke(this, new EventArgs<TextFormattingRunProperties>(_ClassificationFormatMap.DefaultTextProperties));
@@ -690,7 +707,7 @@ namespace Codist.SyntaxHighlight
 					_PendingChange.PendEvent(EventKind.EditorFormat);
 				}
 				if (_Lock != 0) {
-					$"[{_Category}] format changed {String.Join(", ", e.ChangedItems)}, blocked by {String.Join(".", _Formatters)}".Log();
+					$"[{_Category}] format changed {String.Join(", ", e.ChangedItems)}, blocked by {String.Join(".", _Formatters)}".Log(LogCategory.FormatStore);
 					return;
 				}
 
@@ -701,7 +718,7 @@ namespace Codist.SyntaxHighlight
 				var currentBg = _EditorFormatMap.GetBackgroundColor();
 				var bgChanged = _ViewBackground != currentBg;
 				if (bgChanged) {
-					$"[{_Category}] background changed {_ViewBackground.ToHexString()}->{currentBg.ToHexString()}".Log();
+					$"[{_Category}] background changed {_ViewBackground.ToHexString()}->{currentBg.ToHexString()}".Log(LogCategory.FormatStore);
 					if (_Category == Constants.CodeText) {
 						bgInverted = InvertColorOnBackgroundInverted(currentBg);
 					}
@@ -711,7 +728,7 @@ namespace Codist.SyntaxHighlight
 				var currentFontSize = _ClassificationFormatMap.DefaultTextProperties.FontRenderingEmSize;
 				var fsChanged = _DefaultFontSize != currentFontSize;
 				if (fsChanged) {
-					$"[{_Category}] font size changed {_DefaultFontSize}->{currentFontSize}".Log();
+					$"[{_Category}] font size changed {_DefaultFontSize}->{currentFontSize}".Log(LogCategory.FormatStore);
 					_DefaultFontSize = currentFontSize;
 					_PendingChange.PendEvent(EventKind.DefaultText);
 				}
@@ -719,7 +736,7 @@ namespace Codist.SyntaxHighlight
 				// ChangedItems collection is dynamic
 				// cache the changes to prevent it from changing during the enumerating procedure
 				var changedItems = e.ChangedItems.ToList();
-				$"[{_Category}] editor format changed: {changedItems.Count}".Log();
+				$"[{_Category}] editor format changed: {changedItems.Count}".Log(LogCategory.FormatStore);
 				foreach (var item in changedItems) {
 					HighlightRecursive(__GetClassificationType(item), dedup, newStyles);
 				}
@@ -733,7 +750,7 @@ namespace Codist.SyntaxHighlight
 					}
 				}
 
-				$"[{_Category}] overridden {newStyles.Count} styles".Log();
+				$"[{_Category}] overridden {newStyles.Count} styles".Log(LogCategory.FormatStore);
 				try {
 					if (newStyles.Count != 0) {
 						if (_EditorFormatMap.IsInBatchUpdate == false) {
@@ -754,7 +771,7 @@ namespace Codist.SyntaxHighlight
 					if (startedBatch) {
 						_EditorFormatMap.EndBatchUpdate();
 					}
-					$"[{_Category}] after format mapping changes".Log();
+					$"[{_Category}] after format mapping changes".Log(LogCategory.FormatStore);
 					if (bgInverted) {
 						Apply();
 					}
@@ -798,7 +815,7 @@ namespace Codist.SyntaxHighlight
 			}
 
 			void InvertColorBrightness() {
-				$"[{_Category}] invert color brightness".Log();
+				$"[{_Category}] invert color brightness".Log(LogCategory.FormatStore);
 				foreach (var item in GetStyles()) {
 					item.Value.InvertBrightness = true;
 				}
@@ -853,14 +870,14 @@ namespace Codist.SyntaxHighlight
 				var changes = FormatChanges.None;
 				if (_Traces.TryGetValue(c, out var trace) == false) {
 					if (style == null) {
-						$"[{_Category}] skipped format {c}".Log();
+						$"[{_Category}] skipped format {c}".Log(LogCategory.FormatStore);
 						newStyle = default;
 						goto EXIT;
 					}
 					trace = new ChangeTrace(current);
 					changes = trace.Change(current, style, this);
 					if (changes != FormatChanges.None || trace.HasOriginalStyle) {
-						$"[{_Category}] trace format <{c}> ({trace})".Log();
+						$"[{_Category}] trace format <{c}> ({trace})".Log(LogCategory.FormatStore);
 						_Traces[c] = trace;
 					}
 				}
@@ -869,7 +886,8 @@ namespace Codist.SyntaxHighlight
 					// thus we should update the trace
 					changes = trace.Change(current, style, this);
 					if (changes != FormatChanges.None) {
-						$"[{_Category}] update format trace <{c}> ({trace})".Log();
+						$"[{_Category}] update format trace <{c}> ({trace})".Log(LogCategory.FormatStore);
+						_Traces[c] = new ChangeTrace(current);
 					}
 					else {
 						newStyle = default;
@@ -877,7 +895,7 @@ namespace Codist.SyntaxHighlight
 					}
 				}
 				else {
-					$"[{_Category}] change format trace <{c}> ({trace})".Log();
+					$"[{_Category}] change format trace <{c}> ({trace})".Log(LogCategory.FormatStore);
 					changes = trace.Change(current, style, this);
 				}
 				newStyle = new KeyValuePair<string, ResourceDictionary>(c, current);
@@ -1039,6 +1057,7 @@ namespace Codist.SyntaxHighlight
 					}
 					if (PendingEvents.MatchFlags(EventKind.Apply)) {
 						FiringEvent = EventKind.Apply;
+						PendingEvents = EventKind.None;
 						highlighter.Apply();
 					}
 					if (PendingEvents.MatchFlags(EventKind.Refresh)) {
@@ -1295,7 +1314,7 @@ namespace Codist.SyntaxHighlight
 
 				void ChangeTextDecorations(ResourceDictionary current, StyleBase style, ref FormatChanges c) {
 					TextDecorationCollection td;
-					if (style?.HasLine == true) {
+					if (style?.HasLineStyle == true) {
 						var t = style.MakeTextDecorations();
 						if (t != (td = current.GetTextDecorations())
 							&& (td == null || t?.SequenceEqual(td) != true)) {

@@ -337,6 +337,15 @@ namespace Codist.SyntaxHighlight
 		[ClassificationType(ClassificationTypeNames = Constants.CSharpPrivateMemberName)]
 		[Description("Name of private member, inheriting from formal language")]
 		PrivateMemberName,
+		[Category(Constants.SyntaxCategory.Member)]
+		[ClassificationType(ClassificationTypeNames = Constants.CSharpExtensionMemberName)]
+		[BaseDefinition(Constants.CodeIdentifier)]
+		[Order(After = Constants.CodeMethodName)]
+		[Order(After = Constants.CodePropertyName)]
+		[Order(After = Constants.CSharpMethodName)]
+		[Order(After = Constants.CSharpPropertyName)]
+        [Description("Name of extension methods or properties")]
+		ExtensionMemberName,
 		[Category(Constants.SyntaxCategory.Declaration)]
 		[ClassificationType(ClassificationTypeNames = Constants.CSharpLocalDeclarationName)]
 		[BaseDefinition(Constants.CSharpLocalVariableName)]
@@ -466,6 +475,7 @@ namespace Codist.SyntaxHighlight
 		[BaseDefinition(Constants.CSharpMethodName)]
 		[BaseDefinition(Constants.CSharpStaticMemberName)]
 		[BaseDefinition(Constants.CodeExtensionMethodName)]
+		[BaseDefinition(Constants.CSharpExtensionMemberName)]
 		[Description("Name of extension method, inheriting from Method Name and Static Member Name")]
 		ExtensionMethodName,
 		[Category(Constants.SyntaxCategory.Member)]
@@ -521,6 +531,39 @@ namespace Codist.SyntaxHighlight
 		[ClassificationType(ClassificationTypeNames = Constants.XmlDocCData)]
 		[Description("CData content of XML Documentation")]
 		XmlDocCData,
+
+		[Category(Constants.SyntaxCategory.Url)]
+		[ClassificationType(ClassificationTypeNames = Constants.UrlScheme)]
+		[BaseDefinition(Constants.CodeUrl)]
+		UrlScheme,
+		[Category(Constants.SyntaxCategory.Url)]
+		[ClassificationType(ClassificationTypeNames = Constants.UrlHost)]
+		[BaseDefinition(Constants.CodeUrl)]
+		UrlHost,
+		[Category(Constants.SyntaxCategory.Url)]
+		[ClassificationType(ClassificationTypeNames = Constants.UrlCredential)]
+		[BaseDefinition(Constants.CodeUrl)]
+		UrlCredential,
+		[Category(Constants.SyntaxCategory.Url)]
+		[ClassificationType(ClassificationTypeNames = Constants.UrlFile)]
+		[BaseDefinition(Constants.CodeUrl)]
+		UrlFile,
+		[Category(Constants.SyntaxCategory.Url)]
+		[ClassificationType(ClassificationTypeNames = Constants.UrlQueryName)]
+		[BaseDefinition(Constants.CodeUrl)]
+		UrlQueryName,
+		[Category(Constants.SyntaxCategory.Url)]
+		[ClassificationType(ClassificationTypeNames = Constants.UrlQueryValue)]
+		[BaseDefinition(Constants.CodeUrl)]
+		UrlQueryValue,
+		[Category(Constants.SyntaxCategory.Url)]
+		[ClassificationType(ClassificationTypeNames = Constants.UrlPunctuation)]
+		[BaseDefinition(Constants.CodeUrl)]
+		UrlPunctuation,
+		[Category(Constants.SyntaxCategory.Url)]
+		[ClassificationType(ClassificationTypeNames = Constants.UrlFragment)]
+		[BaseDefinition(Constants.CodeUrl)]
+		UrlFragment,
 	}
 
 	enum XmlStyleTypes

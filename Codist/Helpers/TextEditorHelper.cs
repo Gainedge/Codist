@@ -248,6 +248,34 @@ namespace Codist
 			}
 			return -1;
 		}
+		public static SnapshotSpan TrimWhitespace(this SnapshotSpan span) {
+			if (span.Length == 0) {
+				return span;
+			}
+			var snapshot = span.Snapshot;
+			var start = span.Start.Position;
+			var end = span.End.Position;
+			bool trim = false;
+			int i;
+			for (i = start; i < end; i++) {
+				if (snapshot[i].IsCodeWhitespaceChar() == false) {
+					start = i;
+					trim = true;
+					break;
+				}
+			}
+			if (i == end) {
+				return new SnapshotSpan(snapshot, start, 0);
+			}
+			for (i = end - 1; i > start; i++) {
+				if (snapshot[i].IsCodeWhitespaceChar() == false) {
+					end = i;
+					trim = true;
+					break;
+				}
+			}
+			return trim ? new SnapshotSpan(snapshot, start, end - start) : span;
+		}
 		#endregion
 
 		#region Classification
@@ -1047,7 +1075,7 @@ namespace Codist
 		[SuppressMessage("Usage", Suppression.VSTHRD010, Justification = Suppression.CheckedInCaller)]
 		static void InternalOpenFile(string file, Action<VsTextView> action) {
 			try {
-				using (new NewDocumentStateScope(Keyboard.Modifiers == ModifierKeys.Shift ? __VSNEWDOCUMENTSTATE.NDS_Unspecified : __VSNEWDOCUMENTSTATE.NDS_Provisional, Microsoft.VisualStudio.VSConstants.NewDocumentStateReason.Navigation)) {
+				using (new NewDocumentStateScope(UIHelper.IsShiftDown ? __VSNEWDOCUMENTSTATE.NDS_Unspecified : __VSNEWDOCUMENTSTATE.NDS_Provisional, Microsoft.VisualStudio.VSConstants.NewDocumentStateReason.Navigation)) {
 					VsShellUtilities.OpenDocument(ServiceProvider.GlobalProvider, file, __ViewKindCodeGuid, out var hierarchy, out var itemId, out var windowFrame, out var view);
 					action?.Invoke(view);
 				}

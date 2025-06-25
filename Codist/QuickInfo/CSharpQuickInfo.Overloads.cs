@@ -1,27 +1,22 @@
 ﻿using System;
 using System.Linq;
-using System.Threading;
-using CLR;
-using Codist.Controls;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using R = Codist.Properties.Resources;
 
 namespace Codist.QuickInfo
 {
 	partial class CSharpQuickInfo
 	{
-		static void ShowOverloadsInfo(InfoContainer qiContent, SyntaxNode node, IMethodSymbol method, SemanticModel semanticModel, CancellationToken cancellationToken) {
-			var overloads = node.Kind().CeqAny(SyntaxKind.MethodDeclaration, SyntaxKind.ConstructorDeclaration)
-				? method.ContainingType.GetMembers(method.Name)
-				: semanticModel.GetMemberGroup(node, cancellationToken);
+		static void ShowOverloadsInfo(Context context, IMethodSymbol method) {
+			var overloads = method.ContainingType.GetMembers(method.Name);
 			if (overloads.Length < 2) {
 				return;
 			}
-			ShowOverloadsInfo(qiContent, method, overloads);
+			ShowOverloadsInfo(context.Container, method, overloads);
 		}
 
-		static void ShowOverloadsInfo(InfoContainer qiContent, IMethodSymbol method, System.Collections.Immutable.ImmutableArray<ISymbol> overloads) {
+		static void ShowOverloadsInfo(InfoContainer container, IMethodSymbol method, System.Collections.Immutable.ImmutableArray<ISymbol> overloads) {
+			const int MaxOverloadCount = 64;
 			var re = method.MethodKind == MethodKind.ReducedExtension;
 			method = method.OriginalDefinition;
 			if (re) {
@@ -32,7 +27,8 @@ namespace Codist.QuickInfo
 			var rt = method.ReturnType;
 			var mps = method.Parameters;
 			var ct = method.ContainingType;
-			var overloadInfo = new ThemedTipDocument().AppendTitle(IconIds.MethodOverloads, R.T_MethodOverload);
+			var overloadInfo = new GeneralInfoBlock(IconIds.MethodOverloads, R.T_MethodOverload);
+			var count = 0;
 			foreach (var overload in overloads) {
 				var om = overload.OriginalDefinition as IMethodSymbol;
 				if (om == null) {
@@ -50,14 +46,18 @@ namespace Codist.QuickInfo
 				if (om.Equals(method)) {
 					continue;
 				}
-				var t = new ThemedTipText();
+				if (++count > MaxOverloadCount) {
+					overloadInfo.Add(new BlockItem().Append(R.T_TooManyOverloads.Replace("<N>", overloads.Length.ToText())));
+					break;
+				}
+				var t = new BlockItem() { IconId = overload.GetImageId() };
 				var st = om.IsStatic;
 				if (st) {
-					t.Append("static ".Render((st == mst ? SymbolFormatter.SemiTransparent : SymbolFormatter.Instance).Keyword));
+					t.Append("static ", (st == mst ? SymbolFormatter.SemiTransparent : SymbolFormatter.Instance).Keyword);
 				}
 				var mod = om.GetSpecialMethodModifier();
 				if (mod != null) {
-					t.Append(mod.Render((mod == mmod ? SymbolFormatter.SemiTransparent : SymbolFormatter.Instance).Keyword));
+					t.Append(mod, (mod == mmod ? SymbolFormatter.SemiTransparent : SymbolFormatter.Instance).Keyword);
 				}
 				if (om.MethodKind != MethodKind.Constructor) {
 					t.AddSymbol(om.ReturnType, false, CodeAnalysisHelper.AreEqual(om.ReturnType, rt, false) ? SymbolFormatter.SemiTransparent : __SymbolFormatter).Append(" ");
@@ -89,13 +89,13 @@ namespace Codist.QuickInfo
 							mp = null;
 						}
 					}
-					t.AddSymbolDisplayParts(op.ToDisplayParts(CodeAnalysisHelper.InTypeOverloadDisplayFormat), mp == null ? __SymbolFormatter : SymbolFormatter.SemiTransparent, -1);
+					t.AddSymbolDisplayParts(op.ToDisplayParts(CodeAnalysisHelper.InTypeOverloadDisplayFormat), mp == null ? __SymbolFormatter : SymbolFormatter.SemiTransparent);
 				}
 				t.Append(")", SymbolFormatter.SemiTransparent.PlainText);
-				overloadInfo.Append(new ThemedTipParagraph(overload.GetImageId(), t));
+				overloadInfo.Add(t);
 			}
-			if (overloadInfo.ParagraphCount > 1) {
-				qiContent.Add(overloadInfo);
+			if (overloadInfo.HasItem) {
+				container.Add(overloadInfo);
 			}
 		}
 	}

@@ -293,7 +293,7 @@ namespace Codist.Options
 		{
 			readonly OptionBox<QuickInfoOptions> _DisableUntilShift, _CtrlSuppress, _Selection, _Color;
 			readonly OptionBox<QuickInfoOptions> _OverrideDefaultDocumentation, _DocumentationFromBaseType, _DocumentationFromInheritDoc, _TextOnlyDoc, _OrdinaryDoc, _ReturnsDoc, _RemarksDoc, _ExceptionDoc, _SeeAlsoDoc, _ExampleDoc, _AlternativeStyle, _ContainingType, _CodeFontForXmlDocSymbol;
-			readonly OptionBox<QuickInfoOptions> _NodeRange, _Attributes, _BaseType, _Declaration, _SymbolLocation, _Interfaces, _NumericValues, _String, _Parameter, _InterfaceImplementations, _TypeParameters, _NamespaceTypes, _MethodOverload, _InterfaceMembers, _EnumMembers;
+			readonly OptionBox<QuickInfoOptions> _NodeRange, _Attributes, _BaseType, _Declaration, _SymbolLocation, _Interfaces, _NumericValues, _String, _Parameter, _InterfaceImplementations, _TypeParameters, _NamespaceTypes, _MethodOverload, _InterfaceMembers, _EnumMembers, _SymbolReassignment, _ControlFlow, _DataFlow, _SyntaxNodePath;
 			readonly OptionBox<QuickInfoOptions>[] _Options;
 			readonly IntegerBox _MaxWidth, _MaxHeight, _DisplayDelay;
 			readonly ColorButton _BackgroundButton;
@@ -401,18 +401,27 @@ namespace Codist.Options
 					_NumericValues = o.CreateOptionBox(QuickInfoOptions.NumericValues, UpdateConfig, R.OT_NumericForms)
 						.SetLazyToolTip(() => R.OT_NumericFormsTip),
 					_String = o.CreateOptionBox(QuickInfoOptions.String, UpdateConfig, R.OT_StringInfo)
-						.SetLazyToolTip(() => R.OT_StringInfoTip)
+						.SetLazyToolTip(() => R.OT_StringInfoTip),
+					_SymbolReassignment = o.CreateOptionBox(QuickInfoOptions.SymbolReassignment, UpdateConfig, R.OT_DenoteVariableReassignment)
+						.SetLazyToolTip(() => R.OT_DenoteVariableReassignmentTip),
+
+					_ControlFlow = o.CreateOptionBox(QuickInfoOptions.ControlFlow, UpdateConfig, R.OT_ControlFlow)
+						.SetLazyToolTip(() => R.OT_ControlFlowTip),
+					_DataFlow = o.CreateOptionBox(QuickInfoOptions.DataFlow, UpdateConfig, R.OT_DataFlow)
+						.SetLazyToolTip(() => R.OT_DataFlowTip),
+					_SyntaxNodePath = o.CreateOptionBox(QuickInfoOptions.SyntaxNodePath, UpdateConfig, R.OT_SyntaxNodePath)
+						.SetLazyToolTip(() => R.OT_SyntaxNodePathTip)
 					);
 
 				_MaxHeight.ValueChanged += UpdateQuickInfoValue;
 				_MaxWidth.ValueChanged += UpdateQuickInfoValue;
 				_DisplayDelay.ValueChanged += UpdateQuickInfoValue;
-				_Options = new[] { _DisableUntilShift, _CtrlSuppress, _Selection, _Color, _OverrideDefaultDocumentation, _DocumentationFromBaseType, _DocumentationFromInheritDoc, _TextOnlyDoc, _ReturnsDoc, _RemarksDoc, _ExceptionDoc, _SeeAlsoDoc, _ExampleDoc, _AlternativeStyle, _ContainingType, _CodeFontForXmlDocSymbol, _Attributes, _BaseType, _Declaration, _EnumMembers, _SymbolLocation, _Interfaces, _NumericValues, _String, _Parameter, _InterfaceImplementations, _TypeParameters, /*_NamespaceTypes, */_MethodOverload, _InterfaceMembers };
+				_Options = new[] { _DisableUntilShift, _CtrlSuppress, _Selection, _Color, _OverrideDefaultDocumentation, _DocumentationFromBaseType, _DocumentationFromInheritDoc, _TextOnlyDoc, _ReturnsDoc, _RemarksDoc, _ExceptionDoc, _SeeAlsoDoc, _ExampleDoc, _AlternativeStyle, _ContainingType, _CodeFontForXmlDocSymbol, _Attributes, _BaseType, _Declaration, _EnumMembers, _SymbolLocation, _Interfaces, _NumericValues, _String, _Parameter, _InterfaceImplementations, _TypeParameters, /*_NamespaceTypes, */_MethodOverload, _InterfaceMembers, _SymbolReassignment, _ControlFlow, _DataFlow, _SyntaxNodePath };
 				foreach (var item in new[] { _DocumentationFromBaseType, _DocumentationFromInheritDoc, _TextOnlyDoc, _OrdinaryDoc, _ReturnsDoc, _RemarksDoc, _ExceptionDoc, _SeeAlsoDoc, _ExampleDoc, _ContainingType, _CodeFontForXmlDocSymbol }) {
 					item.WrapMargin(SubOptionMargin);
 				}
 				_OverrideDefaultDocumentation.BindDependentOptionControls(_DocumentationFromBaseType, _DocumentationFromInheritDoc, _TextOnlyDoc, _OrdinaryDoc, _ReturnsDoc, _RemarksDoc, _ExceptionDoc, _SeeAlsoDoc, _ExampleDoc, _ContainingType, _CodeFontForXmlDocSymbol);
-				_BackgroundButton.DefaultColor = () => ThemeHelper.ToolTipBackgroundBrush.Color;
+				_BackgroundButton.DefaultColor = () => ThemeCache.ToolTipBackgroundBrush.Color;
 				_BackgroundButton.Color = Config.Instance.QuickInfo.BackColor;
 			}
 
@@ -768,7 +777,7 @@ namespace Codist.Options
 		sealed class PageControl : OptionsPageContainer
 		{
 			readonly OptionBox<BuildOptions> _BuildVsixAutoIncrement;
-			readonly OptionBox<DeveloperOptions> _ShowDocumentContentType, _ShowSyntaxClassificationInfo;
+			readonly OptionBox<DeveloperOptions> _ShowActiveWindowProperties, _ShowSyntaxClassificationInfo, _OpenActivityLog;
 
 			public PageControl(OptionsPage page) : base(page) {
 				AddPage(R.OT_General,
@@ -776,14 +785,17 @@ namespace Codist.Options
 
 					new TitleBox(R.OT_SyntaxDiagnostics),
 					new DescriptionBox(R.OT_SyntaxDiagnosticsNote),
-					_ShowDocumentContentType = Config.Instance.DeveloperOptions.CreateOptionBox(DeveloperOptions.ShowWindowInformer, UpdateConfig, R.OT_AddShowActiveWindowProperties)
-						.SetLazyToolTip(() => R.OT_AddShowActiveWindowPropertiesTip),
 					_ShowSyntaxClassificationInfo = Config.Instance.DeveloperOptions.CreateOptionBox(DeveloperOptions.ShowSyntaxClassificationInfo, UpdateConfig, R.OT_AddShowSyntaxClassifcationInfo)
 						.SetLazyToolTip(() => R.OT_AddShowSyntaxClassifcationInfoTip),
 
 					new TitleBox(R.OT_Build),
 					_BuildVsixAutoIncrement = Config.Instance.BuildOptions.CreateOptionBox(BuildOptions.VsixAutoIncrement, UpdateConfig, R.OT_AutoIncrementVsixVersion)
-						.SetLazyToolTip(() => R.OT_AutoIncrementVsixVersionTip)
+						.SetLazyToolTip(() => R.OT_AutoIncrementVsixVersionTip),
+
+					new TitleBox(R.OT_VisualStudio),
+					_ShowActiveWindowProperties = Config.Instance.DeveloperOptions.CreateOptionBox(DeveloperOptions.ShowWindowInformer, UpdateConfig, R.OT_AddShowActiveWindowProperties)
+						.SetLazyToolTip(() => R.OT_AddShowActiveWindowPropertiesTip),
+					_OpenActivityLog = Config.Instance.DeveloperOptions.CreateOptionBox(DeveloperOptions.ShowActivityLog, UpdateConfig, R.OT_AddOpenActivityLog)
 					);
 			}
 
@@ -1403,7 +1415,7 @@ namespace Codist.Options
 	}
 
 	[Guid("496442FC-A36A-4C7A-B312-5D84B2631565")]
-	sealed class AutoSurroundSelectionPage : OptionsPage
+	sealed class AutoPunctuationPage : OptionsPage
 	{
 		PageControl _Child;
 
@@ -1412,28 +1424,42 @@ namespace Codist.Options
 
 		sealed class PageControl : OptionsPageContainer
 		{
-			readonly OptionBox<AutoSurroundSelectionOptions> _TrimSelection;
+			readonly OptionBox<PunctuationOptions> _TrimSelection, _MethodParentheses, _ShowParameterInfo;
 
 			public PageControl(OptionsPage page) : base(page) {
+				var options = Config.Instance.PunctuationOptions;
 				AddPage(R.OT_General,
 					new Note(R.OT_AutoSurroundSelectionNote),
 
-					_TrimSelection = Config.Instance.AutoSurroundSelectionOptions.CreateOptionBox(AutoSurroundSelectionOptions.Trim, UpdateConfig, R.OT_TrimBeforeSurround)
+					new TitleBox(R.OT_AllLanguages),
+					options.CreateOptionBox(PunctuationOptions.Trim, UpdateConfig, R.OT_TrimBeforeSurround)
 						.SetLazyToolTip(() => R.OT_TrimBeforeSurroundTip)
+						.Set(ref _TrimSelection),
+
+					new TitleBox(R.OT_CSharp),
+					options.CreateOptionBox(PunctuationOptions.MethodParentheses, UpdateConfig, R.OT_AppendParenthesesOnMethodName).Set(ref _MethodParentheses),
+					options.CreateOptionBox(PunctuationOptions.ShowParameterInfo, UpdateConfig, R.OT_ShowParameterInfo)
+						.SetLazyToolTip(() => R.OT_ShowParameterInfoTip)
+						.Set(ref _ShowParameterInfo)
 					);
+
+				_ShowParameterInfo.WrapMargin(SubOptionMargin);
+				_MethodParentheses.BindDependentOptionControls(_ShowParameterInfo);
 			}
 
 			protected override void LoadConfig(Config config) {
-				var o = config.AutoSurroundSelectionOptions;
+				var o = config.PunctuationOptions;
 				_TrimSelection.UpdateWithOption(o);
+				_MethodParentheses.UpdateWithOption(o);
+				_ShowParameterInfo.UpdateWithOption(o);
 			}
 
-			void UpdateConfig(AutoSurroundSelectionOptions options, bool set) {
+			void UpdateConfig(PunctuationOptions options, bool set) {
 				if (Page.IsConfigUpdating) {
 					return;
 				}
 				Config.Instance.Set(options, set);
-				Config.Instance.FireConfigChangedEvent(Features.None);
+				Config.Instance.FireConfigChangedEvent(Features.AutoSurround);
 			}
 		}
 	}

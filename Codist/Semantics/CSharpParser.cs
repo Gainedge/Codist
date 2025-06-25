@@ -139,12 +139,12 @@ namespace Codist
 
 			public void Ref() {
 				_Ref++;
-				$"Ref+ {_Ref} {_Name}".Log();
+				$"Ref+ {_Ref} {_Name}".Log(LogCategory.SyntaxHighlight);
 			}
 
 			internal void Release() {
 				if (Interlocked.Exchange(ref _Parser, null) != null) {
-					$"{_Name} tagger released".Log();
+					$"{_Name} tagger released".Log(LogCategory.SyntaxHighlight);
 					ReleaseResources();
 					_Ref = 0;
 				}
@@ -274,7 +274,7 @@ namespace Codist
 			}
 
 			void WorkspaceChanged(object sender, WorkspaceChangeEventArgs args) {
-				$"Workspace {args.Kind}: {args.DocumentId}".Log();
+				$"Workspace {args.Kind}: {args.DocumentId}".Log(LogCategory.SyntaxHighlight);
 				var parser = _Parser;
 				if (parser == null) {
 					return;
@@ -308,18 +308,18 @@ namespace Codist
 			void TextBuffer_ContentTypeChanged(object sender, ContentTypeChangedEventArgs e) {
 				if (_IsInteractiveWindow == false
 					&& e.AfterContentType.IsOfType(Constants.CodeTypes.CSharp) == false) {
-					$"ContentType changed to {e.AfterContentType.DisplayName}".Log();
+					$"ContentType changed to {e.AfterContentType.DisplayName}".Log(LogCategory.SyntaxHighlight);
 					Dispose();
 				}
 			}
 
 			public void Dispose() {
 				if (--_Ref > 0) {
-					$"Ref- {_Ref} {_Name}".Log();
+					$"Ref- {_Ref} {_Name}".Log(LogCategory.SyntaxHighlight);
 					return;
 				}
 				if (Interlocked.Exchange(ref _Parser, null) != null) {
-					$"{_Name} tagger disposed".Log();
+					$"{_Name} tagger disposed".Log(LogCategory.SyntaxHighlight);
 					ReleaseResources();
 				}
 			}
@@ -335,7 +335,7 @@ namespace Codist
 			}
 
 			void ReleaseResources() {
-				SyncHelper.CancelAndDispose(ref _ParserBreaker, false);
+				_ParserBreaker.CancelAndDispose();
 				if (_Buffer != null) {
 					UnsubscribeBufferEvents(_Buffer);
 					lock (_Container._SyncObj) {
@@ -373,7 +373,7 @@ namespace Codist
 
 			public bool Start(ITextBuffer buffer, CancellationToken cancellationToken) {
 				return Interlocked.CompareExchange(ref _State, (int)ParserState.Working, (int)ParserState.Idle) == (int)ParserState.Idle
-					&& Task.Run(() => {
+					&& !Task.Run(() => {
 						ITextSnapshot snapshot = buffer.CurrentSnapshot;
 						var workspace = Workspace.GetWorkspaceRegistration(buffer.AsTextContainer()).Workspace;
 						if (workspace == null) {
@@ -390,7 +390,7 @@ namespace Codist
 					QUIT:
 						Interlocked.CompareExchange(ref _State, (int)ParserState.Idle, (int)ParserState.Working);
 						return Task.CompletedTask;
-					}).IsCanceled == false;
+					}).IsCanceled;
 			}
 
 			async Task ParseAsync(Workspace workspace, Document document, ITextSnapshot snapshot, CancellationToken cancellationToken) {
@@ -403,7 +403,7 @@ namespace Codist
 					throw;
 				}
 				if (Interlocked.CompareExchange(ref _State, (int)ParserState.Completed, (int)ParserState.Working) == (int)ParserState.Working) {
-					$"{snapshot.TextBuffer.GetDocument().GetDocId()} end parsing {snapshot.Version} on thread {Thread.CurrentThread.ManagedThreadId}".Log();
+					$"{snapshot.TextBuffer.GetDocument().GetDocId()} end parsing {snapshot.Version} on thread {Thread.CurrentThread.ManagedThreadId}".Log(LogCategory.SyntaxHighlight);
 					_Callback(new SemanticState(workspace, model, snapshot, document));
 					Interlocked.CompareExchange(ref _State, (int)ParserState.Idle, (int)ParserState.Completed);
 				}

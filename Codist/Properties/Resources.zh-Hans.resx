@@ -2855,4 +2855,98 @@ Ctrl: 将下划线分隔的单词转换为首字母大写的单词</value>
   <data name="CMD_MakeReadonly" xml:space="preserve">
     <value>改成只读字段</value>
   </data>
+  <data name="T_TupleElementN" xml:space="preserve">
+    <value>元组元素 &lt;N&gt;</value>
+  </data>
+  <data name="OT_DenoteVariableReassignment" xml:space="preserve">
+    <value>变量再赋值</value>
+  </data>
+  <data name="OT_DenoteVariableReassignmentTip" xml:space="preserve">
+    <value>显示变量或参数在声明初始化后是否被再赋值</value>
+  </data>
+  <data name="T_NoReassignment" xml:space="preserve">
+    <value>未再赋值</value>
+  </data>
+  <data name="T_Reassigned" xml:space="preserve">
+    <value>再赋值</value>
+  </data>
+  <data name="OT_StyleVarAsType" xml:space="preserve">
+    <value>使用实际类型的样式突出显示“var”关键字</value>
+  </data>
+  <data name="T_ForEachOnArrayWillBeOptimized" xml:space="preserve">
+    <value>数组遍历将在运行时被优化</value>
+  </data>
+  <data name="T_CapturedVariable" xml:space="preserve">
+    <value>捕获的变量：</value>
+  </data>
+  <data name="OT_ControlFlow" xml:space="preserve">
+    <value>控制流统计信息</value>
+  </data>
+  <data name="OT_ControlFlowTip" xml:space="preserve">
+    <value>统计语法结构中出现的return、throw、yield等语句的数量</value>
+  </data>
+  <data name="OT_SyntaxNodePath" xml:space="preserve">
+    <value>语法节点结构</value>
+  </data>
+  <data name="OT_SyntaxNodePathTip" xml:space="preserve">
+    <value>显示包含当前位置的语法节点类型（从小到大）</value>
+  </data>
+  <data name="OT_DataFlow" xml:space="preserve">
+    <value>数据流统计信息</value>
+  </data>
+  <data name="OT_DataFlowTip" xml:space="preserve">
+    <value>显示语法结构中读写的变量</value>
+  </data>
+  <data name="T_DataFlow" xml:space="preserve">
+    <value>数据流：</value>
+  </data>
+  <data name="T_ControlFlow" xml:space="preserve">
+    <value>控制流：</value>
+  </data>
+  <data name="T_ConditionalBranch" xml:space="preserve">
+    <value>条件分支：</value>
+  </data>
+  <data name="T_SyntaxPath" xml:space="preserve">
+    <value>语法结构路径：</value>
+  </data>
+  <data name="CMDT_FindImplementations" xml:space="preserve">
+    <value>搜索当前接口类或成员的实现
+Ctrl: 仅列出直接实现接口的类</value>
+  </data>
+  <data name="CMD_WebSearchWithSymbolName" xml:space="preserve">
+    <value>联网搜索符号名称</value>
+  </data>
+  <data name="CMDT_WebSearchWithSymbolName" xml:space="preserve">
+    <value>Shift: 以符号的完全限定名称搜索</value>
+  </data>
+  <data name="OT_AddOpenActivityLog" xml:space="preserve">
+    <value>添加“打开 ActivityLog.xml 文件”命令到文件菜单</value>
+  </data>
+  <data name="OT_VisualStudio" xml:space="preserve">
+    <value>Visual Studio</value>
+  </data>
+  <data name="T_NothingInterestingInActivityLog" xml:space="preserve">
+    <value>ActivityLog.xml 文件没有什么特别的消息</value>
+  </data>
+  <data name="T_ActivityLogNotExists" xml:space="preserve">
+    <value>ActivityLog.xml 文件不存在。</value>
+  </data>
+  <data name="T_CouldNotDetermineVSDataDir" xml:space="preserve">
+    <value>无法确定 Visual Studio 的版本目录。</value>
+  </data>
+  <data name="CMD_QuickInfo" xml:space="preserve">
+    <value>显示代码提示...</value>
+  </data>
+  <data name="T_TooManyOverloads" xml:space="preserve">
+    <value>重载方法过多（&lt;N&gt;），剩余的不再显示</value>
+  </data>
+  <data name="OT_AppendParenthesesOnMethodName" xml:space="preserve">
+    <value>自动完成方法名称后附加括号</value>
+  </data>
+  <data name="OT_ShowParameterInfo" xml:space="preserve">
+    <value>显示参数信息</value>
+  </data>
+  <data name="OT_ShowParameterInfoTip" xml:space="preserve">
+    <value>在自动附加括号后，显示方法的参数信息</value>
+  </data>
 </root>

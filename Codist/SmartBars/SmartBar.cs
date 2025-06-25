@@ -140,13 +140,13 @@ namespace Codist.SmartBars
 		static ContextMenu SetupContextMenu(Button btn) {
 			var m = new ContextMenu {
 				Resources = SharedDictionaryManager.ContextMenu,
-				Foreground = ThemeHelper.ToolWindowTextBrush,
+				Foreground = ThemeCache.ToolWindowTextBrush,
 				IsEnabled = true,
 				PlacementTarget = btn,
 				Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
 				IsOpen = true
 			};
-			m.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
+			m.SetBackgroundForCrispImage(ThemeCache.TitleBackgroundColor);
 			return m;
 		}
 
@@ -165,7 +165,7 @@ namespace Codist.SmartBars
 		async Task CreateToolBarAsync(CancellationToken cancellationToken) {
 			await SyncHelper.SwitchToMainThreadAsync(cancellationToken);
 			while ((Mouse.LeftButton == MouseButtonState.Pressed
-				|| Keyboard.Modifiers.HasAnyFlag(ModifierKeys.Shift))
+				|| UIHelper.IsShiftDown)
 				&& cancellationToken.IsCancellationRequested == false) {
 				// postpone the even handler until the left mouse button and keyboard modifiers are released
 				await Task.Delay(100, cancellationToken);
@@ -466,7 +466,7 @@ namespace Codist.SmartBars
 				BorderThickness = WpfHelper.TinyMargin;
 				Content = VsImageHelper.GetImage(imageId, (int)(VsImageHelper.DefaultIconSize * bar.View.ZoomFactor())).WrapMargin(WpfHelper.SmallMargin);
 				this.InheritStyle<Button>(SharedDictionaryManager.ThemedControls);
-				this.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
+				this.SetBackgroundForCrispImage(ThemeCache.TitleBackgroundColor);
 				Click += CommandButton_Click;
 				MouseRightButtonUp += CommandButton_MouseRightButtonUp;
 			}

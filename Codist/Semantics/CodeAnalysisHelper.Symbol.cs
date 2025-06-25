@@ -34,23 +34,21 @@ namespace Codist
 			if ((k = node.Kind()) == SyntaxKind.AttributeArgument) {
 				s = semanticModel.GetSymbolInfo(((AttributeArgumentSyntax)node).Expression, cancellationToken).Symbol;
 			}
-			else if (node is SimpleBaseTypeSyntax || k == SyntaxKind.TypeConstraint) {
+			else if (node is SimpleBaseTypeSyntax
+				|| k == SyntaxKind.TypeConstraint) {
 				s = semanticModel.GetSymbolInfo(node.FindNode(node.Span, false, true), cancellationToken).Symbol;
 			}
 			else if (k == SyntaxKind.ArgumentList) {
 				s = semanticModel.GetSymbolInfo(node.Parent, cancellationToken).Symbol;
 			}
-			else if (node is AccessorDeclarationSyntax) {
-				s = semanticModel.GetDeclaredSymbol(node, cancellationToken);
-			}
-			else if (k.CeqAny(SyntaxKind.TypeParameter, SyntaxKind.Parameter, RecordDeclaration, RecordStructDeclaration)) {
+			else if (node is AccessorDeclarationSyntax
+				|| k.CeqAny(SyntaxKind.TypeParameter, SyntaxKind.Parameter, RecordDeclaration, RecordStructDeclaration)) {
 				s = semanticModel.GetDeclaredSymbol(node, cancellationToken);
 			}
 			if (s != null) {
 				return s;
 			}
-			node = node.Parent;
-			if (node == null) {
+			if ((node = node.Parent) is null) {
 				return null;
 			}
 			switch (node.Kind()) {
@@ -197,6 +195,41 @@ namespace Codist
 		#endregion
 
 		#region Symbol information
+		public static string GetDeclarationId(this ISymbol symbol) {
+			return DocumentationCommentId.CreateDeclarationId(symbol is IMethodSymbol m
+				&& m.MethodKind == MethodKind.ReducedExtension
+					? m.OriginalDefinition.ReducedFrom
+					: symbol.OriginalDefinition);
+		}
+
+		public static string GetQualifiedName(this ISymbol symbol) {
+			if (symbol.Name.Contains('.')) {
+				// explicit interface implementation name
+				return symbol.Name;
+			}
+			var chain = new Chain<string>(symbol.Name);
+			if (symbol is IMethodSymbol m) {
+				switch (m.MethodKind) {
+					case MethodKind.Constructor:
+					case MethodKind.StaticConstructor:
+					case MethodKind.Destructor:
+					case MethodKind.AnonymousFunction:
+						chain.Clear();
+						break;
+					case MethodKind.ReducedExtension:
+						symbol = m.ReducedFrom;
+						break;
+				}
+			}
+			while ((symbol = symbol.ContainingSymbol) != null) {
+				if (String.IsNullOrEmpty(symbol.Name)) {
+					break;
+				}
+				chain.Insert(symbol.Name);
+			}
+			return String.Join(".", chain);
+		}
+
 		public static string GetOriginalName(this ISymbol symbol) {
 			switch (symbol.Kind) {
 				case SymbolKind.Method:
@@ -272,10 +305,10 @@ namespace Codist
 				case Accessibility.Public: return symbol.Kind != SymbolKind.Namespace ? "public " : String.Empty;
 				case Accessibility.Private:
 					return symbol.GetExplicitInterfaceImplementations().Count != 0 ? String.Empty : "private ";
-				case Accessibility.ProtectedAndInternal: return "internal protected ";
+				case Accessibility.ProtectedAndInternal: return "private protected ";
 				case Accessibility.Protected: return "protected ";
 				case Accessibility.Internal: return "internal ";
-				case Accessibility.ProtectedOrInternal: return "protected internal ";
+				case Accessibility.ProtectedOrInternal: return "internal protected ";
 				default: return String.Empty;
 			}
 		}
@@ -350,7 +383,7 @@ namespace Codist
 					return ((IDiscardSymbol)symbol).Type.GetUnderlyingSymbol();
 				case SymbolKind.Method:
 					return ((IMethodSymbol)symbol).MethodKind == MethodKind.BuiltinOperator && symbol.ContainingType != null
-						? symbol.ContainingType.GetMembers(symbol.Name).FirstOrDefault()
+						? (symbol.ContainingType.GetMembers(symbol.Name).FirstOrDefault() ?? symbol)
 						: symbol;
 			}
 			return symbol;
@@ -405,6 +438,50 @@ namespace Codist
 				}
 			}
 			return null;
+		}
+
+		public static bool IsDefinedInGenericType(this ISymbol symbol) {
+			INamedTypeSymbol type;
+			while ((type = symbol.ContainingType) != null) {
+				if (type.IsUnboundGenericType) {
+					return true;
+				}
+				symbol = type;
+			}
+			return false;
+		}
+
+		public static bool HasDirectImplementationFor(this INamedTypeSymbol symbol, INamedTypeSymbol interfaceType) {
+			Func<INamedTypeSymbol, INamedTypeSymbol, bool> comparer = interfaceType.IsGenericType && interfaceType.ConstructedFrom == interfaceType
+				? (t, infSym) => t.ConstructedFrom == infSym
+				: (t, infSym) => t.MatchWith(infSym);
+			return CompareInterface(symbol, interfaceType, comparer);
+		}
+
+		public static bool IsDirectImplementationOf(this ISymbol symbol, ISymbol interfaceMember) {
+			if (interfaceMember.Kind == SymbolKind.NamedType) {
+				return symbol.Kind == SymbolKind.NamedType
+					&& ((INamedTypeSymbol)symbol).HasDirectImplementationFor((INamedTypeSymbol)interfaceMember);
+			}
+
+			Func<INamedTypeSymbol, INamedTypeSymbol, bool> comparer = interfaceMember.IsDefinedInGenericType()
+				? (t, infSym) => t.ConstructedFrom == infSym
+				: (t, infSym) => t.MatchWith(infSym);
+			return CompareInterface(symbol.ContainingType, interfaceMember.ContainingType, comparer);
+		}
+
+		static bool CompareInterface(INamedTypeSymbol symbol, INamedTypeSymbol interfaceType, Func<INamedTypeSymbol, INamedTypeSymbol, bool> comparer) {
+			foreach (var item in symbol.Interfaces) {
+				if (comparer(item, interfaceType)) {
+					return true;
+				}
+				foreach (var baseInterfaces in item.AllInterfaces) {
+					if (comparer(baseInterfaces, interfaceType)) {
+						return true;
+					}
+				}
+			}
+			return false;
 		}
 
 		public static IReadOnlyList<ISymbol> GetExplicitInterfaceImplementations(this ISymbol symbol) {
@@ -596,6 +673,9 @@ namespace Codist
 				if (m == null) {
 					return "(?)";
 				}
+				if (m.IsVararg) {
+					return "(__arglist)";
+				}
 				using (var sbr = ReusableStringBuilder.AcquireDefault(100)) {
 					var sb = sbr.Resource;
 					if (m.IsGenericMethod) {
@@ -639,6 +719,7 @@ namespace Codist
 						case RefKind.Ref: sb.Append("ref "); break;
 						case RefKind.Out: sb.Append("out "); break;
 						case RefKind.In: sb.Append("in "); break;
+						case RefReadonly: sb.Append("ref readonly "); break;
 					}
 					GetTypeName(item.Type, sb);
 					if (pn) {
@@ -658,6 +739,16 @@ namespace Codist
 							BuildTypeParametersString(sb, t.TypeParameters);
 						}
 						BuildParametersString(sb, t.DelegateInvokeMethod.Parameters, pn);
+						return sb.ToString();
+					}
+				}
+				else if (t.TypeKind == Extension) {
+					using (var sbr = ReusableStringBuilder.AcquireDefault(100)) {
+						var sb = sbr.Resource;
+						if (t.IsGenericType) {
+							BuildTypeParametersString(sb, t.TypeParameters);
+						}
+						BuildParametersString(sb, ImmutableArray.Create(t.GetExtensionParameter()), pn);
 						return sb.ToString();
 					}
 				}
@@ -741,6 +832,8 @@ namespace Codist
 						output.Append('>');
 					}
 					return;
+				case TypeKind.Error:
+					output.Append(type.Name.Length != 0 ? type.Name : "!"); return;
 			}
 			output.Append(type.GetSpecialTypeAlias() ?? type.Name);
 			var nt = type as INamedTypeSymbol;
@@ -867,6 +960,7 @@ namespace Codist
 				case TypeKind.Interface: return "interface";
 				case TypeKind.Struct: return type.IsRecord() ? "record struct" : "struct";
 				case TypeKind.TypeParameter: return "type parameter";
+				case Extension: return "extension";
 			}
 			return "type";
 		}
@@ -899,7 +993,8 @@ namespace Codist
 		}
 
 		public static bool IsBoundedGenericMethod(this IMethodSymbol method) {
-			return method?.IsGenericMethod == true && method != method.OriginalDefinition;
+			return method?.IsGenericMethod == true
+				&& method.Equals(method.OriginalDefinition) == false;
 		}
 
 		public static bool IsObjectOrValueType(this INamedTypeSymbol type) {
@@ -1050,6 +1145,27 @@ namespace Codist
 			return false;
 		}
 
+		public static bool MayHaveDocumentation(this ISymbol symbol) {
+			switch (symbol.Kind) {
+				case SymbolKind.Event:
+				case SymbolKind.Field:
+				case SymbolKind.Method:
+				case SymbolKind.Property:
+				case SymbolKind.NamedType:
+				case SymbolKind.Namespace:
+					return true;
+			}
+			return false;
+		}
+
+		public static bool IsEmpty(this SymbolInfo symbolInfo) {
+			return symbolInfo.Symbol == null && symbolInfo.CandidateReason == CandidateReason.None;
+		}
+
+		public static bool HasSymbol(this SymbolInfo symbolInfo) {
+			return symbolInfo.Symbol != null || symbolInfo.CandidateReason != CandidateReason.None;
+		}
+
 		#region Protected/Future property accessors
 		public static int GetNullableAnnotation(this ILocalSymbol local) {
 			return local != null ? NonPublicOrFutureAccessors.GetLocalNullableAnnotation(local) : 0;
@@ -1081,6 +1197,12 @@ namespace Codist
 		public static int GetNullableAnnotation(this ITypeSymbol type) {
 			return type != null ? NonPublicOrFutureAccessors.GetTypeNullableAnnotation(type) : 0;
 		}
+		public static IParameterSymbol GetExtensionParameter(this ITypeSymbol type) {
+			return type != null ? NonPublicOrFutureAccessors.GetTypeExtensionParameter(type) : null;
+		}
+		public static bool IsExtensionMember(this ISymbol symbol) {
+			return symbol.ContainingType?.GetExtensionParameter() != null;
+		}
 		public static bool IsInitOnly(this IMethodSymbol method) {
 			return method != null && NonPublicOrFutureAccessors.GetMethodIsInitOnly(method);
 		}
@@ -1107,6 +1229,12 @@ namespace Codist
 		}
 		public static IPropertySymbol GetPropertyPartialImplementationPart(this IPropertySymbol property) {
 			return property != null ? NonPublicOrFutureAccessors.GetPropertyPartialImplementationPart(property) : null;
+		}
+		public static IEventSymbol GetEventPartialDefinitionPart(this IEventSymbol ev) {
+			return ev != null ? NonPublicOrFutureAccessors.GetEventPartialDefinitionPart(ev) : null;
+		}
+		public static IEventSymbol GetEventPartialImplementationPart(this IEventSymbol ev) {
+			return ev != null ? NonPublicOrFutureAccessors.GetEventPartialImplementationPart(ev) : null;
 		}
 		public static bool IsRequired(this IPropertySymbol property) {
 			return property != null && NonPublicOrFutureAccessors.GetPropertyIsRequired(property);
@@ -1145,7 +1273,7 @@ namespace Codist
 			async Task<Project> GetProjectAsync(IAssemblySymbol a, Solution s, CancellationToken ct) {
 				foreach (var item in s.Projects) {
 					if (item.SupportsCompilation
-						&& (await item.GetCompilationAsync(ct).ConfigureAwait(false)).Assembly == a) {
+						&& (await item.GetCompilationAsync(ct).ConfigureAwait(false)).Assembly.OriginallyEquals(a)) {
 						return item;
 					}
 				}
@@ -1210,12 +1338,8 @@ namespace Codist
 		public static ImmutableArray<SyntaxReference> GetSourceReferences(this ISymbol symbol) {
 			var source = symbol.DeclaringSyntaxReferences;
 			if (symbol is IMethodSymbol m) {
-				if (m.PartialDefinitionPart != null) {
-					source = source.AddRange(m.PartialDefinitionPart.DeclaringSyntaxReferences);
-				}
-				if (m.PartialImplementationPart != null) {
-					source = source.AddRange(m.PartialImplementationPart.DeclaringSyntaxReferences);
-				}
+				AddDefinitionsForPartial(m, i => i.PartialDefinitionPart, ref source);
+				AddDefinitionsForPartial(m, i => i.PartialImplementationPart, ref source);
 				if (m.MethodKind == MethodKind.Constructor
 					&& source.Length == 0
 					&& (symbol = m.ContainingType) != null) {
@@ -1223,14 +1347,21 @@ namespace Codist
 				}
 			}
 			else if (symbol is IPropertySymbol p) {
-				if (p.GetPropertyPartialDefinitionPart() != null) {
-					source = source.AddRange(p.GetPropertyPartialDefinitionPart().DeclaringSyntaxReferences);
-				}
-				if (p.GetPropertyPartialImplementationPart() != null) {
-					source = source.AddRange(p.GetPropertyPartialImplementationPart().DeclaringSyntaxReferences);
-				}
+				AddDefinitionsForPartial(p, GetPropertyPartialDefinitionPart, ref source);
+				AddDefinitionsForPartial(p, GetPropertyPartialImplementationPart, ref source);
+			}
+			else if (symbol is IEventSymbol e) {
+                AddDefinitionsForPartial(e, GetEventPartialDefinitionPart, ref source);
+                AddDefinitionsForPartial(e, GetEventPartialImplementationPart, ref source);
 			}
 			return source;
+		}
+
+		static void AddDefinitionsForPartial<TSymbol>(TSymbol symbol, Func<TSymbol, TSymbol> partialGetter, ref ImmutableArray<SyntaxReference> locations) where TSymbol : ISymbol {
+			var s = partialGetter(symbol);
+			if (s != null) {
+				locations = locations.AddRange(s.DeclaringSyntaxReferences);
+			}
 		}
 
 		public static Location ToLocation(this SyntaxReference syntaxReference) {
@@ -1367,25 +1498,45 @@ namespace Codist
 		}
 
 		/// <summary>
-		/// <para>Matches two types with a simple rule. The following aspects must be equal.</para>
+		/// <para>Matches two types when the following aspects being equal.</para>
 		/// <list type="number">
 		/// <item>TypeKind</item>
 		/// <item>DeclaredAccessibility</item>
 		/// <item>Name</item>
 		/// <item>Arity</item>
 		/// <item>ContainingType</item>
+		/// <item>IsGenericType and if true: TypeArguments also</item>
 		/// <item>ContainingNamespace</item>
 		/// </list>
 		/// </summary>
 		public static bool MatchWith(this INamedTypeSymbol a, INamedTypeSymbol b) {
 			// todo unwrap alias
-			return ReferenceEquals(a, b) ||
-				a != null && b != null
-				&& a.TypeKind == b.TypeKind
-				&& a.Name == b.Name
-				&& a.Arity == b.Arity
-				&& a.ContainingType.MatchWith(b.ContainingType)
-				&& HasSameName(a.ContainingNamespace, b.ContainingNamespace);
+			return Op.Ceq(a, b) ||
+				(a != null && b != null
+					&& a.TypeKind == b.TypeKind
+					&& a.Name == b.Name
+					&& a.Arity == b.Arity
+					&& a.ContainingType.MatchWith(b.ContainingType)
+					&& (a.IsGenericType == b.IsGenericType || HasSameTypeArguments(a, b))
+					&& HasSameName(a.ContainingNamespace, b.ContainingNamespace)
+				);
+		}
+
+		public static bool HasSameTypeArguments(this INamedTypeSymbol typeA, INamedTypeSymbol typeB) {
+			var ta = typeA.TypeArguments;
+			var tb = typeB.TypeArguments;
+			int length;
+			ITypeSymbol aa, ab;
+			if ((length = ta.Length) != tb.Length) {
+				return false;
+			}
+			for (int i = 0; i < length; i++) {
+				if ((aa = ta[i]).TypeKind != (ab = tb[i]).TypeKind
+					|| (aa is INamedTypeSymbol na && ab is INamedTypeSymbol nb && na.MatchWith(nb) == false)) {
+					return false;
+				}
+			}
+			return true;
 		}
 
 		public static int GetHashCodeForMatch(this INamedTypeSymbol symbol) {
@@ -1397,23 +1548,44 @@ namespace Codist
 				^ (symbol.ContainingNamespace.Name.GetHashCode() * 500069));
 		}
 
+		public static bool OriginallyEquals(this ISymbol a, ISymbol b) {
+			return a is null
+				? b is null
+				: b != null && a.OriginalDefinition.Equals(b.OriginalDefinition);
+		}
+
 		public static int CompareSymbol<TSymbol>(TSymbol a, TSymbol b) where TSymbol : ISymbol {
-			var s = b.ContainingAssembly.GetSourceType().CompareTo(a.ContainingAssembly.GetSourceType());
-			if (s != 0) {
-				return s;
+			if (Op.Ceq(a, b)) {
+				return 0;
+			}
+			if (a is null) {
+				return -1;
+			}
+			if (b is null) {
+				return 1;
+			}
+			int d;
+			if (Op.IsTrue(d = b.ContainingAssembly.GetSourceType() - a.ContainingAssembly.GetSourceType())) {
+				return d;
 			}
 			INamedTypeSymbol ta = a.ContainingType, tb = b.ContainingType;
-			var ct = ta != null && tb != null;
-			return ct && (s = tb.DeclaredAccessibility.CompareTo(ta.DeclaredAccessibility)) != 0 ? s
-				: (s = b.DeclaredAccessibility.CompareTo(a.DeclaredAccessibility)) != 0 ? s
-				: ct && (s = ta.Name.CompareTo(tb.Name)) != 0 ? s
-				: ct && (s = ta.GetHashCode().CompareTo(tb.GetHashCode())) != 0 ? s
-				: (s = a.Name.CompareTo(b.Name)) != 0 ? s
-				: 0;
+			if (!Op.Ceq(ta, tb)) {
+				if (ta is null) {
+					return -1;
+				}
+				if (tb is null) {
+					return 1;
+				}
+				if (Op.IsTrue(d = CompareByAccessibilityKindName(ta, tb))
+					|| Op.IsTrue(d = ta.TypeKind - tb.TypeKind)) {
+					return d;
+				}
+			}
+			return CompareByAccessibilityKindName(a, b);
 		}
 
 		public static bool HasSameName(ISymbol a, ISymbol b) {
-			if (ReferenceEquals(a, b)) {
+			if (Op.Ceq(a, b)) {
 				return true;
 			}
 			if (a.Kind != b.Kind || a.Name != b.Name) {
@@ -1442,7 +1614,7 @@ namespace Codist
 		}
 
 		public static bool AreEqual(ITypeSymbol a, ITypeSymbol b, bool ignoreTypeConstraint) {
-			if (ReferenceEquals(a, b)) {
+			if (Op.Ceq(a, b)) {
 				return true;
 			}
 			if (a == null || b == null || a.IsRefLike() != b.IsRefLike()) {
@@ -1468,7 +1640,7 @@ namespace Codist
 		static bool AreEqual(INamedTypeSymbol ta, INamedTypeSymbol tb, bool ignoreTypeConstraint) {
 			if (ta != null && tb != null
 				&& ta.IsGenericType == tb.IsGenericType
-				&& ReferenceEquals(ta.OriginalDefinition, tb.OriginalDefinition)) {
+				&& Op.Ceq(ta.OriginalDefinition, tb.OriginalDefinition)) {
 				var pa = ta.TypeArguments;
 				var pb = tb.TypeArguments;
 				if (pa.Length == pb.Length) {
@@ -1484,7 +1656,7 @@ namespace Codist
 		}
 
 		static bool AreEqual(ITypeParameterSymbol a, ITypeParameterSymbol b) {
-			if (ReferenceEquals(a, b)) {
+			if (Op.Ceq(a, b)) {
 				return true;
 			}
 			if (a == null || b == null
@@ -1510,9 +1682,9 @@ namespace Codist
 
 		public static int CompareByAccessibilityKindName(ISymbol a, ISymbol b) {
 			int s;
-			if ((s = b.DeclaredAccessibility - a.DeclaredAccessibility) != 0 // sort by visibility
-				|| (s = GetSymbolKindSortOrder(a.Kind) - GetSymbolKindSortOrder(b.Kind)) != 0 // then by symbol kind
-				|| (s = a.Name.CompareTo(b.Name)) != 0) { // then by name
+			if (Op.IsTrue(s = b.DeclaredAccessibility - a.DeclaredAccessibility) // sort by visibility
+				|| Op.IsTrue(s = GetSymbolKindSortOrder(a.Kind) - GetSymbolKindSortOrder(b.Kind)) // then by symbol kind
+				|| Op.IsTrue(s = a.Name.CompareTo(b.Name))) { // then by name
 				return s;
 			}
 			switch (a.Kind) {
@@ -1548,13 +1720,6 @@ namespace Codist
 					default: return 19;
 				}
 			}
-		}
-
-		public static int CompareByFieldIntegerConst(ISymbol a, ISymbol b) {
-			IFieldSymbol fa = a as IFieldSymbol, fb = b as IFieldSymbol;
-			return fa == null ? -1
-				: fb == null ? 1
-				: Convert.ToInt64(fa.ConstantValue).CompareTo(Convert.ToInt64(fb.ConstantValue));
 		}
 
 		public static bool IsBoundedGenericType(this INamedTypeSymbol type) {
@@ -1656,6 +1821,8 @@ namespace Codist
 
 			public static readonly Func<ITypeSymbol, int> GetTypeNullableAnnotation = ReflectionHelper.CreateGetPropertyMethod<ITypeSymbol, int>("NullableAnnotation");
 
+			public static readonly Func<ITypeSymbol, IParameterSymbol> GetTypeExtensionParameter = ReflectionHelper.CreateGetPropertyMethod<ITypeSymbol, IParameterSymbol>("ExtensionParameter");
+
 			public static readonly Func<INamedTypeSymbol, INamedTypeSymbol> GetNamedTypeNativeIntegerUnderlyingType = ReflectionHelper.CreateGetPropertyMethod<INamedTypeSymbol, INamedTypeSymbol>("NativeIntegerUnderlyingType");
 
 			public static readonly Func<ILocalSymbol, bool> GetLocalIsForEach = ReflectionHelper.CreateGetPropertyMethod<ILocalSymbol, bool>("IsForEach");
@@ -1671,6 +1838,10 @@ namespace Codist
 			public static readonly Func<IMethodSymbol, bool> GetMethodIsReadOnly = ReflectionHelper.CreateGetPropertyMethod<IMethodSymbol, bool>("IsReadOnly");
 
 			public static readonly Func<IMethodSymbol, int> GetMethodCallingConvention = ReflectionHelper.CreateGetPropertyMethod<IMethodSymbol, int>("CallingConvention");
+
+			public static readonly Func<IEventSymbol, IEventSymbol> GetEventPartialDefinitionPart = ReflectionHelper.CreateGetPropertyMethod<IEventSymbol, IEventSymbol>("PartialDefinitionPart");
+
+			public static readonly Func<IEventSymbol, IEventSymbol> GetEventPartialImplementationPart = ReflectionHelper.CreateGetPropertyMethod<IEventSymbol, IEventSymbol>("PartialImplementationPart");
 
 			public static readonly Func<IPropertySymbol, IPropertySymbol> GetPropertyPartialDefinitionPart = ReflectionHelper.CreateGetPropertyMethod<IPropertySymbol, IPropertySymbol>("PartialDefinitionPart");
 

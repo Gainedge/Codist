@@ -1,14 +1,20 @@
 ﻿using System;
 using System.Globalization;
+using System.Runtime.CompilerServices;
+using CLR;
 using GdiColor = System.Drawing.Color;
+using WpfBrush = System.Windows.Media.Brush;
 using WpfColor = System.Windows.Media.Color;
 using WpfColors = System.Windows.Media.Colors;
-using WpfBrush = System.Windows.Media.Brush;
 
 namespace Codist
 {
 	static class UIHelper
 	{
+		public static bool IsShiftDown => NativeMethods.IsShiftDown();
+		public static bool IsCtrlDown => NativeMethods.IsControlDown();
+		public static bool IsAltDown => NativeMethods.IsAltDown();
+
 		public static GdiColor Alpha(this GdiColor color, byte alpha) {
 			return GdiColor.FromArgb(alpha, color.R, color.G, color.B);
 		}
@@ -16,14 +22,14 @@ namespace Codist
 			return value.ToString(CultureInfo.InvariantCulture);
 		}
 		public static string ToHexString(this GdiColor color) {
-			return "#" + color.A.ToString("X2") + color.R.ToString("X2") + color.G.ToString("X2") + color.B.ToString("X2");
+			return HexBinCache.WriteHexBinColor(color);
 		}
 		public static void ParseColor(string colorText, out WpfColor color, out byte opacity) {
 			if (String.IsNullOrEmpty(colorText) || colorText[0] != '#') {
 				goto EXIT;
 			}
 			var l = colorText.Length;
-			if (l != 7 && l != 9 && l != 3) {
+			if (!l.CeqAny(7, 9, 4, 3)) {
 				goto EXIT;
 			}
 			try {
@@ -36,12 +42,21 @@ namespace Codist
 							return;
 						}
 						break;
+					case 4:
+						if (ParseSingleByte(colorText, 1, out r)
+							&& ParseSingleByte(colorText, 2, out g)
+							&& ParseSingleByte(colorText, 3, out b)) {
+							color = WpfColor.FromRgb(r, g, b);
+							opacity = 0;
+							return;
+						}
+						break;
 					case 7:
 						if (ParseByte(colorText, 1, out r)
 							&& ParseByte(colorText, 3, out g)
 							&& ParseByte(colorText, 5, out b)) {
 							color = WpfColor.FromRgb(r, g, b);
-							opacity = 0xFF;
+							opacity = 0;
 							return;
 						}
 						break;
@@ -68,42 +83,45 @@ namespace Codist
 			opacity = 0;
 		}
 
-		static bool ParseByte(string text, int index, out byte value) {
-			var h = text[index];
-			var l = text[++index];
-			int b;
-			if (h >= '0' && h <= '9') {
-				b = (h - '0') << 4;
+		static bool ParseSingleByte(string text, int index, out byte value) {
+			switch (text[index]) {
+				case '0': value = 0; break;
+				case '1': value = 0x11; break;
+				case '2': value = 0x22; break;
+				case '3': value = 0x33; break;
+				case '4': value = 0x44; break;
+				case '5': value = 0x55; break;
+				case '6': value = 0x66; break;
+				case '7': value = 0x77; break;
+				case '8': value = 0x88; break;
+				case '9': value = 0x99; break;
+				case 'A':
+				case 'a':
+					value = 0xAA; break;
+				case 'B':
+				case 'b':
+					value = 0xBB; break;
+				case 'C':
+				case 'c':
+					value = 0xCC; break;
+				case 'D':
+				case 'd':
+					value = 0xDD; break;
+				case 'E':
+				case 'e':
+					value = 0xEE; break;
+				case 'F':
+				case 'f':
+					value = 0xFF; break;
+				default:
+					value = 0;
+					return false;
 			}
-			else if (h >= 'A' && h <= 'F') {
-				b = (h - ('A' - 10)) << 4;
-			}
-			else if (h >= 'a' && h <= 'f') {
-				b = (h - ('a' - 10)) << 4;
-			}
-			else {
-				value = 0;
-				return false;
-			}
-			if (l >= '0' && l <= '9') {
-				b |= l - '0';
-			}
-			else if (l >= 'A' && l <= 'F') {
-				b |= l - ('A' - 10);
-			}
-			else if (l >= 'a' && l <= 'f') {
-				b |= l - ('a' - 10);
-			}
-			else {
-				value = 0;
-				return false;
-			}
-			value = (byte)b;
 			return true;
 		}
 
 		public static string ToHexString(this WpfColor color) {
-			return "#" + (color.A == 0xFF ? null : color.A.ToString("X2")) + color.R.ToString("X2") + color.G.ToString("X2") + color.B.ToString("X2");
+			return HexBinCache.WriteHexBinColor(color);
 		}
 		public static GdiColor ToGdiColor(this WpfColor color) {
 			return GdiColor.FromArgb(color.A, color.R, color.G, color.B);
@@ -130,8 +148,96 @@ namespace Codist
 				else {
 					brush.Opacity = opacity;
 				}
+				brush.Freeze();
 			}
 			return brush;
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		static bool IsHexBinChar(int ch) {
+			const long Mask = 0b111_1110_00000000_00000000_00000000_01111110_00000011_11111111;
+			var n = unchecked((ushort)(ch - '0'));
+			return (Mask & (1L << n) & ~((63 - n) >> 63)) != 0;
+		}
+		static bool ParseByte(string text, int offset, out byte value) {
+			int high = text[offset];
+			int low = text[offset + 1];
+
+			if (!IsHexBinChar(high) || !IsHexBinChar(low)) {
+				value = 0;
+				return false;
+			}
+
+			high = (high & 0xF) + ((high >> 6) * 9);
+			low = (low & 0xF) + ((low >> 6) * 9);
+
+			value = (byte)((high << 4) | low);
+			return true;
+		}
+
+		static class HexBinCache
+		{
+			static readonly char[] __ArgbBuffer = new char[9], __RgbBuffer = new char[7];
+			static readonly int[] __HexBin = InitHexBinCache();
+
+			static int[] InitHexBinCache() {
+				__ArgbBuffer[0] = __RgbBuffer[0] = '#';
+				int[] doubleChars = new int[256];
+				for (int i = 0; i < 256; i++) {
+					var a = i.ToString("X2").ToCharArray();
+					doubleChars[i] = Op.Cast<char, int>(ref a[0]);
+				}
+				return doubleChars;
+			}
+
+			public static string WriteHexBinColor(GdiColor color) {
+				if (color.A == 0xFF) {
+					WriteHexBin(color.R, ref __RgbBuffer[1]);
+					WriteHexBin(color.G, ref __RgbBuffer[3]);
+					WriteHexBin(color.B, ref __RgbBuffer[5]);
+					return new string(__RgbBuffer);
+				}
+				WriteHexBin(color.A, ref __ArgbBuffer[1]);
+				WriteHexBin(color.R, ref __ArgbBuffer[3]);
+				WriteHexBin(color.G, ref __ArgbBuffer[5]);
+				WriteHexBin(color.B, ref __ArgbBuffer[7]);
+				return new string(__ArgbBuffer);
+			}
+			public static string WriteHexBinColor(WpfColor color) {
+				if (color.A == 0xFF) {
+					WriteHexBin(color.R, ref __RgbBuffer[1]);
+					WriteHexBin(color.G, ref __RgbBuffer[3]);
+					WriteHexBin(color.B, ref __RgbBuffer[5]);
+					return new string(__RgbBuffer);
+				}
+				WriteHexBin(color.A, ref __ArgbBuffer[1]);
+				WriteHexBin(color.R, ref __ArgbBuffer[3]);
+				WriteHexBin(color.G, ref __ArgbBuffer[5]);
+				WriteHexBin(color.B, ref __ArgbBuffer[7]);
+				return new string(__ArgbBuffer);
+			}
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			static void WriteHexBin(byte value, ref char target) {
+				Op.Cast<char, int>(ref target) = __HexBin[value];
+			}
+		}
+
+		static class NativeMethods
+		{
+			[System.Runtime.InteropServices.DllImport("user32.dll")]
+			static extern short GetAsyncKeyState(int vKey);
+
+			public static bool IsShiftDown() {
+				return GetAsyncKeyState(0x10) < 0;
+			}
+
+			public static bool IsControlDown() {
+				return GetAsyncKeyState(0x11) < 0;
+			}
+
+			public static bool IsAltDown() {
+				return GetAsyncKeyState(0x12) < 0;
+			}
 		}
 	}
 }

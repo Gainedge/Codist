@@ -36,13 +36,39 @@ namespace Codist
 			IImmutableList<ISymbol> ListMembersByOrder(ISymbol source) {
 				var nsOrType = source as INamespaceOrTypeSymbol;
 				var members = nsOrType.FindMembers().ToImmutableArray();
-				if (source.Kind == SymbolKind.NamedType && ((INamedTypeSymbol)source).TypeKind == TypeKind.Enum) {
+				INamedTypeSymbol type;
+				if (source.Kind == SymbolKind.NamedType && (type = (INamedTypeSymbol)source).TypeKind == TypeKind.Enum) {
 					// sort enum members by value
+					switch (type.EnumUnderlyingType.SpecialType) {
+						case SpecialType.System_Boolean:
+						case SpecialType.System_Byte:
+						case SpecialType.System_Char:
+						case SpecialType.System_UInt16:
+						case SpecialType.System_UInt32:
+						case SpecialType.System_UInt64:
+							return members.Sort(CompareByFieldUnsignedIntegerConst);
+					}
 					return members.Sort(CompareByFieldIntegerConst);
 				}
 				else {
 					return members.Sort(CompareByAccessibilityKindName);
 				}
+			}
+
+			int CompareByFieldIntegerConst(ISymbol a, ISymbol b) {
+				return a is IFieldSymbol fa
+					? b is IFieldSymbol fb
+						? Convert.ToInt64(fa.ConstantValue).CompareTo(Convert.ToInt64(fb.ConstantValue))
+						: 1
+					: -1;
+			}
+
+			int CompareByFieldUnsignedIntegerConst(ISymbol a, ISymbol b) {
+				return a is IFieldSymbol fa
+					? b is IFieldSymbol fb
+						? Convert.ToInt64(fa.ConstantValue).CompareTo(Convert.ToInt64(fb.ConstantValue))
+						: 1
+					: -1;
 			}
 		}
 
@@ -166,7 +192,7 @@ namespace Codist
 						continue;
 					}
 					var p = m.Parameters[0];
-					if (type.CanConvertTo(p.Type) && d.TryAdd(m)) {
+					if ((strict ? type.Equals(p.Type) : type.CanConvertTo(p.Type)) && d.TryAdd(m)) {
 						members.Add(m);
 						continue;
 					}
@@ -180,12 +206,8 @@ namespace Codist
 							continue;
 						}
 						var constraintTypes = item.ConstraintTypes;
-						if (constraintTypes.Length == 0) {
-							if (strict) {
-								continue;
-							}
-						}
-						else if (constraintTypes.Any(i => i == type || type.CanConvertTo(i)) == false) {
+						if (constraintTypes.Length != 0
+							&& constraintTypes.Any(i => i == type || type.CanConvertTo(i)) == false) {
 							continue;
 						}
 
@@ -295,7 +317,9 @@ namespace Codist
 			var pl = pn.Length;
 			var d = new SourceSymbolDeduper();
 			foreach (var type in compilation.GlobalNamespace.GetAllTypes(cancellationToken)) {
-				if (myCodeOnly && type.HasSource() == false || type.IsAccessible(true) == false || ReferenceEquals(type, symbol)) {
+				if (myCodeOnly && type.HasSource() == false
+					|| type.IsAccessible(true) == false
+					|| Op.Ceq(type, symbol)) {
 					continue;
 				}
 				if (cancellationToken.IsCancellationRequested) {
@@ -309,7 +333,7 @@ namespace Codist
 					if (member.Kind != SymbolKind.Method
 						|| member.CanBeReferencedByName == false
 						|| member.IsAccessible(false) == false
-						|| ReferenceEquals(member, symbol)) {
+						|| Op.Ceq(member, symbol)) {
 						// also find delegates with the same signature
 						if (member.Kind != SymbolKind.NamedType
 							|| (m = (member as INamedTypeSymbol)?.DelegateInvokeMethod) == null) {
@@ -485,6 +509,29 @@ namespace Codist
 			r.AddRange(d.Select(i => (i.Key, i.Value)));
 			r.Sort((x, y) => CompareSymbol(x.container, y.container));
 			return r;
+		}
+
+		public static async Task<IEnumerable<Location>> FindOccurrencesInDocumentAsync(this ISymbol symbol, Document document, SyntaxTree syntaxTree, CancellationToken cancellationToken = default) {
+			var refs = await SymbolFinder.FindReferencesAsync(symbol, document.Project.Solution, ImmutableHashSet.Create(document), cancellationToken);
+			return MixDeclarationAndOccurrence(symbol.Locations, refs, syntaxTree);
+
+			IEnumerable<Location> MixDeclarationAndOccurrence(ImmutableArray<Location> symLocs, IEnumerable<ReferencedSymbol> refSymbols, SyntaxTree st) {
+				foreach (var item in symLocs) {
+					if (item.SourceTree == st) {
+						yield return item;
+					}
+				}
+				foreach (var item in refSymbols) {
+					foreach (var location in item.Definition.Locations) {
+						if (location.SourceTree == st) {
+							yield return location;
+						}
+					}
+					foreach (var location in item.Locations) {
+						yield return location.Location;
+					}
+				}
+			}
 		}
 
 		static async Task GroupReferenceByContainerAsync(Dictionary<ISymbol, List<(SymbolUsageKind usage, ReferenceLocation loc)>> results, ReferencedSymbol reference, string symbolSignature, Predicate<SyntaxNode> nodeFilter = null, Predicate<SymbolUsageKind> usageFilter = null, CancellationToken cancellationToken = default) {
@@ -689,7 +736,8 @@ namespace Codist
 			}
 			var n = node;
 			while (n.IsAnyKind(SyntaxKind.QualifiedName, SyntaxKind.SimpleMemberAccessExpression, SyntaxKind.PointerMemberAccessExpression, SyntaxKind.MemberBindingExpression)) {
-				if (n is MemberAccessExpressionSyntax ma && ma.Name != originName) {
+				if (n is MemberAccessExpressionSyntax ma && ma.Name != originName
+					|| n.IsAnyKind(SyntaxKind.TypeOfExpression, SyntaxKind.SizeOfExpression)) {
 					return node;
 				}
 				node = n;
@@ -721,7 +769,7 @@ namespace Codist
 					return SymbolUsageKind.Catch;
 				}
 				if (possibleUsage.MatchFlags(SymbolUsageKind.TypeParameter)
-					&& node.IsAnyKind(SyntaxKind.TypeArgumentList, SyntaxKind.TypeOfExpression)) {
+					&& node.IsAnyKind(SyntaxKind.TypeArgumentList, SyntaxKind.TypeOfExpression, SyntaxKind.SizeOfExpression)) {
 					return SymbolUsageKind.TypeParameter;
 				}
 			}

@@ -18,8 +18,8 @@ namespace Codist.Controls
 
 		public CSharpSymbolContextMenu(ISymbol symbol, SyntaxNode node, SemanticContext semanticContext) {
 			Resources = SharedDictionaryManager.ContextMenu;
-			Foreground = ThemeHelper.ToolWindowTextBrush;
-			this.SetBackgroundForCrispImage(ThemeHelper.TitleBackgroundColor);
+			Foreground = ThemeCache.ToolWindowTextBrush;
+			this.SetBackgroundForCrispImage(ThemeCache.TitleBackgroundColor);
 			_Host = new UIHost(symbol, node, semanticContext);
 		}
 
@@ -208,6 +208,11 @@ namespace Codist.Controls
 		}
 
 		void CreateCommandForNamedType(INamedTypeSymbol t) {
+			var isExtensionType = t.GetExtensionParameter() != null;
+			if (isExtensionType) {
+				AddCommand(CommandId.ListSymbolMembers);
+				return;
+			}
 			if (t.IsAnyKind(TypeKind.Class, TypeKind.Struct)) {
 				var ctor = _Host.Node?.GetObjectCreationNode();
 				if (ctor != null) {
@@ -482,7 +487,7 @@ namespace Codist.Controls
 					case CommandId.FindSubInterfaces:
 						return CreateItem(IconIds.FindDerivedTypes, R.CMD_FindInheritedInterfaces, FindSubInterfaces, R.CMDT_FindInheritedInterfaces);
 					case CommandId.FindImplementations:
-						return CreateItem(IconIds.FindImplementations, R.CMD_FindImplementations, FindImplementations);
+						return CreateItem(IconIds.FindImplementations, R.CMD_FindImplementations, FindImplementations, R.CMDT_FindImplementations);
 					case CommandId.FindDerivedClasses:
 						return CreateItem(IconIds.FindDerivedTypes, R.CMD_FindDerivedClasses, FindDerivedClasses, R.CMDT_FindDerivedClasses);
 					case CommandId.FindOverrides:
@@ -613,6 +618,10 @@ namespace Codist.Controls
 								s = m.ContainingType;
 								goto case SymbolKind.NamedType;
 							}
+							else if (m.MethodKind == MethodKind.ExplicitInterfaceImplementation) {
+								t = m.Name;
+								break;
+							}
 							goto default;
 						default:
 							t = s.ToDisplayString(args.RoutedEvent == PreviewMouseRightButtonUpEvent ? CodeAnalysisHelper.QualifiedTypeNameFormat : CodeAnalysisHelper.TypeMemberNameFormat);
@@ -666,7 +675,7 @@ namespace Codist.Controls
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindOptionalParameterAssignments(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindParameterAssignmentsAsync(_Symbol as IParameterSymbol, false, WpfHelper.IsControlDown ? ArgumentAssignmentFilter.ExplicitValue : WpfHelper.IsShiftDown ? ArgumentAssignmentFilter.DefaultValue : ArgumentAssignmentFilter.Undefined);
+				await _SemanticContext.FindParameterAssignmentsAsync(_Symbol as IParameterSymbol, false, UIHelper.IsCtrlDown ? ArgumentAssignmentFilter.ExplicitValue : UIHelper.IsShiftDown ? ArgumentAssignmentFilter.DefaultValue : ArgumentAssignmentFilter.Undefined);
 			}
 
 			void FindReferencedSymbols(object sender, RoutedEventArgs e) {
@@ -703,11 +712,11 @@ namespace Codist.Controls
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindReferrers(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindReferrersAsync(_Symbol, WpfHelper.IsControlDown);
+				await _SemanticContext.FindReferrersAsync(_Symbol, UIHelper.IsCtrlDown);
 			}
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindTypeReferrers(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindReferrersAsync(_Symbol.Kind == SymbolKind.Method ? _Symbol.ContainingType : _Symbol, WpfHelper.IsControlDown, s => s.Kind == SymbolKind.NamedType, IsTypeReference);
+				await _SemanticContext.FindReferrersAsync(_Symbol.Kind == SymbolKind.Method ? _Symbol.ContainingType : _Symbol, UIHelper.IsCtrlDown, s => s.Kind == SymbolKind.NamedType, IsTypeReference);
 			}
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindOverrides(object sender, RoutedEventArgs e) {
@@ -715,70 +724,78 @@ namespace Codist.Controls
 			}
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindDerivedClasses(object sender, RoutedEventArgs e) {
-				var m = Keyboard.Modifiers;
-				await _SemanticContext.FindDerivedClassesAsync(_Symbol, m.MatchFlags(ModifierKeys.Control), m.MatchFlags(ModifierKeys.Shift) == false);
+				await _SemanticContext.FindDerivedClassesAsync(_Symbol, UIHelper.IsCtrlDown, UIHelper.IsShiftDown == false);
 			}
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindImplementations(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindImplementationsAsync(_Symbol);
+				await _SemanticContext.FindImplementationsAsync(_Symbol, UIHelper.IsCtrlDown);
 			}
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindSubInterfaces(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindSubInterfacesAsync(_Symbol, WpfHelper.IsControlDown);
+				await _SemanticContext.FindSubInterfacesAsync(_Symbol, UIHelper.IsCtrlDown);
 			}
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindMethodsBySignature(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindMethodsBySignatureAsync(_Symbol, WpfHelper.IsControlDown);
+				await _SemanticContext.FindMethodsBySignatureAsync(_Symbol, UIHelper.IsCtrlDown);
 			}
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindExtensionMethods(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindExtensionMethodsAsync(_Symbol, WpfHelper.IsControlDown);
+				await _SemanticContext.FindExtensionMethodsAsync(_Symbol, UIHelper.IsCtrlDown);
 			}
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindReturnTypeExtensionMethods(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindExtensionMethodsAsync(_Symbol.GetReturnType(), WpfHelper.IsControlDown);
+				await _SemanticContext.FindExtensionMethodsAsync(_Symbol.GetReturnType(), UIHelper.IsCtrlDown);
 			}
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindSymbolWithName(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindSymbolWithNameAsync(_Symbol, WpfHelper.IsControlDown);
+				await _SemanticContext.FindSymbolWithNameAsync(_Symbol, UIHelper.IsCtrlDown);
 			}
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindConstructorReferrers(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindReferrersAsync(_SemanticContext.SemanticModel.GetSymbolOrFirstCandidate(_Node.GetObjectCreationNode()), WpfHelper.IsControlDown);
+				await _SemanticContext.FindReferrersAsync(_SemanticContext.SemanticModel.GetSymbolOrFirstCandidate(_Node.GetObjectCreationNode()), UIHelper.IsCtrlDown);
 			}
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindObjectInitializers(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindReferrersAsync(_Symbol, WpfHelper.IsControlDown, s => s.Kind == SymbolKind.Method);
+				if (_Symbol is INamedTypeSymbol t && t.GetPrimaryConstructor() != null) {
+					await _SemanticContext.FindReferrersAsync(_Symbol, UIHelper.IsCtrlDown, null, n => IsTypeReference(n) == false);
+				}
+				else {
+					await _SemanticContext.FindReferrersAsync(_Symbol, UIHelper.IsCtrlDown, s => s.Kind == SymbolKind.Method);
+				}
 			}
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindInstanceProducers(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindInstanceProducerAsync(_Symbol, WpfHelper.IsControlDown);
+				await _SemanticContext.FindInstanceProducerAsync(_Symbol, UIHelper.IsCtrlDown);
 			}
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindContainingTypeInstanceProducers(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindInstanceProducerAsync(_Symbol.ContainingType, WpfHelper.IsControlDown);
+				await _SemanticContext.FindInstanceProducerAsync(_Symbol.ContainingType, UIHelper.IsCtrlDown);
 			}
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindInstanceConsumers(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindInstanceAsParameterAsync(_Symbol, WpfHelper.IsControlDown);
+				await _SemanticContext.FindInstanceAsParameterAsync(_Symbol, UIHelper.IsCtrlDown);
 			}
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void FindContainingTypeInstanceConsumers(object sender, RoutedEventArgs e) {
-				await _SemanticContext.FindInstanceAsParameterAsync(_Symbol.ContainingType, WpfHelper.IsControlDown);
+				await _SemanticContext.FindInstanceAsParameterAsync(_Symbol.ContainingType, UIHelper.IsCtrlDown);
 			}
 
 			CustomMenuItem CreateWebSearchCommand() {
-				var search = new CustomMenuItem(IconIds.SearchWebSite, R.OT_WebSearch);
 				var symbolName = _Symbol.GetOriginalName();
+				if (String.IsNullOrEmpty(symbolName)) {
+					return null;
+				}
+				var symbolFullName = _Symbol.GetQualifiedName();
+				var search = new CustomMenuItem(IconIds.SearchWebSite, R.OT_WebSearch);
 				search.Items.AddRange(
 					Config.Instance.SearchEngines.ConvertAll(s => {
 						var item = CreateItem(
@@ -786,9 +803,11 @@ namespace Codist.Controls
 							R.CMD_SearchWith.Replace("<NAME>", s.Name),
 							(sender, args) => {
 								var m = (MenuItem)sender;
-								ExternalCommand.OpenWithWebBrowser(m.GetSearchUrl(), m.GetSearchParameter());
+								var keyword = UIHelper.IsShiftDown ? m.GetAlternativeSearchParameter() : m.GetSearchParameter();
+								ExternalCommand.OpenWithWebBrowser(m.GetSearchUrl(), keyword);
 							});
-						item.SetSearchUrlPattern(s.Pattern, symbolName);
+						item.SetLazyToolTip(() => new CommandToolTip(IconIds.SearchWebSite, R.CMD_WebSearchWithSymbolName + "\n" + R.CMDT_WebSearchWithSymbolName)).SetTipOptions();
+						item.SetSearchUrlPattern(s.Pattern, symbolName, symbolFullName);
 						return item;
 					})
 				);

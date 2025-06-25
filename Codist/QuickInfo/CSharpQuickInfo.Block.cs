@@ -6,74 +6,85 @@ using Codist.Controls;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.VisualStudio.Text;
 using R = Codist.Properties.Resources;
 
 namespace Codist.QuickInfo
 {
 	partial class CSharpQuickInfo
 	{
-		static void ShowBlockInfo(InfoContainer container, ITextSnapshot textSnapshot, SyntaxNode node, SemanticModel semanticModel) {
+		static void ShowBlockInfo(Context ctx) {
+			var node = ctx.node;
+			var container = ctx.Container;
+			var textSnapshot = ctx.CurrentSnapshot;
 			if (node.Kind().CeqAny(SyntaxKind.ArrayInitializerExpression,
 						SyntaxKind.CollectionInitializerExpression,
 						SyntaxKind.ComplexElementInitializerExpression,
 						SyntaxKind.ObjectInitializerExpression,
 						CodeAnalysisHelper.WithInitializerExpression)) {
-				container.Add(new ThemedTipText()
-					.SetGlyph(IconIds.InstanceMember)
-					.Append(R.T_ExpressionCount)
-					.Append(((InitializerExpressionSyntax)node).Expressions.Count.ToText(), true, false, __SymbolFormatter.Number));
+				container.Add(new BlockItem(IconIds.InstanceMember, R.T_ExpressionCount)
+					.Append(((InitializerExpressionSyntax)node).Expressions.Count.ToText(), true, __SymbolFormatter.Number));
 			}
 			else if (node.IsKind(CodeAnalysisHelper.PropertyPatternClause)) {
-				container.Add(new ThemedTipText().SetGlyph(IconIds.InstanceMember)
-					.Append(R.T_SubPatternCount)
-					.Append(((CSharpSyntaxNode)node).GetPropertyPatternSubPatternsCount().ToText())
+				container.Add(new BlockItem(IconIds.InstanceMember, R.T_SubPatternCount)
+					.Append(((CSharpSyntaxNode)node).GetPropertyPatternSubPatternsCount().ToText(), true, __SymbolFormatter.Number)
 					);
 			}
 			var lines = textSnapshot.GetLineSpan(node.Span).Length + 1;
 			if (lines > 1) {
 				container.Add(
-					(lines > 100 ? new ThemedTipText(lines + R.T_Lines, true) : new ThemedTipText(lines + R.T_Lines))
-						.SetGlyph(IconIds.LineOfCode)
+					lines > 100
+						? new BlockItem(IconIds.LineOfCode, lines + R.T_Lines, true)
+						: new BlockItem(IconIds.LineOfCode, lines + R.T_Lines)
 					);
 			}
-			if ((node is StatementSyntax || node is ExpressionSyntax || node is ConstructorInitializerSyntax) == false) {
+			if (Config.Instance.QuickInfoOptions.MatchFlags(QuickInfoOptions.DataFlow) == false
+				|| (node is StatementSyntax || node is ExpressionSyntax || node is ConstructorInitializerSyntax) == false) {
 				return;
 			}
-			var df = semanticModel.AnalyzeDataFlow(node);
+			var df = ctx.semanticModel.AnalyzeDataFlow(node);
 			if (df.Succeeded) {
-				ListVariables(container, df.VariablesDeclared, R.T_DeclaredVariable, IconIds.DeclaredVariables);
-				if (node.Parent.Kind().IsMethodDeclaration()) {
-					var p = (semanticModel.GetDeclaredSymbol(node.Parent) as IMethodSymbol).Parameters;
-					ListVariables(container, df.DataFlowsIn.RemoveRange(p), R.T_ReadVariable, IconIds.ReadVariables);
-				}
-				else {
-					ListVariables(container, df.DataFlowsIn, R.T_ReadVariable, IconIds.ReadVariables);
-				}
-				ListVariables(container, df.DataFlowsOut, R.T_WrittenVariable, IconIds.WrittenVariables);
-				ListVariables(container, df.UnsafeAddressTaken, R.T_TakenAddress, IconIds.RefVariables);
+				ShowDataFlowAnalysis(ctx, df);
 			}
 		}
 
-		static void ListVariables(InfoContainer container, ImmutableArray<ISymbol> variables, string title, int icon) {
+		static void ShowDataFlowAnalysis(Context ctx, DataFlowAnalysis df) {
+			var node = ctx.node;
+			var infoBlock = new GeneralInfoBlock(IconIds.DataFlow, R.T_DataFlow);
+			ListVariables(infoBlock, df.VariablesDeclared, R.T_DeclaredVariable, IconIds.DeclaredVariables);
+			var readVars = df.ReadInside;
+			if (node.Parent.Kind().IsMethodDeclaration()) {
+				readVars = readVars.RemoveRange(((IMethodSymbol)ctx.semanticModel.GetSymbol(node.Parent)).Parameters);
+			}
+			ListVariables(infoBlock, readVars, R.T_ReadVariable, IconIds.ReadVariables);
+			ListVariables(infoBlock, df.WrittenInside, R.T_WrittenVariable, IconIds.WrittenVariables);
+			ListVariables(infoBlock, df.UnsafeAddressTaken, R.T_TakenAddress, IconIds.RefVariables);
+			ListVariables(infoBlock, df.CapturedInside, R.T_CapturedVariable, IconIds.CapturedVariables);
+			if (infoBlock.HasItem) {
+				ctx.Container.Add(infoBlock);
+			}
+		}
+
+		static void ListVariables(GeneralInfoBlock container, ImmutableArray<ISymbol> variables, string title, int icon) {
 			if (variables.IsEmpty) {
 				return;
 			}
-			var p = new ThemedTipText(title, true).Append(variables.Length).AppendLine();
+			var p = new BlockItem(icon, title)
+				.Append(variables.Length.ToText(), true, __SymbolFormatter.Number)
+				.AppendLine();
 			bool s = false;
 			foreach (var item in variables) {
 				if (s) {
 					p.Append(", ");
 				}
 				if (item.IsImplicitlyDeclared) {
-					p.AddSymbol(item.GetReturnType(), item.Name, __SymbolFormatter);
+					p.AddSymbol(item.GetReturnType(), item.Name);
 				}
 				else {
-					p.AddSymbol(item, false, __SymbolFormatter);
+					p.AddSymbol(item, false);
 				}
 				s = true;
 			}
-			container.Add(new ThemedTipDocument().Append(new ThemedTipParagraph(icon, p)));
+			container.Add(p);
 		}
 
 		static void ShowCapturedVariables(SyntaxNode node, ISymbol symbol, SemanticModel semanticModel, ThemedTipDocument tip, CancellationToken cancellationToken) {
@@ -85,7 +96,7 @@ namespace Codist.QuickInfo
 				if (ss != null) {
 					var captured = semanticModel.GetCapturedVariables(ss);
 					if (captured.Length > 0) {
-						var p = new ThemedTipParagraph(IconIds.ReadVariables, new ThemedTipText().Append(R.T_CapturedVariables, true));
+						var p = new ThemedTipParagraph(IconIds.CapturedVariables, new ThemedTipText().Append(R.T_CapturedVariables, true));
 						int i = 0;
 						foreach (var item in captured) {
 							p.Content.Append(++i == 1 ? ": " : ", ").AddSymbol(item, false, __SymbolFormatter);
@@ -93,16 +104,6 @@ namespace Codist.QuickInfo
 						tip.Append(p);
 					}
 				}
-			}
-		}
-
-		static void ShowSwitchExpression(InfoContainer container, ISymbol symbol, SyntaxNode node) {
-			if (symbol != null) {
-				container.Add(new ThemedTipText().SetGlyph(IconIds.Input).AddSymbol(symbol, false, __SymbolFormatter));
-			}
-			var c = ((ExpressionSyntax)node).GetSwitchExpressionArmsCount();
-			if (c > 1) {
-				container.Add(new ThemedTipText(R.T_SwitchCases.Replace("<C>", c.ToText())).SetGlyph(IconIds.Switch));
 			}
 		}
 	}

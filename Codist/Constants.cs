@@ -38,6 +38,7 @@ namespace Codist
 			public const string Preprocessor = nameof(Preprocessor);
 			public const string General = nameof(General);
 			public const string Comment = nameof(Comment);
+			public const string Url = nameof(Url);
 			public const string CompilerMarked = "Compiler Marked";
 			public const string Declaration = nameof(Declaration);
 			public const string TypeDefinition = "Type Definition";
@@ -166,6 +167,7 @@ namespace Codist
 		public const string CSharpAbstractMemberName = "C#: Abstract member";
 		public const string CSharpSealedMemberName = "C#: Sealed class or member";
 		public const string CSharpPrivateMemberName = "C#: Private member";
+		public const string CSharpExtensionMemberName = "C#: Extension member";
 		public const string CSharpNestedTypeName = "C#: Nested type member";
 		public const string CSharpVariableCapturedExpression = "C#: Variable captured expression";
 		public const string CSharpAttributeName = "C#: Attribute name";
@@ -254,6 +256,15 @@ namespace Codist
 		public const string MarkdownVsSuperscript = "vsMarkdown_superscript";
 		public const string MarkdownVsUrl = "vsMarkdown_url";
 
+		public const string UrlScheme = "URL: Scheme";
+		public const string UrlHost = "URL: Host";
+		public const string UrlCredential = "URL: Credential";
+		public const string UrlFile = "URL: File";
+		public const string UrlQueryName = "URL: Query Name";
+		public const string UrlQueryValue = "URL: QueryValue";
+		public const string UrlPunctuation = "URL: Punctuation";
+		public const string UrlFragment = "URL: Fragment";
+
 		internal const string CodistPrefix = "Codist: ";
 		public const string CodistComment = CodistPrefix + "Comment";
 		//! Important
@@ -320,15 +331,6 @@ namespace Codist
 		public static readonly Color ControlFlowColor = Colors.MediumBlue;
 
 		public const string EmptyColor = "#00000000";
-	}
-
-	public static class Suppression
-	{
-		public const string VSTHRD010 = "VSTHRD010:Invoke single-threaded types on Main thread";
-		public const string CheckedInCaller = "Checked in caller";
-		public const string VSTHRD100 = "VSTHRD100:Avoid async void methods";
-		public const string EventHandler = "Event handler";
-		public const string ExceptionHandled = "Exception handled";
 	}
 
 	enum MarkerStyleTypes

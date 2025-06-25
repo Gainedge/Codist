@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using CLR;
 using Codist.Controls;
 using Microsoft.CodeAnalysis;
@@ -73,7 +72,7 @@ namespace Codist.NaviBar
 				var kind = Node.Kind();
 				if (MayHaveChildNodeItems(kind)) {
 					if (Config.Instance.NaviBarOptions.MatchFlags(NaviBarOptions.CtrlGoToSource)
-						&& Keyboard.Modifiers.MatchFlags(ModifierKeys.Control)) {
+						&& UIHelper.IsCtrlDown) {
 						Node.GetReference().GoToSource();
 						return;
 					}
@@ -112,7 +111,7 @@ namespace Codist.NaviBar
 					// Hack: since SelectNode will move the cursor to the end of the span--the beginning of next node,
 					//    it will make next node selected, which is undesired in most cases
 					Bar.View.Caret.PositionChanged -= Bar.Update;
-					Bar.View.SelectNode(Node, Keyboard.Modifiers != ModifierKeys.Control);
+					Bar.View.SelectNode(Node, !UIHelper.IsCtrlDown);
 					Bar.View.Caret.PositionChanged += Bar.Update;
 				}
 				else {
@@ -194,12 +193,17 @@ namespace Codist.NaviBar
 					case SyntaxKind.SimpleLambdaExpression:
 					case SyntaxKind.ParenthesizedLambdaExpression:
 					case SyntaxKind.DestructorDeclaration:
+					case SyntaxKind.OperatorDeclaration:
+					case SyntaxKind.ConversionOperatorDeclaration:
 						AddLocalFunctions(node);
+						return Task.CompletedTask;
+					case SyntaxKind.EventDeclaration:
 						return Task.CompletedTask;
 				}
 				AddMemberDeclarations(node, node.ChildNodes(), false, true);
 				var externals = (Config.Instance.NaviBarOptions.MatchFlags(NaviBarOptions.PartialClassMember)
-					&& ((BaseTypeDeclarationSyntax)node).Modifiers.Any(SyntaxKind.PartialKeyword) ? MemberListOptions.ShowPartial : 0)
+					&& node is BaseTypeDeclarationSyntax t
+					&& t.Modifiers.Any(SyntaxKind.PartialKeyword) ? MemberListOptions.ShowPartial : 0)
 					| (Config.Instance.NaviBarOptions.MatchFlags(NaviBarOptions.BaseClassMember) && (node.IsKind(SyntaxKind.ClassDeclaration) || node.IsKind(CodeAnalysisHelper.RecordDeclaration)) ? MemberListOptions.ShowBase : 0);
 				return externals == 0 ? Task.CompletedTask : AddExternalItemsAsync(node, externals, cancellationToken);
 			}
@@ -241,6 +245,7 @@ namespace Codist.NaviBar
 
 			async Task AddExternalNodesAsync(SyntaxReference item, string textOverride, bool includeDirectives, CancellationToken cancellationToken) {
 				var externalNode = await item.GetSyntaxAsync(cancellationToken);
+				await SyncHelper.SwitchToMainThreadAsync(cancellationToken);
 				var i = _Menu.Add(externalNode);
 				i.Location = item.SyntaxTree.GetLocation(item.Span);
 				i.Content.Text = textOverride ?? System.IO.Path.GetFileName(item.SyntaxTree.FilePath);
@@ -281,7 +286,7 @@ namespace Codist.NaviBar
 										_Menu.Add(item);
 										item.Content
 											.Append("#endregion ").Append(d.GetDeclarationSignature())
-											.Foreground = ThemeHelper.SystemGrayTextBrush;
+											.Foreground = ThemeCache.SystemGrayTextBrush;
 									}
 								}
 								directives.RemoveAt(i);
@@ -312,6 +317,10 @@ namespace Codist.NaviBar
 						}
 						if (Config.Instance.NaviBarOptions.MatchFlags(NaviBarOptions.RegionInMember) == false) {
 							lastNodeSpan = child.Span;
+						}
+						if (childKind == CodeAnalysisHelper.ExtensionDeclaration) {
+							i.Hint = "extension";
+							AddExtensionDeclaration(child, isExternal, includeDirectives);
 						}
 					}
 					// a member is added between #region and #endregion
@@ -368,6 +377,15 @@ namespace Codist.NaviBar
 				if (isExternal) {
 					item.Usage = SymbolUsageKind.External;
 				}
+			}
+
+			void AddExtensionDeclaration(SyntaxNode extension, bool isExternal, bool includeDirectives) {
+				AddMemberDeclarations(extension, extension.ChildNodes(), isExternal, includeDirectives);
+
+				var item = new SymbolItem(_Menu);
+				_Menu.Add(item);
+				item.Content.Append("end extension")
+					.Foreground = ThemeCache.SystemGrayTextBrush;
 			}
 
 			void AddVariables(SeparatedSyntaxList<VariableDeclaratorSyntax> fields, bool isExternal, int pos) {

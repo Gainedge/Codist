@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.VisualStudio.Imaging;
 
 namespace Codist
@@ -11,10 +11,14 @@ namespace Codist
 		public const int AsyncMember = KnownImageIds.Thread;
 		public const int Generic = KnownImageIds.MarkupXML;
 		public const int ExtensionMethod = KnownImageIds.ExtensionMethod;
+		public const int ExtensionDeclaration = KnownImageIds.InstallerClass;
+		public const int ExtensionParameter = KnownImageIds.InputParameter;
 		public const int StaticMember = KnownImageIds.Link;
 		public const int InstanceMember = KnownImageIds.BuildQueue;
 		public const int DefaultInterfaceImplementation = KnownImageIds.AddInterface;
 		public const int ReadonlyField = KnownImageIds.Field | KnownImageIds.OverlayLock << OverlayShift | FullOverlayMask;
+		public const int ReadonlyVariable = KnownImageIds.LocalVariable | KnownImageIds.OverlayLock << OverlayShift | FullOverlayMask;
+		public const int ReadonlyParameter = KnownImageIds.Parameter | KnownImageIds.OverlayLock << OverlayShift | FullOverlayMask;
 		public const int ReadonlyProperty = KnownImageIds.Property | KnownImageIds.OverlayLock << OverlayShift | FullOverlayMask;
 		public const int ReadonlyMethod = KnownImageIds.Method | KnownImageIds.OverlayLock << OverlayShift | FullOverlayMask;
 		public const int ReadonlyType = KnownImageIds.Type | KnownImageIds.OverlayLock << OverlayShift | FullOverlayMask;
@@ -52,6 +56,7 @@ namespace Codist
 		public const int Constructor = KnownImageIds.Type;
 		public const int Destructor = KnownImageIds.Type | KnownImageIds.OverlayOffline << OverlayShift | FullOverlayMask;
 		public const int EnumField = KnownImageIds.EnumerationItemPublic;
+		public const int ValueType = KnownImageIds.ValueType;
 		public const int GenericDefinition = KnownImageIds.Template;
 		public const int Region = KnownImageIds.Numeric;
 		public const int Unsafe = KnownImageIds.HotSpot;
@@ -63,6 +68,7 @@ namespace Codist
 		public const int Input = KnownImageIds.Input;
 		public const int Attribute = KnownImageIds.FormPostBodyParameterNode;
 		public const int Return = KnownImageIds.Return;
+		public const int GoTo = KnownImageIds.GoToSourceCode;
 		public const int Value = KnownImageIds.Field;
 		public const int If = KnownImageIds.If;
 		public const int Else = KnownImageIds.GoToNextUncovered;
@@ -70,8 +76,11 @@ namespace Codist
 		public const int Using = KnownImageIds.TransactedReceiveScope;
 		public const int DoWhile = KnownImageIds.DoWhile;
 		public const int While = KnownImageIds.While;
+		public const int ForEach = KnownImageIds.ForEach;
+		public const int For = KnownImageIds.ForEachLoop;
 		public const int Switch = KnownImageIds.FlowSwitch;
 		public const int SwitchSection = KnownImageIds.FlowDecision;
+		public const int YieldBreak = KnownImageIds.StopApplyingCodeChanges;
 		public const int PublicSymbols = KnownImageIds.ModulePublic;
 		public const int ProtectedSymbols = KnownImageIds.ModuleProtected;
 		public const int InternalSymbols = KnownImageIds.ModuleInternal;
@@ -122,6 +131,7 @@ namespace Codist
 		public const int DeclaredVariables = KnownImageIds.AddVariable;
 		public const int ReadVariables = KnownImageIds.ExternalVariableValue;
 		public const int WrittenVariables = KnownImageIds.PromoteVariable;
+		public const int CapturedVariables = KnownImageIds.InsertClause;
 		public const int RefVariables = KnownImageIds.GlobalVariable;
 		public const int TypeAndDelegate = KnownImageIds.EntityContainer;
 		public const int ReturnValue = KnownImageIds.ReturnValue;
@@ -135,6 +145,9 @@ namespace Codist
 		public const int MethodOverloads = KnownImageIds.MethodSet;
 		public const int XmlDocComment = KnownImageIds.Comment;
 		public const int TypeParameters = KnownImageIds.TypeDefinition;
+		public const int SyntaxNode = KnownImageIds.DecisionTree;
+		public const int DataFlow = KnownImageIds.Recursion;
+		public const int ControlFlow = KnownImageIds.Exit;
 		public const int OpCodes = KnownImageIds.Binary;
 		public const int Comment = KnownImageIds.CommentCode;
 		public const int Uncomment = KnownImageIds.UncommentCode;
@@ -193,11 +206,13 @@ namespace Codist
 		public const int InstanceProducer = KnownImageIds.NewItem;
 		public const int GoToDefinition = KnownImageIds.GoToDefinition;
 		public const int QuickAction = KnownImageIds.IntellisenseLightBulb;
+		public const int QuickInfo = KnownImageIds.ToolTip;
 		public const int SelectCode = KnownImageIds.BlockSelection;
 		public const int SelectBlock = KnownImageIds.MatchBrace;
 		public const int SelectText = KnownImageIds.RectangleSelection;
 		public const int SelectAll = KnownImageIds.SelectAll;
 		public const int Open = KnownImageIds.Open;
+		public const int Folder = KnownImageIds.FolderClosed;
 		public const int OpenFolder = KnownImageIds.OpenFolder;
 		public const int OpenWithVisualStudio = KnownImageIds.VisualStudio;
 		public const int OpenWithCmd = KnownImageIds.Console;
@@ -280,10 +295,11 @@ namespace Codist
 		public const int Warning = KnownImageIds.StatusWarningOutline;
 		public const int Error = KnownImageIds.StatusError;
 		public const int Stop = KnownImageIds.StatusNo;
-    public const int StatusSpell = KnownImageIds.SpellCheck;
-    #endregion
-    #region symbol usage icons
-    public const int UseToWrite = KnownImageIds.Writeable;
+        public const int StatusSpell = KnownImageIds.SpellCheck;
+        public const int AddFolder = KnownImageIds.AddFolder;
+        #endregion
+        #region symbol usage icons
+        public const int UseToWrite = KnownImageIds.Writeable;
 		public const int UseToWriteNull = KnownImageIds.EmptyContainer;
 		public const int UseAsTypeParameter = KnownImageIds.CPPMarkupXML;
 		public const int UseToCast = KnownImageIds.ReportingAction;
