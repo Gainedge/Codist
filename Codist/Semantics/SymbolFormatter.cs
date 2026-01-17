@@ -1276,7 +1276,7 @@ namespace Codist
 					inlines.Append("scoped ");
 				}
 				if (local.IsRef) {
-					inlines.Append(local.RefKind == RefKind.RefReadOnly ? "ref readonly " : "ref ", Keyword);
+					inlines.Append(local.RefKind.GetText(), Keyword);
 				}
 				if (local.IsFixed) {
 					inlines.Append("fixed ", Keyword);
@@ -1288,11 +1288,9 @@ namespace Codist
 			if (parameter.GetScopedKind() != 0) {
 				inlines.Append("scoped ", Keyword);
 			}
-			switch (parameter.RefKind) {
-				case RefKind.Ref: inlines.Append("ref ", Keyword); break;
-				case RefKind.Out: inlines.Append("out ", Keyword); break;
-				case RefKind.In: inlines.Append("in ", Keyword); break;
-				case CodeAnalysisHelper.RefReadonly: inlines.Append("ref readonly ", Keyword); break;
+			var k = parameter.RefKind.GetText();
+			if (k.Length != 0) {
+				inlines.Append(k, Keyword);
 			}
 		}
 
@@ -1325,7 +1323,7 @@ namespace Codist
 				if (o != null) {
 					t = o.ContainingType;
 					if (t?.IsCommonBaseType() == false) {
-						Format(info, symbol, null, false);
+						Format(info, o.ContainingType, null, false);
 						info.Add(".");
 						Format(info, o, null, false);
 						info.Add(" ");

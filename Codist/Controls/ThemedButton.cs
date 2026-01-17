@@ -89,14 +89,21 @@ namespace Codist.Controls
 			this.ReferenceStyle(typeof(ThemedImageButton))
 				.ReferenceCrispImageBackground(EnvironmentColors.MainWindowActiveCaptionColorKey);
 		}
-		public object Header { get; }
+		public TextBlock Header { get; }
 		public bool IsChecked {
 			get => _IsChecked;
-			set => SetValue(IsCheckedProperty, _IsChecked = value);
+			set {
+				SetValue(IsCheckedProperty, _IsChecked = value);
+				this.ReferenceCrispImageBackground(value ? VsColors.FileTabSelectedGradientTopKey : EnvironmentColors.MainWindowActiveCaptionColorKey);
+			}
 		}
 		public bool IsHighlighted {
 			get => _IsHighlighted;
 			set => SetValue(IsHighlightedProperty, _IsHighlighted = value);
+		}
+		public bool IsHeaderVisible {
+			get => Header?.Visibility == Visibility.Visible;
+			set => Header?.ToggleVisibility(value);
 		}
 		internal void PerformClick() {
 			OnClick();

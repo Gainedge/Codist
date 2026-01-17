@@ -17,11 +17,13 @@ namespace Codist.Refactorings
 		public static readonly ReplaceText CommentToRegion = new CommentToRegionRefactoring();
 		public static readonly ReplaceText SealType = new SealTypeRefactoring();
 		public static readonly ReplaceText MakeStatic = new StaticRefactoring();
-		public static readonly ReplaceText MakeReadonly = new ReadonlyFieldRefactoring();
+		public static readonly ReplaceText MakeReadonly = new ReadonlyRefactoring();
 		public static readonly ReplaceText MakePublic = new ChangeAccessibilityRefactoring(SyntaxKind.PublicKeyword);
 		public static readonly ReplaceText MakeProtected = new ChangeAccessibilityRefactoring(SyntaxKind.ProtectedKeyword);
 		public static readonly ReplaceText MakeInternal = new ChangeAccessibilityRefactoring(SyntaxKind.InternalKeyword);
 		public static readonly ReplaceText MakePrivate = new ChangeAccessibilityRefactoring(SyntaxKind.PrivateKeyword);
+		public static readonly ReplaceText UseVarType = new UseVarTypeRefactoring();
+		public static readonly ReplaceText SplitDeclaration = new SplitDeclarationAssignmentRefactoring();
 
 		public abstract int IconId { get; }
 		public abstract string Title { get; }
@@ -217,23 +219,21 @@ namespace Codist.Refactorings
 				var insertAt = m.FullSpan.Length == 0 ? d.SpanStart
 					: m[0].IsAnyKind(SyntaxKind.PublicKeyword, SyntaxKind.InternalKeyword, SyntaxKind.PrivateKeyword, SyntaxKind.ProtectedKeyword) ? m[0].FullSpan.End
 					: GetModifierInsertionPoint(d);
-				ctx.View.Edit(insertAt, (view, param, edit) => {
-					edit.Insert(param, "sealed ");
-				});
+				ctx.View.Edit(insertAt, (view, param, edit) => edit.Insert(param, "sealed "));
 				ctx.View.SelectSpan(insertAt, LENGTH_OF_SEALED, 1);
 			}
 		}
 
 
-		sealed class ReadonlyFieldRefactoring : DeclarationModifierRefactoring
+		sealed class ReadonlyRefactoring : DeclarationModifierRefactoring
 		{
 			public override int IconId => IconIds.ReadonlyField;
 			public override string Title => R.CMD_MakeReadonly;
 
 			public override bool Accept(RefactoringContext ctx) {
 				var node = ctx.Node;
-				if (node.IsKind(SyntaxKind.VariableDeclarator) == false) {
-					return false;
+				if (!node.IsKind(SyntaxKind.VariableDeclarator)) {
+					return node.IsKind(SyntaxKind.StructDeclaration) && CanBeReadonly((StructDeclarationSyntax)node);
 				}
 				node = node.Parent.Parent;
 				return node.IsAnyKind(SyntaxKind.FieldDeclaration, SyntaxKind.EventFieldDeclaration)
@@ -252,23 +252,95 @@ namespace Codist.Refactorings
 				return true;
 			}
 
+			static bool CanBeReadonly(StructDeclarationSyntax node) {
+				foreach (var member in node.Members) {
+					switch (member.Kind()) {
+						case SyntaxKind.FieldDeclaration:
+						case SyntaxKind.EventFieldDeclaration:
+							if (IsWritableInstance((BaseFieldDeclarationSyntax)member)) {
+								return false;
+							}
+							break;
+						case SyntaxKind.PropertyDeclaration:
+						case SyntaxKind.EventDeclaration:
+							if (IsWritableInstance((BasePropertyDeclarationSyntax)member)) {
+								return false;
+							}
+							break;
+					}
+				}
+				return true;
+			}
+
+			static bool IsWritableInstance(BaseFieldDeclarationSyntax field) {
+				foreach (var modifier in field.Modifiers) {
+					switch (modifier.Kind()) {
+						case SyntaxKind.StaticKeyword:
+						case SyntaxKind.ConstKeyword:
+						case SyntaxKind.ReadOnlyKeyword:
+							return false;
+					}
+				}
+				return true;
+			}
+
+			static bool IsWritableInstance(BasePropertyDeclarationSyntax property) {
+				foreach (var modifier in property.Modifiers) {
+					switch (modifier.Kind()) {
+						case SyntaxKind.StaticKeyword:
+						case SyntaxKind.ReadOnlyKeyword:
+							return false;
+					}
+				}
+				var al = property.AccessorList;
+				if (al is null) {
+					return false;
+				}
+				foreach (var accessor in al.Accessors) {
+					switch (accessor.Keyword.Kind()) {
+						case SyntaxKind.SetKeyword:
+							if (accessor.Body is null && accessor.ExpressionBody is null) {
+								return true;
+							}
+							continue;
+						case SyntaxKind.AddKeyword:
+						case SyntaxKind.RemoveKeyword:
+						case CodeAnalysisHelper.InitKeyword:
+							return false;
+					}
+				}
+				return false;
+			}
+
 			public override void Refactor(SemanticContext ctx) {
 				const int LENGTH_OF_READONLY = 8;
 				var node = ctx.Node;
-				if (node.IsKind(SyntaxKind.VariableDeclarator) == false) {
+				SyntaxTokenList m;
+				MemberDeclarationSyntax md;
+				int ip; // default insertion point
+				if (node.IsKind(SyntaxKind.VariableDeclarator)) {
+					if (node.Parent.Parent is BaseFieldDeclarationSyntax d) {
+						m = d.Modifiers;
+						md = d;
+						ip = md.SpanStart;
+					}
+					else {
+						return;
+					}
+				}
+				else if (node.IsKind(SyntaxKind.StructDeclaration)) {
+					var d = (StructDeclarationSyntax)node;
+					m = d.Modifiers;
+					md = d;
+					ip = d.Keyword.SpanStart;
+				}
+				else {
 					return;
 				}
-				var d = node.Parent.Parent as BaseFieldDeclarationSyntax;
-				if (d == null) {
-					return;
-				}
-				var m = d.Modifiers;
-				var insertAt = m.FullSpan.Length == 0 ? d.SpanStart
+				var insertAt = m.FullSpan.Length == 0 ? ip
 					: m[0].IsAnyKind(SyntaxKind.PublicKeyword, SyntaxKind.InternalKeyword, SyntaxKind.PrivateKeyword, SyntaxKind.ProtectedKeyword, SyntaxKind.StaticKeyword) ? m[0].FullSpan.End
-					: GetModifierInsertionPoint(d);
-				ctx.View.Edit(insertAt, (view, param, edit) => {
-					edit.Insert(param, "readonly ");
-				});
+					: GetModifierInsertionPoint(md);
+				ctx.View.Edit(insertAt, (view, param, edit) => edit.Insert(param, "readonly "));
 				ctx.View.SelectSpan(insertAt, LENGTH_OF_READONLY, 1);
 			}
 		}
@@ -283,7 +355,7 @@ namespace Codist.Refactorings
 					var m = d.GetModifiers(out var canHaveModifier);
 					TypeDeclarationSyntax t;
 					return canHaveModifier
-						&& d.IsAnyKind(SyntaxKind.ConstructorDeclaration, SyntaxKind.DestructorDeclaration, CodeAnalysisHelper.RecordDeclaration, CodeAnalysisHelper.RecordStructDeclaration) == false
+						&& !d.IsAnyKind(SyntaxKind.ConstructorDeclaration, SyntaxKind.DestructorDeclaration, CodeAnalysisHelper.RecordDeclaration, CodeAnalysisHelper.RecordStructDeclaration)
 						&& ((t = d as TypeDeclarationSyntax) == null
 							|| t.GetParameterList() == null) // exclude primary constructor
 						&& CanBeStatic(m);
@@ -315,9 +387,7 @@ namespace Codist.Refactorings
 				var insertAt = m.FullSpan.Length == 0 ? d.SpanStart
 					: m[0].IsAnyKind(SyntaxKind.PublicKeyword, SyntaxKind.InternalKeyword, SyntaxKind.PrivateKeyword, SyntaxKind.ProtectedKeyword) ? m[0].FullSpan.End
 					: GetModifierInsertionPoint(d);
-				ctx.View.Edit(insertAt, (view, param, edit) => {
-					edit.Insert(param, "static ");
-				});
+				ctx.View.Edit(insertAt, (view, param, edit) => edit.Insert(param, "static "));
 				ctx.View.SelectSpan(insertAt, LENGTH_OF_STATIC, 1);
 			}
 		}
@@ -358,11 +428,13 @@ namespace Codist.Refactorings
 			}
 
 			bool CanChangeAccessibility(MemberDeclarationSyntax d) {
+				if (d.IsAnyKind(SyntaxKind.EnumMemberDeclaration, CodeAnalysisHelper.ExtensionDeclaration)) {
+					return false;
+				}
 				var m = d.GetModifiers(out var canHaveModifier);
-				if (canHaveModifier == false
+				if (!canHaveModifier
 					|| m.Any(_KeywordKind)
-					|| m.Any(SyntaxKind.OverrideKeyword)
-					|| d.IsKind(SyntaxKind.EnumMemberDeclaration)) {
+					|| m.Any(SyntaxKind.OverrideKeyword)) {
 					return false;
 				}
 				switch (_KeywordKind) {
@@ -370,12 +442,12 @@ namespace Codist.Refactorings
 					case SyntaxKind.InternalKeyword:
 						return true;
 					case SyntaxKind.ProtectedKeyword:
-						return m.Any(SyntaxKind.SealedKeyword) == false
+						return !m.Any(SyntaxKind.SealedKeyword)
 							&& d.Parent is ClassDeclarationSyntax c
-							&& c.Modifiers.Any(SyntaxKind.SealedKeyword) == false;
+							&& !c.Modifiers.Any(SyntaxKind.SealedKeyword);
 					case SyntaxKind.PrivateKeyword:
 						if (d is BaseTypeDeclarationSyntax t
-							&& t.IsKind(SyntaxKind.InterfaceDeclaration) == false) {
+							&& !t.IsKind(SyntaxKind.InterfaceDeclaration)) {
 							return d.Parent is BaseTypeDeclarationSyntax;
 						}
 						return true;
@@ -385,8 +457,8 @@ namespace Codist.Refactorings
 
 			public override void Refactor(SemanticContext ctx) {
 				var d = GetDeclarationNode(ctx);
-				SyntaxTokenList modifiers = d.GetModifiers(out var canHaveModifier);
-				if (canHaveModifier == false) {
+				var modifiers = d.GetModifiers(out var canHaveModifier);
+				if (!canHaveModifier) {
 					return;
 				}
 
@@ -400,7 +472,7 @@ namespace Codist.Refactorings
 							case SyntaxKind.ProtectedKeyword:
 							case SyntaxKind.InternalKeyword:
 							case SyntaxKind.PrivateKeyword:
-								if (replaced == false) {
+								if (!replaced) {
 									replaced = edit.Replace(span = item.Span.ToSpan(), param.modifier);
 									view.SelectSpan(span);
 								}
@@ -438,6 +510,117 @@ namespace Codist.Refactorings
 					case SyntaxKind.PrivateKeyword: return "private";
 				}
 				return String.Empty;
+			}
+		}
+
+		abstract class VarDeclarationRefactoring : DeclarationModifierRefactoring
+		{
+			protected static SyntaxNode GetVariableDeclarationNode(SyntaxNode node) {
+				return node is VariableDeclaratorSyntax
+					? node.Parent
+					: node is IdentifierNameSyntax name
+					? name.Parent.UnqualifyExceptNamespace()
+					: node.Parent;
+			}
+		}
+
+		sealed class UseVarTypeRefactoring : VarDeclarationRefactoring
+		{
+			public override int IconId => IconIds.Class;
+			public override string Title => R.CMD_UseVarType;
+
+			public override bool Accept(RefactoringContext ctx) {
+				return GetVariableDeclarationNode(ctx.Node) is VariableDeclarationSyntax dec
+					&& !(dec.Type is IdentifierNameSyntax n && n.IsVar)
+					&& dec.Parent is LocalDeclarationStatementSyntax loc
+					&& !loc.IsConst
+					&& dec.Variables.All(i => i.Initializer != null);
+			}
+
+			public override void Refactor(SemanticContext ctx) {
+				if (GetVariableDeclarationNode(ctx.Node) is VariableDeclarationSyntax dec) {
+					switch (dec.Variables.Count) {
+						case 0: return;
+						case 1:
+							var span = dec.Type.Span;
+							ctx.View.Edit(span, (view, param, edit) => edit.Replace(param.ToSpan(), "var"));
+							ctx.View.SelectSpan(span.Start, 3, 1);
+							return;
+					}
+
+					ctx.View.Edit((ctx, dec), (view, param, edit) => {
+						var (indent, newLine) = param.ctx.GetIndentAndNewLine(param.dec.SpanStart, 0);
+						using (var sbr = Microsoft.VisualStudio.Utilities.ReusableStringBuilder.AcquireDefault(128)) {
+							var sb = sbr.Resource;
+							sb.Append(param.dec.GetLeadingTrivia().ToString());
+							bool isFirst = true;
+							foreach (var variable in param.dec.Variables) {
+								if (isFirst) {
+									isFirst = false;
+								}
+								else {
+									sb.Append(newLine).Append(indent);
+								}
+								sb.Append("var ")
+									.Append(variable.ToFullString())
+									.Append(';');
+							}
+							sb.Append(param.dec.Parent.GetTrailingTrivia().ToString());
+							edit.Replace(param.dec.Parent.FullSpan.ToSpan(), sb.ToString());
+						}
+					});
+				}
+			}
+		}
+
+		sealed class SplitDeclarationAssignmentRefactoring : VarDeclarationRefactoring
+		{
+			public override int IconId => IconIds.SplitCondition;
+			public override string Title => R.CMD_SplitDeclarationAssignment;
+
+			public override bool Accept(RefactoringContext ctx) {
+				SeparatedSyntaxList<VariableDeclaratorSyntax> vars;
+				return GetVariableDeclarationNode(ctx.Node) is VariableDeclarationSyntax dec
+					&& !(dec.Type is IdentifierNameSyntax n && n.IsVar)
+					&& dec.Parent is LocalDeclarationStatementSyntax loc
+					&& !loc.IsConst
+					&& dec.Variables.All(i => i.Initializer != null);
+			}
+
+			public override void Refactor(SemanticContext ctx) {
+				if (GetVariableDeclarationNode(ctx.Node) is VariableDeclarationSyntax dec) {
+					SeparatedSyntaxList<VariableDeclaratorSyntax> vars = dec.Variables;
+					var v = vars[0];
+					ctx.View.Edit((ctx, dec, v, vars), (view, param, edit) => {
+						var (indent, newLine) = param.ctx.GetIndentAndNewLine(param.dec.SpanStart, 0);
+						var start = param.v.Identifier.Span.Start;
+						var end = param.dec.Parent.FullSpan.End;
+						using (var sbr = Microsoft.VisualStudio.Utilities.ReusableStringBuilder.AcquireDefault(128)) {
+							var sb = sbr.Resource;
+							bool isFirst = true;
+							foreach (var variable in param.dec.Variables) {
+								if (isFirst) {
+									isFirst = false;
+								}
+								else {
+									sb.Append(", ");
+								}
+								sb.Append(variable.Identifier.Text);
+							}
+							sb.Append(';');
+							foreach (var variable in param.dec.Variables) {
+								sb.Append(newLine)
+									.Append(indent)
+									.Append(variable.Identifier.ToFullString())
+									.Append(variable.Initializer.ToFullString())
+									.Append(';');
+							}
+							sb.Append(param.dec.Parent.GetTrailingTrivia().ToString());
+							edit.Replace(Span.FromBounds(start, end), sb.ToString());
+						}
+					});
+					ctx.View.SelectSpan(v.Identifier.Span.ToSpan());
+				}
 			}
 		}
 	}

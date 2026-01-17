@@ -451,6 +451,45 @@ namespace Codist
 			return false;
 		}
 
+		public static ImmutableArray<INamedTypeSymbol> GetImplementedInterfaces(this ISymbol symbol) {
+			if (symbol.ContainingType.TypeKind == TypeKind.Interface) {
+				return ImmutableArray<INamedTypeSymbol>.Empty;
+			}
+			var interfaces = symbol.ContainingType.AllInterfaces;
+			if (interfaces.Length == 0) {
+				return ImmutableArray<INamedTypeSymbol>.Empty;
+			}
+			var directIfs = symbol.ContainingType.GetImplementedInterfaces();
+			var implementedIntfs = ImmutableArray.CreateBuilder<INamedTypeSymbol>(3);
+			var refKind = symbol.GetRefKind();
+			var returnType = symbol.GetReturnType();
+			var parameters = symbol.GetParameters();
+			var typeParams = symbol.GetTypeParameters();
+			foreach (var intf in interfaces) {
+				foreach (var member in intf.GetMembers(symbol.Name)) {
+					if (member.Kind == symbol.Kind
+						&& member.DeclaredAccessibility == Accessibility.Public
+						&& member.GetRefKind() == refKind
+						&& member.MatchSignature(symbol.Kind, returnType, parameters, typeParams)
+						&& (symbol.IsOverride || directIfs.Contains(intf))) {
+						implementedIntfs.Add(intf);
+					}
+				}
+			}
+			return implementedIntfs.ToImmutable();
+		}
+
+		static ImmutableHashSet<INamedTypeSymbol> GetImplementedInterfaces(this INamedTypeSymbol type) {
+			var intfs = type.Interfaces;
+			var d = new HashSet<INamedTypeSymbol>(intfs);
+			foreach (var i in intfs) {
+				foreach (var item in i.AllInterfaces) {
+					d.Add(item);
+				}
+			}
+			return d.ToImmutableHashSet();
+		}
+
 		public static bool HasDirectImplementationFor(this INamedTypeSymbol symbol, INamedTypeSymbol interfaceType) {
 			Func<INamedTypeSymbol, INamedTypeSymbol, bool> comparer = interfaceType.IsGenericType && interfaceType.ConstructedFrom == interfaceType
 				? (t, infSym) => t.ConstructedFrom == infSym
@@ -567,9 +606,9 @@ namespace Codist
 				case SymbolKind.Property: return ((IPropertySymbol)symbol).Parameters;
 				case SymbolKind.NamedType:
 					return (symbol = symbol.AsMethod()) != null ? ((IMethodSymbol)symbol).Parameters
-						: ImmutableArray<IParameterSymbol>.Empty;
+						: default;
 			}
-			return ImmutableArray<IParameterSymbol>.Empty;
+			return default;
 		}
 
 		public static ITypeSymbol GetReturnType(this ISymbol symbol) {
@@ -997,6 +1036,57 @@ namespace Codist
 				&& method.Equals(method.OriginalDefinition) == false;
 		}
 
+		public static bool CanTypeParametersBeInferred(this IMethodSymbol method) {
+			ImmutableArray<IParameterSymbol> parameters;
+			if (method?.IsGenericMethod != true) {
+				return false;
+			}
+			if (method.MethodKind == MethodKind.ReducedExtension) {
+				method = method.ReducedFrom;
+			}
+			if ((parameters = method.Parameters).IsEmpty) {
+				return false;
+			}
+
+			foreach (var typeParam in method.TypeParameters) {
+				bool isParamInferred = false;
+				foreach (var param in parameters) {
+					if (TypeContainsTypeParameter(param.Type, typeParam)) {
+						isParamInferred = true;
+						break;
+					}
+				}
+				if (!isParamInferred) {
+					return false;
+				}
+			}
+			return true;
+		}
+
+		static bool TypeContainsTypeParameter(ITypeSymbol type, ITypeParameterSymbol typeParam) {
+			if (type == null) {
+				return false;
+			}
+
+			if (type.Equals(typeParam)) {
+				return true;
+			}
+
+			if (type is IArrayTypeSymbol arrayType) {
+				return TypeContainsTypeParameter(arrayType.ElementType, typeParam);
+			}
+
+			if (type is INamedTypeSymbol namedType) {
+				foreach (var typeArg in namedType.TypeArguments) {
+					if (TypeContainsTypeParameter(typeArg, typeParam)) {
+						return true;
+					}
+				}
+			}
+
+			return false;
+		}
+
 		public static bool IsObjectOrValueType(this INamedTypeSymbol type) {
 			return type.SpecialType == SpecialType.System_Object || type.SpecialType == SpecialType.System_ValueType;
 		}
@@ -1145,6 +1235,16 @@ namespace Codist
 			return false;
 		}
 
+		static readonly string[] __CompilerServicesNamespace = new string[] { "CompilerServices", "Runtime", "System" };
+		public static bool IsCompilerGenerated(this ISymbol symbol) {
+			string name;
+			return symbol.IsImplicitlyDeclared
+				|| (!symbol.CanBeReferencedByName
+					&& !String.IsNullOrEmpty(name = symbol.Name)
+					&& (name[0] == '<'
+						|| symbol.GetAttributes().Any(i => i.AttributeClass.MatchTypeName("CompilerGeneratedAttribute", __CompilerServicesNamespace))));
+		}
+
 		public static bool MayHaveDocumentation(this ISymbol symbol) {
 			switch (symbol.Kind) {
 				case SymbolKind.Event:
@@ -1164,6 +1264,12 @@ namespace Codist
 
 		public static bool HasSymbol(this SymbolInfo symbolInfo) {
 			return symbolInfo.Symbol != null || symbolInfo.CandidateReason != CandidateReason.None;
+		}
+
+		public static ImmutableArray<ISymbol> GetSymbolOrCandidates(this SymbolInfo symbolInfo) {
+			return symbolInfo.Symbol != null
+				? ImmutableArray.Create(symbolInfo.Symbol)
+				: symbolInfo.CandidateSymbols;
 		}
 
 		#region Protected/Future property accessors

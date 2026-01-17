@@ -1,9 +1,7 @@
 ﻿using System.Linq;
-using CLR;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Options;
-using SF = Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Codist.Refactorings
 {
@@ -42,18 +40,8 @@ namespace Codist.Refactorings
 		internal IRefactoring Refactoring { get; set; }
 		internal SyntaxNode NewRoot { get; set; }
 
-		public (SyntaxTriviaList indent, SyntaxTrivia newLine) GetIndentAndNewLine(SyntaxNode node) {
-			return GetIndentAndNewLine((node.GetContainingStatementOrDeclaration() ?? node).SpanStart);
-		}
-
 		public (SyntaxTriviaList indent, SyntaxTrivia newLine) GetIndentAndNewLine(int position, int indentUnit = -1) {
-			var options = WorkspaceOptions;
-			if (indentUnit < 0) {
-				indentUnit = Config.Instance.SmartBarOptions.MatchFlags(SmartBarOptions.DoubleIndentRefactoring) ? 2 : 1;
-			}
-			string indent = SemanticContext.View.TextSnapshot.GetLinePrecedingWhitespaceAtPosition(position)
-				+ options.GetIndentString(indentUnit);
-			return (SF.TriviaList(SF.Whitespace(indent)), SF.Whitespace(options.GetNewLineString()));
+			return _SemanticContext.GetIndentAndNewLine(position, indentUnit);
 		}
 
 		public bool AcceptAny(Refactorings.IRefactoring[] refactorings) {

@@ -269,9 +269,9 @@ namespace Codist.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Copy selected text
+        ///   Looks up a localized string similar to Copy selected text (without indentation)
         ///Right click: Copy line
-        ///Ctrl: Without indentation.
+        ///Shift: With indentation.
         /// </summary>
         internal static string CMD_CopySelectedText {
             get {
@@ -307,9 +307,9 @@ namespace Codist.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Cut selected text
+        ///   Looks up a localized string similar to Cut selected text (without indentation)
         ///Right click: Cut line
-        ///Ctrl: Without indentation.
+        ///Shift: With indentation.
         /// </summary>
         internal static string CMD_CutSelectedText {
             get {
@@ -1937,6 +1937,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Split Declaration and Assignment.
+        /// </summary>
+        internal static string CMD_SplitDeclarationAssignment {
+            get {
+                return ResourceManager.GetString("CMD_SplitDeclarationAssignment", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Split to Nested &lt;if&gt;.
         /// </summary>
         internal static string CMD_SplitToNested {
@@ -2239,6 +2248,15 @@ namespace Codist.Properties {
         internal static string CMD_UseExplicitType {
             get {
                 return ResourceManager.GetString("CMD_UseExplicitType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Explicit Type to &lt;var&gt;.
+        /// </summary>
+        internal static string CMD_UseVarType {
+            get {
+                return ResourceManager.GetString("CMD_UseVarType", resourceCulture);
             }
         }
         

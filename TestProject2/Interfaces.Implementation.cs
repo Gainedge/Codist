@@ -35,10 +35,24 @@ class Base : IBase
 	public void DoWork() { }
 }
 
+class NewBase : Base
+{
+	public new void DoWork() { }
+}
+
 class Derived : Base, IDerived
 {
 	public int Id { get; }
 	public void DoMoreWork() { }
+}
+
+class ImplementDerivedInterface : IDerived
+{
+	public int Id { get; }
+
+	public void DoMoreWork() {}
+
+	public void DoWork() {}
 }
 
 class Lazy : Derived

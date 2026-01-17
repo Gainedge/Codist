@@ -90,7 +90,6 @@ namespace Codist.SyntaxHighlight
 		internal bool HasLineStyle => Underline.HasValue || Strikethrough.HasValue || OverLine.HasValue;
 		internal bool HasLine => Underline == true || Strikethrough == true || OverLine == true;
 		internal bool HasLineColor => HasLine && _LineColor.A != 0;
-		internal bool InvertBrightness { get; set; }
 
     /// <summary>The category used in option pages to group style items</summary>
     internal abstract string Category { get; }
@@ -111,28 +110,13 @@ namespace Codist.SyntaxHighlight
     internal abstract string ClassificationType { get; }
     internal abstract string Description { get; }
 
-		internal void ConsolidateBrightness() {
-			if (InvertBrightness) {
-				InvertColorBrightness(ref _ForeColor);
-				InvertColorBrightness(ref _BackColor);
-				InvertColorBrightness(ref _LineColor);
-				InvertBrightness = false;
-			}
+		internal SolidColorBrush MakeBrush(bool invertBrightness) {
+			return ForeColor.A != 0 ? new SolidColorBrush(invertBrightness ? ForeColor.InvertBrightness() : ForeColor) : null;
 		}
 
-		static void InvertColorBrightness(ref Color color) {
-			if (color.A != 0) {
-				color = color.InvertBrightness();
-			}
-		}
-
-		internal SolidColorBrush MakeBrush() {
-			return ForeColor.A != 0 ? new SolidColorBrush(InvertBrightness ? ForeColor.InvertBrightness() : ForeColor) : null;
-		}
-
-		internal Brush MakeBackgroundBrush(Color backColor) {
+		internal Brush MakeBackgroundBrush(Color backColor, bool invertBrightness) {
 			backColor = backColor.Alpha(0);
-			var bc = InvertBrightness ? BackColor.InvertBrightness() : BackColor;
+			var bc = invertBrightness ? BackColor.InvertBrightness() : BackColor;
 			switch (BackgroundEffect) {
 				case BrushEffect.ToBottom:
 					return new LinearGradientBrush(backColor, bc, 90);
@@ -147,65 +131,76 @@ namespace Codist.SyntaxHighlight
 			}
 		}
 
-    internal Typeface MakeTypeface() {
-      var f = new FontFamily(Font);
-      bool fontValid = false;
-      foreach(var item in f.FamilyNames) {
-        if(item.Value?.Contains(Font) == true) {
-          fontValid = true;
-          break;
-        }
-      }
-      if(fontValid) {
-        if(String.IsNullOrWhiteSpace(FontVariant)) {
-          return new Typeface(f, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
-        }
-        var ft = f.GetTypefaces().FirstOrDefault(t => t.FaceNames.Values.Contains(FontVariant));
-        if(ft != null) {
-          return new Typeface(new FontFamily($"{Font} {FontVariant}"), ft.Style, ft.Weight, ft.Stretch);
-        }
-      }
-      return null;
-    }
+		internal Typeface MakeTypeface() {
+			var f = new FontFamily(Font);
+			bool fontValid = false;
+			foreach (var item in f.FamilyNames) {
+				if (item.Value?.Contains(Font) == true) {
+					fontValid = true;
+					break;
+				}
+			}
+			if (fontValid) {
+				if (String.IsNullOrWhiteSpace(FontVariant)) {
+					return new Typeface(f, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+				}
+				var ft = f.GetTypefaces().FirstOrDefault(t => t.FaceNames.Values.Contains(FontVariant));
+				if (ft != null) {
+					return new Typeface(new FontFamily($"{Font} {FontVariant}"), ft.Style, ft.Weight, ft.Stretch);
+				}
+			}
+			$"Invalid font: {Font}".Log(LogCategory.FormatStore);
+			return null;
+		}
 
-    internal TextDecorationCollection MakeTextDecorations() {
-      var tdc = new TextDecorationCollection();
-      var hasSet = false;
-      if(Underline == true) {
-        if(LineColor.A > 0) {
-          tdc.Add(MakeLineDecoration(TextDecorationLocation.Underline));
-        } else {
-          tdc.Add(TextDecorations.Underline);
-        }
-      } else if(Underline == false) {
-        hasSet = true;
-      }
-      if(Strikethrough == true) {
-        if(LineColor.A > 0) {
-          tdc.Add(MakeLineDecoration(TextDecorationLocation.Strikethrough));
-        } else {
-          tdc.Add(TextDecorations.Strikethrough);
-        }
-      } else if(Strikethrough == false) {
-        hasSet = true;
-      }
-      if(OverLine == true) {
-        if(LineColor.A > 0) {
-          tdc.Add(MakeLineDecoration(TextDecorationLocation.OverLine));
-        } else {
-          tdc.Add(TextDecorations.OverLine);
-        }
-      } else if(OverLine == false) {
-        hasSet = true;
-      }
-      return tdc.Count > 0 || hasSet ? tdc : null;
-    }
+		internal TextDecorationCollection MakeTextDecorations(bool invertBrightness) {
+			var tdc = new TextDecorationCollection();
+			var hasSet = false;
+			if (Underline == true) {
+				if (LineColor.A > 0) {
+					tdc.Add(MakeLineDecoration(TextDecorationLocation.Underline, invertBrightness));
+				}
+				else {
+					tdc.Add(TextDecorations.Underline);
+				}
+			}
+			else if (Underline == false) {
+				hasSet = true;
+			}
+			if (Strikethrough == true) {
+				if (LineColor.A > 0) {
+					tdc.Add(MakeLineDecoration(TextDecorationLocation.Strikethrough, invertBrightness));
+				}
+				else {
+					tdc.Add(TextDecorations.Strikethrough);
+				}
+			}
+			else if (Strikethrough == false) {
+				hasSet = true;
+			}
+			if (OverLine == true) {
+				if (LineColor.A > 0) {
+					tdc.Add(MakeLineDecoration(TextDecorationLocation.OverLine, invertBrightness));
+				}
+				else {
+					tdc.Add(TextDecorations.OverLine);
+				}
+			}
+			else if (OverLine == false) {
+				hasSet = true;
+			}
+			return tdc.Count > 0 || hasSet ? tdc : null;
+		}
 
-		TextDecoration MakeLineDecoration(TextDecorationLocation location) {
+		TextDecoration MakeLineDecoration(TextDecorationLocation location, bool invertBrightness) {
+			var c = LineOpacity == 0 ? LineColor : LineColor.Alpha(LineOpacity);
+			if (invertBrightness) {
+				c = c.InvertBrightness();
+			}
 			var d = new TextDecoration {
 				Location = location,
 				Pen = new Pen {
-					Brush = new SolidColorBrush(LineOpacity == 0 ? LineColor : LineColor.Alpha(LineOpacity))
+					Brush = new SolidColorBrush(c)
 				},
 			};
 			if (LineStyle != LineStyle.Solid) {
@@ -225,6 +220,14 @@ namespace Codist.SyntaxHighlight
 							d.PenOffset = LineOffset;
 							d.PenOffsetUnit = TextDecorationUnit.Pixel;
 							d.Pen.Thickness = 3.0;
+							d.PenThicknessUnit = TextDecorationUnit.Pixel;
+							return d;
+						}
+						else if (location == TextDecorationLocation.OverLine) {
+							d.Pen.Brush = new VisualBrush(new System.Windows.Controls.TextBlock { Text = "★", Foreground = d.Pen.Brush, FontSize = 8 }) { Stretch = Stretch.None, AlignmentX = AlignmentX.Left };
+							d.PenOffset = -LineOffset;
+							d.PenOffsetUnit = TextDecorationUnit.Pixel;
+							d.Pen.Thickness = 15.0;
 							d.PenThicknessUnit = TextDecorationUnit.Pixel;
 							return d;
 						}

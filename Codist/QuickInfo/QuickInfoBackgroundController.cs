@@ -14,25 +14,22 @@ namespace Codist.QuickInfo
 	{
 		#region Adaptive background brightness
 		static readonly IClassificationFormatMap __ToolTipFormatMap = InitFormatMap();
-		static bool __Init;
+		static SolidColorBrush __Background, __Border;
 
 		static IClassificationFormatMap InitFormatMap() {
 			var m = ServicesHelper.Instance.ClassificationFormatMap.GetClassificationFormatMap("tooltip");
-			m.ClassificationFormatMappingChanged += (s, args) => AdaptBackgroundBrightness(__ToolTipFormatMap);
+			m.ClassificationFormatMappingChanged += (s, args) => UpdateBackgroundBrush();
 			return m;
 		}
 
-		static void AdaptBackgroundBrightness(IClassificationFormatMap formatMap) {
-			QuickInfoConfig c = Config.Instance.QuickInfo;
-			if (c.BackColor.A != 0
-				&& formatMap.DefaultTextProperties.ForegroundBrush is SolidColorBrush b
-				&& b.Color.IsDark() == c.BackColor.IsDark()) {
-				c.BackColor = c.BackColor.InvertBrightness();
+		static void AdaptBrightnessOfBackgroundColor(ref Color bc) {
+			if (bc.A != 0
+					&& __ToolTipFormatMap.DefaultTextProperties.ForegroundBrush is SolidColorBrush b
+					&& b.Color.IsDark() == bc.IsDark()) {
+				Config.Instance.QuickInfo.BackColor = bc = bc.InvertBrightness();
 			}
 		}
 		#endregion
-
-		SolidColorBrush _Background;
 
 		public QuickInfoBackgroundController() {
 			UpdateBackgroundBrush();
@@ -41,37 +38,52 @@ namespace Codist.QuickInfo
 
 		void ConfigUpdated(ConfigUpdatedEventArgs args) {
 			if (args.UpdatedFeature.MatchFlags(Features.SuperQuickInfo)) {
-				AdaptBackgroundBrightness(__ToolTipFormatMap);
 				UpdateBackgroundBrush();
 			}
 		}
 
-		void UpdateBackgroundBrush() {
-			if (__Init == false) {
-				__Init = true;
-				AdaptBackgroundBrightness(__ToolTipFormatMap);
-			}
+		static void UpdateBackgroundBrush() {
 			var bc = Config.Instance.QuickInfo.BackColor;
 			var o = bc.A;
 			if (o != 0) {
-				if (_Background == null) {
-					_Background = new SolidColorBrush(bc.Alpha(Byte.MaxValue));
-				}
-				else {
-					_Background.Color = bc.Alpha(Byte.MaxValue);
-				}
+				AdaptBrightnessOfBackgroundColor(ref bc);
+
+				var b = new SolidColorBrush(bc.Alpha(Byte.MaxValue));
 				if (o > 0) {
-					_Background.Opacity = o / 255d;
+					b.Opacity = o / 255d;
 				}
+				b.Freeze();
+				__Background = b;
+				__Border = new SolidColorBrush(MakeAdaptiveColorForBorder(bc)).MakeFrozen();
 			}
 			else {
-				_Background = null;
+				__Background = __Border = null;
 			}
 		}
 
+		static Color MakeAdaptiveColorForBorder(Color color) {
+			var c = color.ToGdiColor();
+			var h = c.GetHue();
+			var s = c.GetSaturation();
+			var l = c.GetBrightness();
+			if (l.IsOutside(0.1f, 0.9f)) {
+				l = 0.5f;
+			}
+			else if (color.IsDark()) {
+				l *= 1.5f;
+				if (l > 1) {
+					l = 1;
+				}
+			}
+			else {
+				l *= 0.667f;
+			}
+			return ColorHelper.FromHsl(h, s, l).Alpha(color.A);
+		}
+
 		protected override Task<QuickInfoItem> GetQuickInfoItemAsync(IAsyncQuickInfoSession session, CancellationToken cancellationToken) {
-			var result = _Background != null
-				? new QuickInfoItem(null, new BackgroundControllerInfoBlock(_Background))
+			var result = __Background != null
+				? new QuickInfoItem(null, new BackgroundControllerInfoBlock())
 				: null;
 			return Task.FromResult(result);
 		}
@@ -82,30 +94,22 @@ namespace Codist.QuickInfo
 
 		sealed class BackgroundControllerInfoBlock : InfoBlock
 		{
-			public BackgroundControllerInfoBlock(Brush background) {
-				Background = background;
-			}
-
-			public Brush Background { get; }
-
 			public override UIElement ToUI() {
-				return new BackgroundController(Background).Tag();
+				return new BackgroundController().Tag();
 			}
 		}
 
 		sealed class BackgroundController : UserControl
 		{
-			readonly Brush _Brush;
-
-			public BackgroundController(Brush brush) {
-				_Brush = brush;
-			}
-
 			protected override void OnVisualParentChanged(DependencyObject oldParent) {
 				base.OnVisualParentChanged(oldParent);
 				var p = this.GetParent<UserControl>(n => n.GetType().Name == "WpfToolTipControl");
-				if (p != null && _Brush != null) {
-					p.Background = _Brush;
+				SolidColorBrush bb;
+				if (p != null && (bb = __Background) != null) {
+					p.Background = bb;
+					if (p.GetFirstVisualChild() is Border tb) {
+						tb.BorderBrush = __Border;
+					}
 				}
 				var b = this.GetParent<Border>();
 				if (b != null) {

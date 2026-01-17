@@ -146,17 +146,17 @@
     <value>复制类和符号名称</value>
   </data>
   <data name="CMD_CopySelectedText" xml:space="preserve">
-    <value>复制选中文本
+    <value>复制选中文本（去除行首缩进）
 右键：复制整行
-Ctrl: 去除行首缩进</value>
+Shift: 包含行首缩进</value>
   </data>
   <data name="CMD_CopySymbolName" xml:space="preserve">
     <value>复制符号名称</value>
   </data>
   <data name="CMD_CutSelectedText" xml:space="preserve">
-    <value>剪切选中文本
-右键：剪切整行
-Ctrl: 去除行首缩进</value>
+    <value>剪切选中文本（去除行首缩进）
+右键：复制整行
+Shift: 包含行首缩进</value>
   </data>
   <data name="CMD_Debugger" xml:space="preserve">
     <value>调试器...
@@ -2948,5 +2948,11 @@ Ctrl: 仅列出直接实现接口的类</value>
   </data>
   <data name="OT_ShowParameterInfoTip" xml:space="preserve">
     <value>在自动附加括号后，显示方法的参数信息</value>
+  </data>
+  <data name="CMD_UseVarType" xml:space="preserve">
+    <value>将显式类型 改为 &lt;var&gt;</value>
+  </data>
+  <data name="CMD_SplitDeclarationAssignment" xml:space="preserve">
+    <value>拆分变量的声明和赋值</value>
   </data>
 </root>

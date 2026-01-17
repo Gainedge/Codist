@@ -36,6 +36,8 @@ namespace Codist.Refactorings
 			ReplaceNode.WrapInTryFinally,
 			ReplaceToken.UseStaticDefault,
 			ReplaceToken.UseExplicitType,
+			ReplaceText.UseVarType,
+			ReplaceText.SplitDeclaration,
 			ReplaceNode.DeleteCondition,
 			ReplaceNode.RemoveContainingStatement,
 			ReplaceNode.DeleteStatement,

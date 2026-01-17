@@ -368,6 +368,9 @@ namespace Codist.QuickInfo
         if (tt.Contains("CRRSP")) {
           return VsImageHelper.GetImage(IconIds.StatusSpell);
         }
+        if (tt.Contains(":")) {
+          tt = tt.Split(new[] { ':' }, 2).Last();
+        }
         var errorTagger = GetErrorTagger();
 				return errorTagger != null
 					? (_ErrorTags ?? (_ErrorTags = new ErrorTags()))
@@ -441,9 +444,13 @@ namespace Codist.QuickInfo
 							if (altSign != null) {
 								s.AddTopPart(altSign);
 							}
-							if (locDoc?.Parent is Panel lp) {
-								lp.Children.Remove(locDoc);
-								s.AddFooter(locDoc);
+							if (locDoc != null) {
+								locDoc.SetProperty(TextBlock.FontFamilyProperty, ThemeCache.ToolTipFont)
+									.SetProperty(TextBlock.FontSizeProperty, ThemeCache.ToolTipFontSize);
+								if (locDoc.Parent is Panel lp) {
+									lp.Children.Remove(locDoc);
+									s.AddFooter(locDoc);
+								}
 							}
 							s.Add(c.Scrollable());
 							if (_Override.LimitItemSize) {
@@ -743,7 +750,7 @@ namespace Codist.QuickInfo
 			}
 
 			public FrameworkElement GetErrorIcon(string code, ITagAggregator<IErrorTag> tagger, SnapshotSpan span) {
-				if (GetTags(tagger, span).TryGetValue(code, out var error)) {
+        if (GetTags(tagger, span).TryGetValue(code, out var error)) {
 					if (code[0] == 'C' && code[1] == 'S' && error == PredefinedErrorTypeNames.Warning) {
 						return CodeAnalysisHelper.GetWarningLevel(ToErrorCode(code, 2)) < 3
 							? VsImageHelper.GetImage(IconIds.SevereWarning)
