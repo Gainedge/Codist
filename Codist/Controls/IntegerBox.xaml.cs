@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Drawing;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -17,6 +18,7 @@ namespace Codist.Controls
 		public readonly static DependencyProperty MinimumProperty = DependencyProperty.Register("Minimum", typeof(int), typeof(IntegerBox), new UIPropertyMetadata(int.MinValue));
 		public readonly static DependencyProperty ValueProperty = DependencyProperty.Register("Value", typeof(int), typeof(IntegerBox), new UIPropertyMetadata(0, (o, e) => ((IntegerBox)o).RaiseValueChangedEvent(e)));
 		public readonly static DependencyProperty StepProperty = DependencyProperty.Register("Step", typeof(int), typeof(IntegerBox), new UIPropertyMetadata(1));
+		public readonly static DependencyProperty UnitProperty = DependencyProperty.Register("Unit", typeof(string), typeof(IntegerBox), new UIPropertyMetadata(string.Empty));
 
 		public IntegerBox() {
 			InitializeComponent();
@@ -45,6 +47,8 @@ namespace Codist.Controls
 		public int Value { get => (int)GetValue(ValueProperty); set => SetCurrentValue(ValueProperty, value); }
 
 		public int Step { get => (int)GetValue(StepProperty); set => SetValue(StepProperty, value); }
+
+		public string Unit { get => (string)GetValue(UnitProperty); set => SetValue(UnitProperty, value); }
 
 		public event EventHandler<DependencyPropertyChangedEventArgs> ValueChanged;
 		private void RaiseValueChangedEvent(DependencyPropertyChangedEventArgs e) {
@@ -94,6 +98,7 @@ namespace Codist.Controls
 			PART_UpButton.Click -= UpButtonClicked;
 			PART_DownButton.Click += DownButtonClicked;
 			PART_UpButton.Click += UpButtonClicked;
+			PART_UnitText.ToggleVisibility(!String.IsNullOrEmpty(Unit));
 		}
 
 		void UpButtonClicked(object sender, RoutedEventArgs e) {

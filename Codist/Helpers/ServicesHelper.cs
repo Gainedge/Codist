@@ -7,6 +7,7 @@ using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text.Adornments;
 using Microsoft.VisualStudio.Text.Classification;
+using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text.Formatting;
 using Microsoft.VisualStudio.Text.Operations;
 using Microsoft.VisualStudio.Text.Tagging;
@@ -55,6 +56,9 @@ namespace Codist
 		public IEditorFormatMapService EditorFormatMap { get; private set; }
 
 		[Import]
+		public IEditorOptionsFactoryService EditorOptionsFactory { get; private set; }
+
+		[Import]
 		public Microsoft.VisualStudio.Text.Outlining.IOutliningManagerService OutliningManager { get; private set; }
 
 		[Import]
@@ -62,9 +66,6 @@ namespace Codist
 
 		[Import]
 		public IAsyncCompletionBroker CompletionBroker { get; private set; }
-
-		[Import]
-		public Microsoft.VisualStudio.Text.Adornments.IToolTipService ToolTipService { get; private set; }
 
 		[Import]
 		public ITextStructureNavigatorSelectorService TextStructureNavigator { get; private set; }
@@ -88,7 +89,10 @@ namespace Codist
 		public ITextSearchService2 TextSearch {  get; private set; }
 
 		[Import]
-		public IVsEditorAdaptersFactoryService EditorAdaptersFactoryService { get; private set; }
+		public IVsEditorAdaptersFactoryService EditorAdaptersFactory { get; private set; }
+
+		[Import]
+		public IEditorOperationsFactoryService EditorOperationsFactory { get; private set; }
 
 		internal SyntaxHighlight.ClassificationTypeExporter ClassificationTypeExporter { get; }
 

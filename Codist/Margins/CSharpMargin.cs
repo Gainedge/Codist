@@ -18,19 +18,22 @@ using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Classification;
 using Microsoft.VisualStudio.Text.Editor;
 
-namespace Codist.Margins {
-  /// <summary>
-  /// Helper class to handle the rendering of the members and symbol references margin.
-  /// </summary>
-  sealed class CSharpMargin : MarginElementBase, IWpfTextViewMargin {
-    //todo user customizable opacity of markers
-    const double MarkerSize = 3, Padding = 3, LineSize = 2, TypeLineSize = 1, TypeAlpha = 0.5, MemberAlpha = 0.5;
+namespace Codist.Margins
+{
+	/// <summary>
+	/// Helper class to handle the rendering of the members and symbol references margin.
+	/// </summary>
+	sealed class CSharpMargin : MarginElementBase, IWpfTextViewMargin
+	{
+		//todo user customizable opacity of markers
+		const double Padding = 3, LineSize = 2, TypeLineSize = 1, TypeAlpha = 0.5, MemberAlpha = 0.5;
 
-    IWpfTextView _View;
-    CancellationTokenSource _Cancellation = new CancellationTokenSource();
-    MemberMarker _MemberMarker;
-    SymbolReferenceMarker _SymbolReferenceMarker;
-    ITextBufferParser _Parser;
+		IWpfTextView _View;
+		CancellationTokenSource _Cancellation = new CancellationTokenSource();
+		MemberMarker _MemberMarker;
+		SymbolReferenceMarker _SymbolReferenceMarker;
+		ITextBufferParser _Parser;
+		double _MarkerSize, _FullMarkerSize;
 
     /// <summary>
     /// Constructor for the <see cref="CSharpMargin"/>.
@@ -44,13 +47,18 @@ namespace Codist.Margins {
       _Parser = CSharpParser.GetOrCreate(textView).GetParser(textView.TextBuffer);
       _SymbolReferenceMarker = new SymbolReferenceMarker(verticalScrollbar, this);
 
-      Config.RegisterUpdateHandler(UpdateCSharpMembersMarginConfig);
-      UpdateCSharpMembersMarginConfig(new ConfigUpdatedEventArgs(null, Features.ScrollbarMarkers));
-      if (Config.Instance.MarkerOptions.MatchFlags(MarkerOptions.SymbolReference)) {
-        _SymbolReferenceMarker.HookEvents();
-      }
-      Width = MarginSize;
-    }
+			Config.RegisterUpdateHandler(UpdateCSharpMembersMarginConfig);
+			UpdateCSharpMembersMarginConfig(new ConfigUpdatedEventArgs(null, Features.ScrollbarMarkers));
+		}
+
+		void LoadConfig() {
+			if (Config.Instance.MarkerOptions.MatchFlags(MarkerOptions.SymbolReference)) {
+				_SymbolReferenceMarker.HookEvents();
+			}
+			_MarkerSize = Config.Instance.ScrollbarMarker.MarkerSize;
+			_FullMarkerSize = _MarkerSize + _MarkerSize;
+			Width = _FullMarkerSize + Padding;
+		}
 
     [SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
     async void ParserStateUpdated(object sender, EventArgs<SemanticState> e) {
@@ -80,10 +88,10 @@ namespace Codist.Margins {
       }
     }
 
-    bool ITextViewMargin.Enabled => IsVisible;
-    FrameworkElement IWpfTextViewMargin.VisualElement => this;
-    public override string MarginName => nameof(CSharpMargin);
-    public override double MarginSize => Padding + MarkerSize;
+		bool ITextViewMargin.Enabled => IsVisible;
+		FrameworkElement IWpfTextViewMargin.VisualElement => this;
+		public override string MarginName => nameof(CSharpMargin);
+		public override double MarginSize => Width;
 
 		/// <summary>
 		/// Override for the FrameworkElement's OnRender. When called, redraw all markers.
@@ -114,6 +122,7 @@ namespace Codist.Margins {
 			if (!e.UpdatedFeature.MatchFlags(Features.ScrollbarMarkers)) {
 				return;
 			}
+			LoadConfig();
 			_Parser.StateUpdated -= ParserStateUpdated;
 			if (Config.Instance.Features.MatchFlags(Features.ScrollbarMarkers)) {
 				_Parser.StateUpdated += ParserStateUpdated;
@@ -274,143 +283,148 @@ namespace Codist.Margins {
         }
       }
 
-      void DrawCodeBlockLines(DrawingContext drawingContext, PenStore penStore, int showMemberDeclarationThreshold, int longDeclarationLines, int labelSize, ITextSnapshot snapshot, IEnumerable<CodeBlock> codeBlocks) {
-        var snapshotLength = snapshot.Length;
-        var memberLevel = 0;
-        var memberType = CodeMemberType.Root;
-        SnapshotPoint rangeFrom = default, rangeTo = default;
-        var dt = ImmutableArray.CreateBuilder<DrawText>();
-        double y1, y2;
-        FormattedText text;
+			void DrawCodeBlockLines(DrawingContext drawingContext, PenStore penStore, int showMemberDeclarationThreshold, int longDeclarationLines, int labelSize, ITextSnapshot snapshot, IEnumerable<CodeBlock> codeBlocks) {
+				var snapshotLength = snapshot.Length;
+				var memberLevel = 0;
+				var memberType = CodeMemberType.Root;
+				SnapshotPoint rangeFrom = default, rangeTo = default;
+				var dt = ImmutableArray.CreateBuilder<DrawText>();
+				double y1, y2;
+				FormattedText text;
+				var markerSize = _Margin._MarkerSize;
+				var fullMarker = _Margin._FullMarkerSize;
 
-        foreach (var block in codeBlocks) {
-          if (_Margin._Cancellation?.IsCancellationRequested != false) {
-            break;
-          }
-          var type = block.Type;
-          if (type == CodeMemberType.Root) {
-            continue;
-          }
-          // check line counts of the member and draw marker line if longer than predefined length
-          var span = block.Span;
-          if (span.End >= snapshotLength) {
-            continue;
-          }
-          var end = new SnapshotPoint(snapshot, span.End);
-          var start = new SnapshotPoint(snapshot, span.Start);
-          var level = block.Level;
-          Pen pen;
-          if (Config.Instance.MarkerOptions.MatchFlags(MarkerOptions.LongMemberDeclaration) && span.Length > 150 && IsMember(type)) {
-            var lineCount = snapshot.GetLineNumberFromPosition(end) - snapshot.GetLineNumberFromPosition(start);
-            y1 = _ScrollBar.GetYCoordinateOfBufferPosition(start);
-            y2 = _ScrollBar.GetYCoordinateOfBufferPosition(end);
-            pen = null;
-            if (lineCount >= longDeclarationLines) {
-              pen = penStore.GetPenForCodeMemberType(type);
-              drawingContext.DrawLine(pen, new Point(level, y1), new Point(_Margin.ActualWidth, y1));
-              drawingContext.DrawLine(pen, new Point(level, y1), new Point(level, y2));
-              drawingContext.DrawLine(pen, new Point(level, y2), new Point(_Margin.ActualWidth, y2));
-            }
-            y2 -= y1;
-            if (y2 > showMemberDeclarationThreshold && block.Name != null) {
-              if (pen == null) {
-                pen = penStore.GetPenForCodeMemberType(type);
-              }
-              if (pen.Brush != null) {
-                text = WpfHelper.ToFormattedText(block.Name, labelSize, pen.Brush.Alpha(y2 / _Margin.ActualHeight * 0.5 + 0.5));
-                dt.Add(new DrawText(text, y2, new Point(level + 2, y1 -= text.Height / 2)));
-              }
-            }
-          }
+				foreach (var block in codeBlocks) {
+					if (_Margin._Cancellation?.IsCancellationRequested != false) {
+						break;
+					}
+					var type = block.Type;
+					if (type == CodeMemberType.Root) {
+						continue;
+					}
+					// check line counts of the member and draw marker line if longer than predefined length
+					var span = block.Span;
+					if (span.End >= snapshotLength) {
+						continue;
+					}
+					var end = new SnapshotPoint(snapshot, span.End);
+					var start = new SnapshotPoint(snapshot, span.Start);
+					var level = block.Level;
+					Pen pen;
+					if (Config.Instance.MarkerOptions.MatchFlags(MarkerOptions.LongMemberDeclaration) && span.Length > 150 && IsMember(type)) {
+						var lineCount = snapshot.GetLineNumberFromPosition(end) - snapshot.GetLineNumberFromPosition(start);
+						y1 = _ScrollBar.GetYCoordinateOfBufferPosition(start);
+						y2 = _ScrollBar.GetYCoordinateOfBufferPosition(end);
+						pen = null;
+						if (lineCount >= longDeclarationLines) {
+							pen = penStore.GetPenForCodeMemberType(type);
+							drawingContext.DrawLine(pen, new Point(level, y1), new Point(_Margin.ActualWidth, y1));
+							drawingContext.DrawLine(pen, new Point(level, y1), new Point(level, y2));
+							drawingContext.DrawLine(pen, new Point(level, y2), new Point(_Margin.ActualWidth, y2));
+						}
+						y2 -= y1;
+						if (y2 > showMemberDeclarationThreshold && block.Name != null) {
+							if (pen == null) {
+								pen = penStore.GetPenForCodeMemberType(type);
+							}
+							if (pen.Brush != null) {
+								text = WpfHelper.ToFormattedText(block.Name, labelSize, pen.Brush.Alpha(y2 / _Margin.ActualHeight * 0.5 + 0.5));
+								dt.Add(new DrawText(text, y2, new Point(level + markerSize, y1 -= text.Height / 2)));
+							}
+						}
+					}
 
-          if (IsType(type)) {
-            if (IsMember(memberType)) {
-              // draw range for previous grouped members
-              y1 = _ScrollBar.GetYCoordinateOfBufferPosition(rangeFrom);
-              y2 = _ScrollBar.GetYCoordinateOfBufferPosition(rangeTo);
-              drawingContext.DrawLine(penStore.GetPenForCodeMemberType(memberType), new Point(memberLevel, y1), new Point(memberLevel, y2));
-            }
-            // draw type declaration line
-            pen = penStore.GetPenForCodeMemberType(type);
-            y1 = _ScrollBar.GetYCoordinateOfBufferPosition(start);
-            y2 = _ScrollBar.GetYCoordinateOfBufferPosition(end);
-            drawingContext.DrawRectangle(pen.Brush.Alpha(1), pen, new Rect(level - (MarkerSize / 2), y1 - (MarkerSize / 2), MarkerSize, MarkerSize));
-            drawingContext.DrawLine(pen, new Point(level, y1), new Point(level, y2));
-            if (Config.Instance.MarkerOptions.MatchFlags(MarkerOptions.TypeDeclaration) && block.Name != null) {
-              // draw type name
-              text = WpfHelper.ToFormattedText(block.Name, labelSize, pen.Brush.Alpha(1))
-                .SetBold();
-              if (level != 1) {
-                text.SetFontStyle(FontStyles.Italic);
-              }
-              y2 -= y1;
-              dt.Add(new DrawText(text, y2, new Point(level + 1, y1 -= text.Height / 2)));
-            }
-            // mark the beginning of the range
-            memberType = type;
-            rangeFrom = start;
-            continue;
-          }
-          if (Config.Instance.MarkerOptions.MatchFlags(MarkerOptions.MethodDeclaration)) {
-            if (type == CodeMemberType.Method) {
-              if (penStore.Method.Brush != null) {
-                drawingContext.DrawRectangle(penStore.Method.Brush.Alpha(1), penStore.Method, new Rect(level - (MarkerSize / 2), _ScrollBar.GetYCoordinateOfBufferPosition(start) - (MarkerSize / 2), MarkerSize, MarkerSize));
-              }
-            } else if (type == CodeMemberType.Constructor) {
-              if (penStore.Constructor.Brush != null) {
-                drawingContext.DrawRectangle(penStore.Constructor.Brush.Alpha(1), penStore.Constructor, new Rect(level - (MarkerSize / 2), _ScrollBar.GetYCoordinateOfBufferPosition(start) - (MarkerSize / 2), MarkerSize, MarkerSize));
-              }
-            }
-          }
-          if (type == memberType) {
-            // expand the range to the end of the tag
-            rangeTo = end;
-          } else {
-            if (IsMember(memberType)) {
-              // draw range for previous grouped members
-              y1 = _ScrollBar.GetYCoordinateOfBufferPosition(rangeFrom);
-              y2 = _ScrollBar.GetYCoordinateOfBufferPosition(rangeTo);
-              drawingContext.DrawLine(penStore.GetPenForCodeMemberType(memberType), new Point(level, y1), new Point(level, y2));
-            }
-            memberType = type;
-            rangeFrom = start;
-            rangeTo = end;
-            memberLevel = level;
-          }
-        }
-        if (IsMember(memberType)) {
-          // draw range for previous grouped members
-          y1 = _ScrollBar.GetYCoordinateOfBufferPosition(rangeFrom);
-          y2 = _ScrollBar.GetYCoordinateOfBufferPosition(rangeTo);
-          drawingContext.DrawLine(penStore.GetPenForCodeMemberType(memberType), new Point(memberLevel, y1), new Point(memberLevel, y2));
-        }
-        // adjust and write text on scrollbar margins
-        var tc = dt.Count;
-        switch (tc) {
-          case 0:
-            return;
-          case 1:
-            drawingContext.DrawText(dt[0].Text, dt[0].Point);
-            return;
-        }
-        DrawText t, tPrev = null;
-        for (int i = tc - 1; i >= 0; i--) {
-          t = dt[i];
-          // not overlapped, otherwise use the larger one
-          if (tPrev == null) {
-            tPrev = t;
-            t = dt[i - 1];
-            if (t.Point.Y + t.Text.Height * 0.7 < tPrev.Point.Y || tPrev.YSpan < t.YSpan) {
-              drawingContext.DrawText(tPrev.Text, tPrev.Point);
-            }
-          } else if (t.Point.Y + t.Text.Height * 0.7 < tPrev.Point.Y || tPrev.YSpan < t.YSpan) {
-            drawingContext.DrawText(t.Text, t.Point);
-            tPrev = t;
-          } else if (i == 0) {
-            drawingContext.DrawText(t.Text, new Point(t.Point.X, t.Point.Y - t.Text.Height * 0.3));
-          }
-        }
-      }
+					if (IsType(type)) {
+						if (IsMember(memberType)) {
+							// draw range for previous grouped members
+							y1 = _ScrollBar.GetYCoordinateOfBufferPosition(rangeFrom);
+							y2 = _ScrollBar.GetYCoordinateOfBufferPosition(rangeTo);
+							drawingContext.DrawLine(penStore.GetPenForCodeMemberType(memberType), new Point(memberLevel, y1), new Point(memberLevel, y2));
+						}
+						// draw type declaration line
+						pen = penStore.GetPenForCodeMemberType(type);
+						y1 = _ScrollBar.GetYCoordinateOfBufferPosition(start);
+						y2 = _ScrollBar.GetYCoordinateOfBufferPosition(end);
+						drawingContext.DrawRectangle(pen.Brush.Alpha(1), pen, new Rect(level - markerSize, y1 - markerSize, fullMarker, fullMarker));
+						drawingContext.DrawLine(pen, new Point(level, y1), new Point(level, y2));
+						if (Config.Instance.MarkerOptions.MatchFlags(MarkerOptions.TypeDeclaration) && block.Name != null) {
+							// draw type name
+							text = WpfHelper.ToFormattedText(block.Name, labelSize, pen.Brush.Alpha(1))
+								.SetBold();
+							if (level != 1) {
+								text.SetFontStyle(FontStyles.Italic);
+							}
+							y2 -= y1;
+							dt.Add(new DrawText(text, y2, new Point(level + markerSize, y1 -= text.Height / 2)));
+						}
+						// mark the beginning of the range
+						memberType = type;
+						rangeFrom = start;
+						continue;
+					}
+					if (Config.Instance.MarkerOptions.MatchFlags(MarkerOptions.MethodDeclaration)) {
+						if (type == CodeMemberType.Method) {
+							if (penStore.Method.Brush != null) {
+								drawingContext.DrawRectangle(penStore.Method.Brush.Alpha(1), penStore.Method, new Rect(level - markerSize, _ScrollBar.GetYCoordinateOfBufferPosition(start) - markerSize, fullMarker, fullMarker));
+							}
+						}
+						else if (type == CodeMemberType.Constructor) {
+							if (penStore.Constructor.Brush != null) {
+								drawingContext.DrawRectangle(penStore.Constructor.Brush.Alpha(1), penStore.Constructor, new Rect(level - markerSize, _ScrollBar.GetYCoordinateOfBufferPosition(start) - markerSize, fullMarker, fullMarker));
+							}
+						}
+					}
+					if (type == memberType) {
+						// expand the range to the end of the tag
+						rangeTo = end;
+					}
+					else {
+						if (IsMember(memberType)) {
+							// draw range for previous grouped members
+							y1 = _ScrollBar.GetYCoordinateOfBufferPosition(rangeFrom);
+							y2 = _ScrollBar.GetYCoordinateOfBufferPosition(rangeTo);
+							drawingContext.DrawLine(penStore.GetPenForCodeMemberType(memberType), new Point(level, y1), new Point(level, y2));
+						}
+						memberType = type;
+						rangeFrom = start;
+						rangeTo = end;
+						memberLevel = level;
+					}
+				}
+				if (IsMember(memberType)) {
+					// draw range for previous grouped members
+					y1 = _ScrollBar.GetYCoordinateOfBufferPosition(rangeFrom);
+					y2 = _ScrollBar.GetYCoordinateOfBufferPosition(rangeTo);
+					drawingContext.DrawLine(penStore.GetPenForCodeMemberType(memberType), new Point(memberLevel, y1), new Point(memberLevel, y2));
+				}
+				// adjust and write text on scrollbar margins
+				var tc = dt.Count;
+				switch (tc) {
+					case 0: return;
+					case 1:
+						drawingContext.DrawText(dt[0].Text, dt[0].Point);
+						return;
+				}
+				DrawText t, tPrev = null;
+				for (int i = tc - 1; i >= 0; i--) {
+					t = dt[i];
+					// not overlapped, otherwise use the larger one
+					if (tPrev == null) {
+						tPrev = t;
+						t = dt[i - 1];
+						if (t.Point.Y + t.Text.Height * 0.7 < tPrev.Point.Y || tPrev.YSpan < t.YSpan) {
+							drawingContext.DrawText(tPrev.Text, tPrev.Point);
+						}
+					}
+					else if (t.Point.Y + t.Text.Height * 0.7 < tPrev.Point.Y || tPrev.YSpan < t.YSpan) {
+						drawingContext.DrawText(t.Text, t.Point);
+						tPrev = t;
+					}
+					else if (i == 0) {
+						drawingContext.DrawText(t.Text, new Point(t.Point.X, t.Point.Y - t.Text.Height * 0.3));
+					}
+				}
+			}
 
       void DrawRegions(DrawingContext drawingContext, PenStore penStore, int labelSize, ITextSnapshot snapshot, List<DirectiveTriviaSyntax> regions) {
         foreach (var region in regions.OfType<RegionDirectiveTriviaSyntax>()) {
@@ -581,47 +595,50 @@ namespace Codist.Margins {
 				}
 			}
 
-      internal void Render(DrawingContext drawingContext) {
-        var refs = _References;
-        if (refs == null) {
-          return;
-        }
-        var snapshot = _Margin._View.TextSnapshot;
-        var snapshotLength = snapshot.Length;
-        var penStore = __PenStore ?? (__PenStore = new PenStore());
-        foreach (var item in refs) {
-          if (_Margin._Cancellation?.IsCancellationRequested != false) {
-            break;
-          }
-          if (item.Position >= snapshotLength) {
-            continue;
-          }
-          SolidColorBrush b;
-          Pen p = null;
-          switch (item.Usage) {
-            case SymbolUsageKind.Write:
-              b = penStore.WriteMarker;
-              break;
-            case SymbolUsageKind.Write | SymbolUsageKind.SetNull:
-              b = null;
-              p = penStore.SetNullPen;
-              break;
-            case SymbolUsageKind.Usage:
-              b = penStore.ReferenceMarker;
-              p = penStore.DefinitionPen;
-              break;
-            default:
-              b = penStore.ReferenceMarker;
-              break;
-          }
-          var y = _ScrollBar.GetYCoordinateOfBufferPosition(new SnapshotPoint(snapshot, item.Position));
-          drawingContext.DrawRectangle(b,
-            p,
-            item.Usage == SymbolUsageKind.Usage
-              ? new Rect(0, y - (MarkerSize / 2), MarkerSize + MarkerMargin, MarkerSize + MarkerMargin)
-              : new Rect(MarkerMargin, y - (MarkerSize / 2), MarkerSize, MarkerSize));
-        }
-      }
+			internal void Render(DrawingContext drawingContext) {
+				var refs = _References;
+				if (refs == null) {
+					return;
+				}
+				var snapshot = _Margin._View.TextSnapshot;
+				var snapshotLength = snapshot.Length;
+				var penStore = __PenStore ??= new PenStore();
+				var markerSize = _Margin._MarkerSize;
+				var fullMarker = _Margin._FullMarkerSize;
+
+				foreach (var item in refs) {
+					if (_Margin._Cancellation?.IsCancellationRequested != false) {
+						break;
+					}
+					if (item.Position >= snapshotLength) {
+						continue;
+					}
+					SolidColorBrush b;
+					Pen p = null;
+					switch (item.Usage) {
+						case SymbolUsageKind.Write:
+							b = penStore.WriteMarker;
+							break;
+						case SymbolUsageKind.Write | SymbolUsageKind.SetNull:
+							b = null;
+							p = penStore.SetNullPen;
+							break;
+						case SymbolUsageKind.Usage:
+							b = penStore.ReferenceMarker;
+							p = penStore.DefinitionPen;
+							break;
+						default:
+							b = penStore.ReferenceMarker;
+							break;
+					}
+					var y = _ScrollBar.GetYCoordinateOfBufferPosition(new SnapshotPoint(snapshot, item.Position));
+					drawingContext.DrawRectangle(b,
+						p,
+						item.Usage == SymbolUsageKind.Usage
+							? new Rect(0, y - markerSize, fullMarker + MarkerMargin, fullMarker + MarkerMargin)
+							: new Rect(MarkerMargin, y - markerSize, fullMarker, fullMarker));
+				}
+			}
 
 			[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
 			async void UpdateReferences(object sender, EventArgs e) {

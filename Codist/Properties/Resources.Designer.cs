@@ -572,8 +572,8 @@ namespace Codist.Properties {
         
         /// <summary>
         ///   Looks up a localized string similar to Edit All Matching
-        ///Ctrl: Match case
-        ///Shift: Match whole word.
+        ///Ctrl: Match whole word
+        ///Shift: Match case.
         /// </summary>
         internal static string CMD_EditMatches {
             get {
@@ -1570,6 +1570,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Overline.
+        /// </summary>
+        internal static string CMD_Overline {
+            get {
+                return ResourceManager.GetString("CMD_Overline", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Pale Dark.
         /// </summary>
         internal static string CMD_PaleDarkTheme {
@@ -2437,7 +2446,8 @@ namespace Codist.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Copy the name of current type or member.
+        ///   Looks up a localized string similar to Copy the name of current type or member
+        ///Right click: copy fully qualified name.
         /// </summary>
         internal static string CMDT_CopySymbol {
             get {
@@ -2451,6 +2461,15 @@ namespace Codist.Properties {
         internal static string CMDT_CustomizeSearchEngines {
             get {
                 return ResourceManager.GetString("CMDT_CustomizeSearchEngines", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Add, update or delete wrap text items listed in this menu.
+        /// </summary>
+        internal static string CMDT_CustomizeWrapTexts {
+            get {
+                return ResourceManager.GetString("CMDT_CustomizeWrapTexts", resourceCulture);
             }
         }
         
@@ -2598,6 +2617,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Search for extension methods which extends current type.
+        /// </summary>
+        internal static string CMDT_FindExtensions {
+            get {
+                return ResourceManager.GetString("CMDT_FindExtensions", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Extract Match
         ///Match current symbol only, excluding base or derived symbols.
         /// </summary>
@@ -2649,6 +2677,15 @@ namespace Codist.Properties {
         internal static string CMDT_FindMethodsSameSignature {
             get {
                 return ResourceManager.GetString("CMDT_FindMethodsSameSignature", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Search for members that overrides current symbol.
+        /// </summary>
+        internal static string CMDT_FindOverrides {
+            get {
+                return ResourceManager.GetString("CMDT_FindOverrides", resourceCulture);
             }
         }
         
@@ -2901,6 +2938,16 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Current Namespace
+        ///Only search in current namespace.
+        /// </summary>
+        internal static string CMDT_ScopeToNamespace {
+            get {
+                return ResourceManager.GetString("CMDT_ScopeToNamespace", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Related Projects
         ///Search in referenced or referencing projects.
         /// </summary>
@@ -2963,6 +3010,15 @@ namespace Codist.Properties {
         internal static string CMDT_SelectCodeWithoutTrivia {
             get {
                 return ResourceManager.GetString("CMDT_SelectCodeWithoutTrivia", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Ctrl: Extract match.
+        /// </summary>
+        internal static string CMDT_SemanticCommandCtrlTip {
+            get {
+                return ResourceManager.GetString("CMDT_SemanticCommandCtrlTip", resourceCulture);
             }
         }
         
@@ -3060,6 +3116,15 @@ namespace Codist.Properties {
         internal static string F_Html {
             get {
                 return ResourceManager.GetString("F_Html", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Text files|*.txt|All files|*.*.
+        /// </summary>
+        internal static string F_Text {
+            get {
+                return ResourceManager.GetString("F_Text", resourceCulture);
             }
         }
         
@@ -3472,6 +3537,15 @@ namespace Codist.Properties {
         internal static string OT_CapturingLambda {
             get {
                 return ResourceManager.GetString("OT_CapturingLambda", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Case mismatch:.
+        /// </summary>
+        internal static string OT_CaseMismatchSelectionColor {
+            get {
+                return ResourceManager.GetString("OT_CaseMismatchSelectionColor", resourceCulture);
             }
         }
         
@@ -4000,6 +4074,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Current options page is disabled because the corresponding feature is turned off. To enable the feature and this options page, please check the corresponding checkbox under the Feature Controllers section in the General page..
+        /// </summary>
+        internal static string OT_FeatureDisabled {
+            get {
+                return ResourceManager.GetString("OT_FeatureDisabled", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Filter auto properties with fields, accessor properties with methods.
         /// </summary>
         internal static string OT_FilterAutoPropertiesAsFields {
@@ -4140,6 +4223,15 @@ namespace Codist.Properties {
         internal static string OT_HighlightMarkdown {
             get {
                 return ResourceManager.GetString("OT_HighlightMarkdown", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Highlight matches in editor.
+        /// </summary>
+        internal static string OT_HighlightMatchSelection {
+            get {
+                return ResourceManager.GetString("OT_HighlightMatchSelection", resourceCulture);
             }
         }
         
@@ -4569,11 +4661,29 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Marker size: .
+        /// </summary>
+        internal static string OT_MarkerSize {
+            get {
+                return ResourceManager.GetString("OT_MarkerSize", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Match selection.
         /// </summary>
         internal static string OT_MatchSelection {
             get {
                 return ResourceManager.GetString("OT_MatchSelection", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Match marker:.
+        /// </summary>
+        internal static string OT_MatchSelectionColor {
+            get {
+                return ResourceManager.GetString("OT_MatchSelectionColor", resourceCulture);
             }
         }
         
@@ -4614,6 +4724,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Search scope: .
+        /// </summary>
+        internal static string OT_MaxDocumentLength {
+            get {
+                return ResourceManager.GetString("OT_MaxDocumentLength", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Max height:.
         /// </summary>
         internal static string OT_MaxHeight {
@@ -4628,6 +4747,24 @@ namespace Codist.Properties {
         internal static string OT_MaxHeightTip {
             get {
                 return ResourceManager.GetString("OT_MaxHeightTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Max match items:.
+        /// </summary>
+        internal static string OT_MaxMatch {
+            get {
+                return ResourceManager.GetString("OT_MaxMatch", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Max search term length:.
+        /// </summary>
+        internal static string OT_MaxSearchCharLength {
+            get {
+                return ResourceManager.GetString("OT_MaxSearchCharLength", resourceCulture);
             }
         }
         
@@ -4786,9 +4923,9 @@ namespace Codist.Properties {
         
         /// <summary>
         ///   Looks up a localized string similar to Default shortcut keys to access the menus of the navigation bar:
-        ///Ctrl+1, Ctrl+1: Edit.SearchClassMember
-        ///Ctrl+1, Ctrl+2: Edit.SearchDeclaration
-        ///Ctrl+1, Ctrl+3: Edit.SearchDeclarationInProject.
+        ///Ctrl+1, Ctrl+1: Codist.SearchClassMember
+        ///Ctrl+1, Ctrl+2: Codist.SearchDocumentDeclaration
+        ///Ctrl+1, Ctrl+3: Codist.SearchProjectDeclaration.
         /// </summary>
         internal static string OT_NaviBarShortcutKeys {
             get {
@@ -5661,6 +5798,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Tools.
+        /// </summary>
+        internal static string OT_Tools {
+            get {
+                return ResourceManager.GetString("OT_Tools", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to This option adds extra margin above each line in code editor.
         /// </summary>
         internal static string OT_TopMarginTip {
@@ -5868,7 +6014,17 @@ namespace Codist.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to This page defines text items wrapping selection which can be accessed by right clicking the &quot;Wrap selection with text&quot; button on Smart Bar.
+        ///   Looks up a localized string similar to Indicator
+        ///Indicator within the Pattern will be replaced by the selection when Wrap Selection With Text command is executed..
+        /// </summary>
+        internal static string OT_WrapTextIndicatorTip {
+            get {
+                return ResourceManager.GetString("OT_WrapTextIndicatorTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This page defines text items wrapping selection which can be accessed by right clicking the &quot;Wrap selection with text&quot; button on Smart Bar or from the Edit menu.
         /// </summary>
         internal static string OT_WrapTextNote {
             get {
@@ -5886,6 +6042,30 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Pattern
+        ///Pattern is the content that will be used to replace the selection when Wrap Text arround Selection command is executed.
+        ///You can use Indicator (see below) to denote your selection and Placeholders to allow pressing Tab key to quickly edit contents after Wrap Text.
+        ///Pattern can be multiline.
+        ///Use a Tab character to indicate indentation..
+        /// </summary>
+        internal static string OT_WrapTextPatternTip {
+            get {
+                return ResourceManager.GetString("OT_WrapTextPatternTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Placeholder
+        ///Placeholders mark editable positions within the inserted text. Choose one of the placeholder styles from the dropdown list and use them in the Pattern, for instance, &quot;[[name]]&quot;.
+        ///After inserting the text, press Tab to jump between placeholders..
+        /// </summary>
+        internal static string OT_WrapTextPlaceholderTip {
+            get {
+                return ResourceManager.GetString("OT_WrapTextPlaceholderTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Wrap Texts.
         /// </summary>
         internal static string OT_WrapTexts {
@@ -5895,11 +6075,11 @@ namespace Codist.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The Indicator within the Pattern will be replaced by the selection when Wrap Selection With Text command is executed.
+        ///   Looks up a localized string similar to Provides command to wrap selected text with various text content.
         /// </summary>
-        internal static string OT_WrapTextSelectionIndicator {
+        internal static string OT_WrapTextTip {
             get {
-                return ResourceManager.GetString("OT_WrapTextSelectionIndicator", resourceCulture);
+                return ResourceManager.GetString("OT_WrapTextTip", resourceCulture);
             }
         }
         
@@ -5949,6 +6129,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Placeholder:.
+        /// </summary>
+        internal static string OTC_Placeholder {
+            get {
+                return ResourceManager.GetString("OTC_Placeholder", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Top margin:.
         /// </summary>
         internal static string OTC_TopMargin {
@@ -5963,6 +6152,15 @@ namespace Codist.Properties {
         internal static string OTC_URL {
             get {
                 return ResourceManager.GetString("OTC_URL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Wrap Text:.
+        /// </summary>
+        internal static string OTC_WrapText {
+            get {
+                return ResourceManager.GetString("OTC_WrapText", resourceCulture);
             }
         }
         
@@ -6906,7 +7104,7 @@ namespace Codist.Properties {
         
         /// <summary>
         ///   Looks up a localized string similar to &lt;NAME&gt; is not saved.
-        ///Discard its changes?.
+        ///Discard its changes and continue the operation?.
         /// </summary>
         internal static string T_DiscardUnsavedChanges {
             get {
@@ -7155,6 +7353,78 @@ namespace Codist.Properties {
         internal static string T_ExplicitImplements {
             get {
                 return ResourceManager.GetString("T_ExplicitImplements", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Export Application.Resources.
+        /// </summary>
+        internal static string T_ExportApplicationResources {
+            get {
+                return ResourceManager.GetString("T_ExportApplicationResources", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Export the ResourceDictionary of the Visual Studio Application Window to a file.
+        /// </summary>
+        internal static string T_ExportApplicationResourcesTip {
+            get {
+                return ResourceManager.GetString("T_ExportApplicationResourcesTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Export ClassificationFormatMap.
+        /// </summary>
+        internal static string T_ExportClassificationFormatMap {
+            get {
+                return ResourceManager.GetString("T_ExportClassificationFormatMap", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Export IClassificationFormatMap.CurrentPriorityOrder of current text view to a file.
+        /// </summary>
+        internal static string T_ExportClassificationFormatMapTip {
+            get {
+                return ResourceManager.GetString("T_ExportClassificationFormatMapTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Export DTE.Commands.
+        /// </summary>
+        internal static string T_ExportDTECommands {
+            get {
+                return ResourceManager.GetString("T_ExportDTECommands", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Save DTE.Commands (Name, Guid, Id, Bindings) to a file.
+        /// </summary>
+        internal static string T_ExportDTECommandsTip {
+            get {
+                return ResourceManager.GetString("T_ExportDTECommandsTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Export Theme Colors.
+        /// </summary>
+        internal static string T_ExportThemeColors {
+            get {
+                return ResourceManager.GetString("T_ExportThemeColors", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Export theme colors to a file.
+        /// </summary>
+        internal static string T_ExportThemeColorsTip {
+            get {
+                return ResourceManager.GetString("T_ExportThemeColorsTip", resourceCulture);
             }
         }
         
@@ -7646,6 +7916,15 @@ namespace Codist.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Match selection: .
+        /// </summary>
+        internal static string T_Match {
+            get {
+                return ResourceManager.GetString("T_Match", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Maybe....
         /// </summary>
         internal static string T_Maybe {
@@ -7851,6 +8130,15 @@ namespace Codist.Properties {
         internal static string T_NoCustomizedTagDefined {
             get {
                 return ResourceManager.GetString("T_NoCustomizedTagDefined", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to None.
+        /// </summary>
+        internal static string T_None {
+            get {
+                return ResourceManager.GetString("T_None", resourceCulture);
             }
         }
         

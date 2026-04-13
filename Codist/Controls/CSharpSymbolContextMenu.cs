@@ -314,7 +314,7 @@ namespace Codist.Controls
 				return null;
 			}
 			var symbolFullName = symbol.GetQualifiedName();
-			var search = new CustomMenuItem(IconIds.SearchWebSite, R.OT_WebSearch);
+			var search = new CustomMenuItem(IconIds.SearchWebSite, R.OT_WebSearch).SetToolTip(R.CMD_WebSearchWithSymbolName);
 			search.Items.AddRange(
 				Config.Instance.SearchEngines.ConvertAll(s => {
 					var item = CreateItem(
@@ -405,6 +405,7 @@ namespace Codist.Controls
 					}
 				}
 				_ClickHandler = new AsyncCommandExecutor(command).HandleEvent;
+				SetToolTip(command);
 
 				static ThemedMenuText MakeHeader(SemanticCommandBase command) {
 					var title = command.Title;
@@ -455,6 +456,9 @@ namespace Codist.Controls
 				_Option = _Option.SetFlags((CommandOptions)b.Tag, b.IsChecked == true);
 			}
 
+			void SetToolTip(SemanticCommandBase command) {
+				this.SetLazyToolTip(command.CreteToolTip).SetTipOptions();
+			}
 			public CustomMenuItem SetToolTip(string tooltip) {
 				if (tooltip == null) {
 					return this;
@@ -509,6 +513,9 @@ namespace Codist.Controls
 			public void HandleEvent(object sender, RoutedEventArgs args) {
 				if (command.OptionDescriptors != null) {
 					command.Options = (sender as UIElement)?.GetParentOrSelf<CustomMenuItem>()?.Option ?? 0;
+				}
+				if (args is MouseButtonEventArgs mbe && mbe.ChangedButton == MouseButton.Right) {
+					command.Options |= CommandOptions.Alternative;
 				}
 				command.ExecuteAsync(default).FireAndForget();
 			}

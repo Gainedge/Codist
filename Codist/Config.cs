@@ -17,7 +17,7 @@ namespace Codist
 {
 	sealed class Config
 	{
-		internal const string CurrentVersion = "8.1.0";
+		internal const string CurrentVersion = "8.2.0";
 		const string ThemePrefix = "res:";
 		const int DefaultIconSize = 20;
 		internal const string LightTheme = ThemePrefix + "Light",
@@ -103,6 +103,7 @@ namespace Codist
 		public int SmartBarButtonSize { get; set; } = DefaultIconSize;
 		public List<CommentLabel> Labels { get; } = new List<CommentLabel>();
 		public QuickInfoConfig QuickInfo { get; } = new QuickInfoConfig();
+		public MarkerConfig ScrollbarMarker { get; } = new MarkerConfig();
 		public List<Color> CustomColors { get; } = new List<Color>();
 
 		#region Deprecated style containers
@@ -657,6 +658,65 @@ namespace Codist
 
 		internal Color BackColor { get => _BackColor; set => _BackColor = value; }
 	}
+	public sealed class MarkerConfig
+	{
+		internal const int DefaultMarkerSize = 2,
+			DefaultMaxMatch = 10000,
+			DefaultMaxDocumentLength = 1024,
+			DefaultMaxSearchCharLength = 256;
+
+		internal static Color DefaultMatchColor => Colors.DeepSkyBlue;
+		internal static Color DefaultCaseMismatchColor => Colors.DeepSkyBlue.Alpha(160);
+
+		Color _MatchColor, _CaseMismatchColor;
+
+		int _MarkerSize = DefaultMarkerSize;
+		[DefaultValue(DefaultMarkerSize)]
+		public int MarkerSize {
+			get => _MarkerSize;
+			set => _MarkerSize = value.Clamp(2, 8);
+		}
+
+		[DefaultValue(DefaultMaxMatch)]
+		public int MaxMatch { get; set; } = DefaultMaxMatch;
+
+		[DefaultValue(DefaultMaxDocumentLength)]
+		public int MaxDocumentLength { get; set; } = DefaultMaxDocumentLength;
+
+		[DefaultValue(DefaultMaxSearchCharLength)]
+		public int MaxSearchCharLength { get; set; } = DefaultMaxSearchCharLength;
+
+		[DefaultValue(Constants.EmptyColor)]
+		public string MatchColor {
+			get => _MatchColor.ToHexString();
+			set => Parse(value, DefaultMatchColor, out _MatchColor);
+		}
+
+		[DefaultValue(Constants.EmptyColor)]
+		public string CaseMismatchColor {
+			get => _CaseMismatchColor.ToHexString();
+			set => Parse(value, DefaultCaseMismatchColor, out _CaseMismatchColor);
+		}
+
+		internal Color MatchMarker {
+			get => _MatchColor;
+			set => _MatchColor = value;
+		}
+
+		internal Color CaseMismatchMarker {
+			get => _CaseMismatchColor;
+			set => _CaseMismatchColor = value;
+		}
+
+		static void Parse(string value, Color defaultColor, out Color color) {
+			if (value == Constants.EmptyColor) {
+				color = defaultColor;
+				return;
+			}
+			ColorHelper.ParseColor(value, out color, out _);
+		}
+	}
+
 	sealed class SearchEngine
 	{
 		public SearchEngine() {}
@@ -820,6 +880,7 @@ namespace Codist
 		// comment tagger
 		SpecialComment = 1,
 		SemanticPunctuation = 1 << 1,
+		MatchSelection = 1 << 2,
 		[Obsolete]
 		DeclarationBrace = SemanticPunctuation,
 		[Obsolete]

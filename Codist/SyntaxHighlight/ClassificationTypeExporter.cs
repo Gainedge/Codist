@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Media;
+using CLR;
 using Microsoft.VisualStudio.Text.Classification;
 using Microsoft.VisualStudio.Text.Formatting;
 using Microsoft.VisualStudio.Utilities;
@@ -349,6 +350,50 @@ namespace Codist.SyntaxHighlight
 				}
 			}
 			return r;
+		}
+
+		internal void ExportSelectionTagger(string category) {
+			var m = _EditorFormatMaps.GetEditorFormatMap(category);
+			UpdateMatchMarkerEditorFormat(m);
+			Config.RegisterUpdateHandler(HandleMarkerColorChange);
+		}
+
+		static void HandleMarkerColorChange(ConfigUpdatedEventArgs args) {
+			if (args.UpdatedFeature.MatchFlags(Features.ScrollbarMarkers)) {
+				UpdateMatchMarkerEditorFormat(ServicesHelper.Instance.EditorFormatMap.GetEditorFormatMap(Constants.CodeText));
+			}
+		}
+
+		static void UpdateMatchMarkerEditorFormat(IEditorFormatMap m) {
+			var o = Config.Instance.ScrollbarMarker;
+			bool b;
+			if (b = !m.IsInBatchUpdate) {
+				m.BeginBatchUpdate();
+			}
+			m.SetProperties(Taggers.MatchTagger.MatchMarkerTag.Type, new ResourceDictionary {
+				{ MarkerFormatDefinition.BorderId, MakeMarkerPen(o.MatchMarker, 1, false) }
+			});
+			m.SetProperties(Taggers.MatchTagger.PartialMatchMarkerTag.Type, new ResourceDictionary {
+				{ MarkerFormatDefinition.BorderId, MakeMarkerPen(o.MatchMarker, 0.7, true) }
+			});
+
+			m.SetProperties(Taggers.MatchTagger.CaseMismatchMarkerTag.Type, new ResourceDictionary {
+				{ MarkerFormatDefinition.BorderId, MakeMarkerPen(o.CaseMismatchMarker, 1, false) }
+			});
+			m.SetProperties(Taggers.MatchTagger.PartialCaseMismatchMarkerTag.Type, new ResourceDictionary {
+				{ MarkerFormatDefinition.BorderId, MakeMarkerPen(o.CaseMismatchMarker, 0.7, true) }
+			});
+			if (b) {
+				m.EndBatchUpdate();
+			}
+
+			static SolidColorBrush MakeMarkerBrush(Color color, double alpha) {
+				return new SolidColorBrush(alpha != 1 ? color.Alpha((byte)(color.A * alpha)) : color).MakeFrozen();
+			}
+
+			static Pen MakeMarkerPen(Color color, double alpha, bool dash) {
+				return new Pen(MakeMarkerBrush(color, alpha), 1) { DashStyle = dash ? DashStyles.Dash : DashStyles.Solid }.MakeFrozen();
+			}
 		}
 
 		sealed class Entry

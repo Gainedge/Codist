@@ -1132,9 +1132,9 @@ https://github.com/snowie2000/mactype/releases</value>
   </data>
   <data name="OT_NaviBarShortcutKeys" xml:space="preserve">
     <value>Default shortcut keys to access the menus of the navigation bar:
-Ctrl+1, Ctrl+1: Edit.SearchClassMember
-Ctrl+1, Ctrl+2: Edit.SearchDeclaration
-Ctrl+1, Ctrl+3: Edit.SearchDeclarationInProject</value>
+Ctrl+1, Ctrl+1: Codist.SearchClassMember
+Ctrl+1, Ctrl+2: Codist.SearchDocumentDeclaration
+Ctrl+1, Ctrl+3: Codist.SearchProjectDeclaration</value>
   </data>
   <data name="OT_NaviBarUpdateNote" xml:space="preserve">
     <value>The above options will take effect when the navigation bar is repopulated</value>
@@ -1706,8 +1706,8 @@ Shift: Save built-in default styles as well</value>
   </data>
   <data name="CMD_EditMatches" xml:space="preserve">
     <value>Edit All Matching
-Ctrl: Match case
-Shift: Match whole word</value>
+Ctrl: Match whole word
+Shift: Match case</value>
   </data>
   <data name="CMD_EncapsulateField" xml:space="preserve">
     <value>Encapsulate field...</value>
@@ -1841,7 +1841,7 @@ ALL existing items will be REPLACE by default items.</value>
     <value>Wrap Text</value>
   </data>
   <data name="OT_WrapTextNote" xml:space="preserve">
-    <value>This page defines text items wrapping selection which can be accessed by right clicking the "Wrap selection with text" button on Smart Bar</value>
+    <value>This page defines text items wrapping selection which can be accessed by right clicking the "Wrap selection with text" button on Smart Bar or from the Edit menu</value>
   </data>
   <data name="OT_WrapTextPattern" xml:space="preserve">
     <value>Wrap text pattern</value>
@@ -1849,8 +1849,9 @@ ALL existing items will be REPLACE by default items.</value>
   <data name="OT_WrapTexts" xml:space="preserve">
     <value>Wrap Texts</value>
   </data>
-  <data name="OT_WrapTextSelectionIndicator" xml:space="preserve">
-    <value>The Indicator within the Pattern will be replaced by the selection when Wrap Selection With Text command is executed</value>
+  <data name="OT_WrapTextIndicatorTip" xml:space="preserve">
+    <value>Indicator
+Indicator within the Pattern will be replaced by the selection when Wrap Selection With Text command is executed.</value>
   </data>
   <data name="T_Configuration" xml:space="preserve">
     <value>Configuration:</value>
@@ -2785,7 +2786,7 @@ Ctrl: Convert underscore("_") separated words to capitalized words</value>
   </data>
   <data name="T_DiscardUnsavedChanges" xml:space="preserve">
     <value>&lt;NAME&gt; is not saved.
-Discard its changes?</value>
+Discard its changes and continue the operation?</value>
   </data>
   <data name="T_ErrorSavingConfig" xml:space="preserve">
     <value>Error occurred while saving configuration file.</value>
@@ -2965,7 +2966,8 @@ Discard its changes?</value>
     <value>This page changes the behavior of automatically inserting punctuations</value>
   </data>
   <data name="CMDT_CopySymbol" xml:space="preserve">
-    <value>Copy the name of current type or member</value>
+    <value>Copy the name of current type or member
+Right click: copy fully qualified name</value>
   </data>
   <data name="CMDT_CopyQualifiedName" xml:space="preserve">
     <value>Copy Qualified Name
@@ -3088,5 +3090,105 @@ Only search in referenced libraries, excluding source code</value>
   <data name="OT_KeyboardControlMatchSelectionNote" xml:space="preserve">
     <value>Ctrl: match whole word
 Shift: match case</value>
+  </data>
+  <data name="OT_MaxMatch" xml:space="preserve">
+    <value>Max match items:</value>
+  </data>
+  <data name="OT_MaxDocumentLength" xml:space="preserve">
+    <value>Search scope: </value>
+  </data>
+  <data name="OT_MaxSearchCharLength" xml:space="preserve">
+    <value>Max search term length:</value>
+  </data>
+  <data name="CMDT_SemanticCommandCtrlTip" xml:space="preserve">
+    <value>Ctrl: Extract match</value>
+  </data>
+  <data name="F_Text" xml:space="preserve">
+    <value>Text files|*.txt|All files|*.*</value>
+  </data>
+  <data name="T_ExportDTECommands" xml:space="preserve">
+    <value>Export DTE.Commands</value>
+  </data>
+  <data name="T_ExportDTECommandsTip" xml:space="preserve">
+    <value>Save DTE.Commands (Name, Guid, Id, Bindings) to a file</value>
+  </data>
+  <data name="T_ExportThemeColors" xml:space="preserve">
+    <value>Export Theme Colors</value>
+  </data>
+  <data name="T_ExportThemeColorsTip" xml:space="preserve">
+    <value>Export theme colors to a file</value>
+  </data>
+  <data name="T_ExportApplicationResources" xml:space="preserve">
+    <value>Export Application.Resources</value>
+  </data>
+  <data name="T_ExportApplicationResourcesTip" xml:space="preserve">
+    <value>Export the ResourceDictionary of the Visual Studio Application Window to a file</value>
+  </data>
+  <data name="OT_Tools" xml:space="preserve">
+    <value>Tools</value>
+  </data>
+  <data name="T_Match" xml:space="preserve">
+    <value>Match selection: </value>
+  </data>
+  <data name="OT_MarkerSize" xml:space="preserve">
+    <value>Marker size: </value>
+  </data>
+  <data name="OT_MatchSelectionColor" xml:space="preserve">
+    <value>Match marker:</value>
+  </data>
+  <data name="OT_CaseMismatchSelectionColor" xml:space="preserve">
+    <value>Case mismatch:</value>
+  </data>
+  <data name="OT_HighlightMatchSelection" xml:space="preserve">
+    <value>Highlight matches in editor</value>
+  </data>
+  <data name="T_ExportClassificationFormatMap" xml:space="preserve">
+    <value>Export ClassificationFormatMap</value>
+  </data>
+  <data name="T_ExportClassificationFormatMapTip" xml:space="preserve">
+    <value>Export IClassificationFormatMap.CurrentPriorityOrder of current text view to a file</value>
+  </data>
+  <data name="CMDT_FindOverrides" xml:space="preserve">
+    <value>Search for members that overrides current symbol</value>
+  </data>
+  <data name="CMDT_FindExtensions" xml:space="preserve">
+    <value>Search for extension methods which extends current type</value>
+  </data>
+  <data name="CMD_Overline" xml:space="preserve">
+    <value>Overline</value>
+  </data>
+  <data name="OTC_Placeholder" xml:space="preserve">
+    <value>Placeholder: </value>
+  </data>
+  <data name="T_None" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="OT_WrapTextPlaceholderTip" xml:space="preserve">
+    <value>Placeholder
+Placeholders mark editable positions within the inserted text. Choose one of the placeholder styles from the dropdown list and use them in the Pattern, for instance, "[[name]]".
+After inserting the text, press Tab to jump between placeholders.</value>
+  </data>
+  <data name="OT_WrapTextPatternTip" xml:space="preserve">
+    <value>Pattern
+Pattern is the content that will be used to replace the selection when Wrap Text arround Selection command is executed.
+You can use Indicator (see below) to denote your selection and Placeholders to allow pressing Tab key to quickly edit contents after Wrap Text.
+Pattern can be multiline.
+Use a Tab character to indicate indentation.</value>
+  </data>
+  <data name="CMDT_CustomizeWrapTexts" xml:space="preserve">
+    <value>Add, update or delete wrap text items listed in this menu</value>
+  </data>
+  <data name="OTC_WrapText" xml:space="preserve">
+    <value>Wrap Text:</value>
+  </data>
+  <data name="CMDT_ScopeToNamespace" xml:space="preserve">
+    <value>Current Namespace
+Only search in current namespace</value>
+  </data>
+  <data name="OT_FeatureDisabled" xml:space="preserve">
+    <value>Current options page is disabled because the corresponding feature is turned off. To enable the feature and this options page, please check the corresponding checkbox under the Feature Controllers section in the General page.</value>
+  </data>
+  <data name="OT_WrapTextTip" xml:space="preserve">
+    <value>Provides command to wrap selected text with various text content</value>
   </data>
 </root>

@@ -16,6 +16,7 @@ namespace Codist.Controls
 		readonly Button _DefaultButton;
 		readonly ContentPresenter _Icon;
 		CheckBox _SuppressExceptionBox;
+		bool _IsModal;
 
 		public MessageWindow() {
 			MinHeight = 100;
@@ -123,12 +124,14 @@ namespace Codist.Controls
 		public void AddExtraControl(UIElement control) {
 			_ExtraControlPanel.Children.Add(control);
 		}
-
-		public static bool? Show(object content) {
-			return new MessageWindow(content).ShowDialog();
+		public static void Show(object content, string title = null) {
+			new MessageWindow(content, title).Show();
 		}
-		public static bool? Show(object content, string title) {
+		public static bool? ShowDialog(object content, string title) {
 			return new MessageWindow(content, title).ShowDialog();
+		}
+		public static void Info(string content, string title = null) {
+			new MessageWindow(content, title, MessageBoxButton.OK, MessageBoxImage.Information).ShowDialog();
 		}
 		public static bool? Error(string content) {
 			return new MessageWindow(content, null, MessageBoxButton.OK, MessageBoxImage.Error).ShowDialog();
@@ -143,7 +146,7 @@ namespace Codist.Controls
 
 			var content = description != null
 				? GetErrorDescription(description, error)
-				: (UIElement)MakeText(error.ToString());
+				: (UIElement)MakeTextHighlightMe(error.ToString());
 			var w = ShowErrorWindow(content, title, source);
 			bool? result = w.ShowDialog();
 			if (result == true && source != null && w._SuppressExceptionBox.IsChecked == true) {
@@ -154,8 +157,8 @@ namespace Codist.Controls
 		public static bool? OkCancel(object content) {
 			return new MessageWindow(content, null, MessageBoxButton.OKCancel, MessageBoxImage.Question).ShowDialog();
 		}
-		public static bool? AskYesNo(object content) {
-			return new MessageWindow(content, null, MessageBoxButton.YesNo, MessageBoxImage.Question).ShowDialog();
+		public static bool? AskYesNo(object content, string title = null) {
+			return new MessageWindow(content, title, MessageBoxButton.YesNo, MessageBoxImage.Question).ShowDialog();
 		}
 		public static bool? AskYesNoCancel(object content) {
 			return new MessageWindow(content, null, MessageBoxButton.YesNoCancel, MessageBoxImage.Question).ShowDialog();
@@ -174,7 +177,8 @@ namespace Codist.Controls
 				Children = {
 					MakeText(description).SetProperty(TextBlock.FontSizeProperty, ThemeCache.ToolTipFontSize * 1.5d),
 					MakeText(exception.Message),
-					MakeText(R.T_StackTrace + Environment.NewLine + exception.StackTrace)
+					MakeText(R.T_StackTrace),
+					MakeTextHighlightMe(exception.StackTrace)
 				}
 			};
 		}
@@ -202,14 +206,38 @@ namespace Codist.Controls
 				Padding = WpfHelper.MiddleMargin,
 			}.ReferenceProperty(ForegroundProperty, CommonControlsColors.TextBoxTextBrushKey);
 		}
+		static ThemedTipText MakeTextHighlightMe(string text) {
+			var c = new ThemedTipText() {
+				Padding = WpfHelper.MiddleMargin,
+			}.ReferenceProperty(ForegroundProperty, CommonControlsColors.TextBoxTextBrushKey);
+			int i = 0, p;
+			while ((p = text.IndexOf('\n', i)) != -1) {
+				c.Append(text.Substring(i, ++p - i), text.IndexOf(Constants.NameOfMe, i, p - i) >= 0);
+				i = p;
+			}
+			if (i < text.Length) {
+				p = text.Length - i;
+				c.Append(text.Substring(i, p), text.IndexOf(Constants.NameOfMe, i, p) >= 0);
+			}
+			return c;
+		}
+
+		public new bool? ShowDialog() {
+			_IsModal = true;
+			return base.ShowDialog();
+		}
 
 		void DefaultButton_Click(object sender, RoutedEventArgs e) {
-			DialogResult = true;
+			if (_IsModal) {
+				DialogResult = true;
+			}
 			Close();
 		}
 
 		void NegativeButton_Click(object sender, RoutedEventArgs e) {
-			DialogResult = false;
+			if (_IsModal) {
+				DialogResult = false;
+			}
 			Close();
 		}
 

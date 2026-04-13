@@ -2,8 +2,8 @@
 using System.ComponentModel.Design;
 using Microsoft.VisualStudio.Shell;
 
-namespace Codist.Commands
-{
+namespace Codist.Commands;
+
 	static class CommandRegistry
 	{
 		// this value should be the same as the one in guidCodistPackageCmdSet of CodistPackage.vsct
@@ -25,6 +25,10 @@ namespace Codist.Commands
 			WindowInformerCommand.Initialize();
 			TransformDocumentCommand.Initialize();
 			OpenActivityLogCommand.Initialize();
+			WrapTextCommand.Initialize();
+			NewTextFileCommand.Initialize();
+		SyntaxCustomizerWindowCommand.Initialize();
+		OptionsWindowCommand.Initialize();
 			nameof(CommandRegistry).LogInitialized();
 		}
 
@@ -55,5 +59,7 @@ namespace Codist.Commands
 		OptionsWindow,
 		OpenIntermediateFolder,
 		OpenReleaseIntermediateFolder,
+		WrapRecentText,
+		ListWrapText,
+		NewTextFile
 	}
-}

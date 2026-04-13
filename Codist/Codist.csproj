@@ -90,13 +90,19 @@
     <Compile Include="Commands\AutoParenthesisHandler.cs" />
     <Compile Include="Commands\OpenActivityLogCommand.cs" />
     <Compile Include="Commands\OptionsWindowCommand.cs" />
+    <Compile Include="Commands\NewTextFileCommand.cs" />
+    <Compile Include="Commands\WrapTextCommand.cs" />
     <Compile Include="Commands\TransformDocumentCommand.cs" />
     <Compile Include="Commands\ShowSupportedFileTypesCommand.cs" />
     <Compile Include="Commands\TransformDocumentWindow.cs" />
+    <Compile Include="Controls\HelpMessageButton.cs" />
     <Compile Include="Controls\ThemedListBox.cs" />
     <Compile Include="Controls\ThemedRichTextBox.cs" />
     <Compile Include="Controls\ThemedHyperlink.cs" />
     <Compile Include="Commands\CancelRepeatingActionCommand.cs" />
+    <Compile Include="Helpers\ClassificationStyleHelper.cs" />
+    <Compile Include="Helpers\EditCommands.cs" />
+    <Compile Include="Helpers\SpanHelper.cs" />
     <Compile Include="Helpers\ValueHelper.cs" />
     <Compile Include="Helpers\VsImageHelper.cs" />
     <Compile Include="Helpers\ThemeHelper.cs" />
@@ -125,11 +131,15 @@
     <Compile Include="QuickInfo\CSharpSignature.cs" />
     <Compile Include="QuickInfo\InfoBlock.cs" />
     <Compile Include="Semantics\ArgumentAssignment.cs" />
+    <Compile Include="Semantics\SymbolNamespaceFilter.cs" />
     <Compile Include="Semantics\SymbolSourceFilter.cs" />
     <Compile Include="Semantics\MarkdownHelper.cs" />
     <Compile Include="Semantics\SyntaxModel.cs" />
     <Compile Include="SmartBars\MarkupSmartBar.cs" />
+    <Compile Include="SnippetTexts\ActiveWrapTextTracker.cs" />
+    <Compile Include="SnippetTexts\PlaceholderInfo.cs" />
     <Compile Include="SnippetTexts\SnippetSession.cs" />
+    <Compile Include="SnippetTexts\WrapTextPicker.cs" />
     <Compile Include="Suppression.cs" />
     <Compile Include="SymbolCommands\SemanticCommand.Derivations.cs" />
     <Compile Include="SymbolCommands\SemanticCommand.Methods.cs" />
@@ -256,6 +266,7 @@
     <Compile Include="Semantics\CSharpParser.cs" />
     <Compile Include="Taggers\CSharpTagger.Url.cs" />
     <Compile Include="Taggers\MarkdownHeadingTag.cs" />
+    <Compile Include="Taggers\MatchTagger.cs" />
     <Compile Include="Taggers\TaggedContentSpan.cs" />
     <Compile Include="Taggers\TaggerFactories.cs" />
     <Compile Include="Taggers\Classifications.cs" />
@@ -276,7 +287,6 @@
     <Compile Include="Controls\KeystrokeThief.cs" />
     <Compile Include="Controls\SymbolFilters.cs" />
     <Compile Include="Controls\QuickInfoTextBox.cs" />
-    <Compile Include="Controls\StateButton.cs" />
     <Compile Include="Controls\VirtualList.cs" />
     <Compile Include="Controls\SymbolList.cs" />
     <Compile Include="Controls\ThemedMenuItem.cs" />
@@ -511,6 +521,9 @@
     <PackageReference Include="Microsoft.VisualStudio.ComponentModelHost">
       <Version>15.8.525</Version>
     </PackageReference>
+    <PackageReference Include="Microsoft.VisualStudio.Editor">
+      <Version>15.8.525</Version>
+    </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Language.Intellisense">
       <Version>15.8.525</Version>
     </PackageReference>
@@ -524,7 +537,7 @@
       <Version>15.8.243</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.SDK">
-      <Version>17.0.31902.203</Version>
+      <Version>17.14.40265</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.SDK.Analyzers">
       <Version>17.7.79</Version>
@@ -544,7 +557,7 @@
       <Version>15.8.168</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers">
-      <Version>17.11.20</Version>
+      <Version>17.14.15</Version>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
@@ -552,7 +565,7 @@
       <Version>15.3.32</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.VSSDK.BuildTools">
-      <Version>17.11.435</Version>
+      <Version>17.14.2120</Version>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>

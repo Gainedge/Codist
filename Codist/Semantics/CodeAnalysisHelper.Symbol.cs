@@ -10,6 +10,7 @@ using CLR;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Utilities;
 
 namespace Codist
@@ -1629,17 +1630,17 @@ namespace Codist
 		}
 
 		public static void GoToSource(this Location loc) {
-			if (loc != null) {
-				var pos = loc.GetLineSpan().StartLinePosition;
-				TextEditorHelper.OpenFile(loc.SourceTree.FilePath, pos.Line, pos.Character);
+			if (loc is null) {
+				return;
 			}
+			TextEditorHelper.OpenFile(loc.SourceTree.FilePath, loc.SourceSpan.Start);
 		}
 
 		public static void GoToSource(this SyntaxReference loc) {
-			if (loc != null) {
-				var pos = loc.SyntaxTree.GetLineSpan(loc.Span).StartLinePosition;
-				TextEditorHelper.OpenFile(loc.SyntaxTree.FilePath, pos.Line, pos.Character);
+			if (loc is null) {
+				return;
 			}
+			TextEditorHelper.OpenFile(loc.SyntaxTree.FilePath, loc.Span.Start);
 		}
 
 		public static void GoToDefinition(this ISymbol symbol) {
@@ -1653,7 +1654,7 @@ namespace Codist
 				if (ctx != null) {
 					if (r.Length == 0
 						&& ctx.Document != null
-						&& ServicesHelper.Instance.VisualStudioWorkspace.TryGoToDefinition(symbol, ctx.Document.Project, default)) {
+						&& ServicesHelper.Instance.VisualStudioWorkspace.TryGoToDefinition(symbol.OriginalDefinition, ctx.Document.Project, default)) {
 						return;
 					}
 					new SymbolCommands.ListSymbolLocationsCommand { Symbol = symbol, Context = ctx }.Show(r);
@@ -2020,9 +2021,10 @@ namespace Codist
 
 		/// <summary>Returns whether a symbol could have an override.</summary>
 		public static bool MayHaveOverride(this ISymbol symbol) {
-			return symbol?.ContainingType?.TypeKind == TypeKind.Class &&
-				   (symbol.IsVirtual || symbol.IsAbstract || symbol.IsOverride) &&
-				   symbol.IsSealed == false;
+			return symbol?.ContainingType?.TypeKind == TypeKind.Class
+				&& (symbol.IsVirtual || symbol.IsAbstract || symbol.IsOverride)
+				&& !symbol.IsSealed
+				&& symbol.ContainingType?.IsSealed != true;
 		}
 
 		public static IEqualityComparer<ISymbol> GetSymbolNameComparer() {
