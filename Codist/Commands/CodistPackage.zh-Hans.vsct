@@ -263,17 +263,17 @@
 					<LocCanonicalName>.Codist.插入上一次的环绕文本</LocCanonicalName>
 				</Strings>
 			</Button>
-			<!--<Button guid="guidCodistPackageCmdSet" id="FavoriteWindowCommandId" priority="0x1000" type="Button">
-				<Parent guid="guidSHLMainMenu" id="IDG_VS_VIEW_BROWSER" />
-				<Icon guid="ImageCatalogGuid" id="Favorite" />
+			<Button guid="guidCodistPackageCmdSet" id="FileBrowserWindowCommandId" priority="0x0100" type="Button">
+				<Parent guid="guidSHLMainMenu" id="IDG_VS_VIEW_ORG_WINDOWS" />
+				<Icon guid="ImageCatalogGuid" id="FolderOpened" />
 				<CommandFlag>IconIsMoniker</CommandFlag>
 				<Strings>
-					<MenuText>收藏夹...</MenuText>
-					<ButtonText>收藏夹</ButtonText>
-					<ToolTipText>显示收藏夹窗口...</ToolTipText>
-					<LocCanonicalName>.Codist.收藏夹窗口</LocCanonicalName>
+					<MenuText>文件浏览器</MenuText>
+					<ButtonText>文件浏览器</ButtonText>
+					<ToolTipText>显示文件浏览器窗口</ToolTipText>
+					<LocCanonicalName>.Codist.文件浏览器</LocCanonicalName>
 				</Strings>
-			</Button>-->
+			</Button>
 		</Buttons>
 	</Commands>
 </CommandTable>

@@ -12,7 +12,9 @@ using CLR;
 using Codist.Controls;
 using Microsoft.VisualStudio.PlatformUI;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Utilities;
 using Microsoft.Win32;
+using Newtonsoft.Json;
 using R = Codist.Properties.Resources;
 
 namespace Codist.Options;
@@ -57,7 +59,8 @@ sealed partial class OptionsWindow
 							MakeToolButton(DteCommandsExporter.Instance),
 							MakeToolButton(ThemeColorsExporter.Instance),
 							MakeToolButton(AppResourcesExporter.Instance),
-							MakeToolButton(ClassificationFormatMapExporter.Instance)
+							MakeToolButton(ClassificationFormatMapExporter.Instance),
+							MakeToolButton(EditorOptionExporter.Instance)
 						}
 					}
 				);
@@ -100,8 +103,13 @@ sealed partial class OptionsWindow
 			public void Export() {
 				string path;
 				if ((path = GetSavePath(DefaultFileName, Title)) != null) {
-					using (var writer = new StreamWriter(path)) {
+					try {
+						using var writer = new StreamWriter(path);
 						ExportContent(writer);
+					}
+					catch (Exception ex) {
+						MessageWindow.Error(ex, "Error while exporting data", Title, this);
+						return;
 					}
 					TextEditorHelper.OpenFile(path);
 				}
@@ -136,7 +144,7 @@ sealed partial class OptionsWindow
 
 			[SuppressMessage("Usage", Suppression.VSTHRD010, Justification = Suppression.EventHandler)]
 			protected override void ExportContent(StreamWriter writer) {
-				var commands = CodistPackage.DTE.Commands;
+				var commands = ServicesHelper.Instance.DTE.Commands;
 				var c = commands.Count;
 				var s = new List<CommandInfo>();
 				var s2 = new List<CommandInfo>(c);
@@ -243,6 +251,36 @@ sealed partial class OptionsWindow
 						writer.WriteLine();
 					}
 				}
+
+				var res = Application.Current.Resources;
+				foreach (var type in new Type[]{ typeof(VsBrushes), typeof(VsColors) }) {
+					var typeName = type.Name;
+					foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)) {
+						if (!prop.Name.EndsWith("Key", StringComparison.Ordinal)) {
+							continue;
+			}
+						var value = prop.GetValue(null);
+						if (value is null || !res.Contains(value)) {
+							continue;
+		}
+
+						var item = res[value];
+						writer.Write(typeName);
+						writer.Write('\t');
+						writer.Write(prop.Name);
+						writer.Write('\t');
+						if (item is Color c) {
+							writer.Write(c.ToHexString());
+						}
+						else if (item is SolidColorBrush b) {
+							writer.Write(b.Color.ToHexString());
+						}
+						else {
+							writer.Write(item);
+						}
+						writer.WriteLine();
+					}
+				}
 			}
 		}
 
@@ -274,12 +312,8 @@ sealed partial class OptionsWindow
 				var list = new List<ResourceEntryInfo>(dict.Count);
 				foreach (DictionaryEntry entry in dict) {
 					try {
-						var e = new ResourceEntryInfo(entry);
-						if (e.KeyString == "MainWindowActiveCaptionBrushKey") {
-
+						list.Add(new ResourceEntryInfo(entry));
 						}
-						list.Add(e);
-					}
 					catch (Exception ex) {
 						ex.Log();
 					}
@@ -325,11 +359,14 @@ sealed partial class OptionsWindow
 				if (value is Style style) {
 					var targetType = style.TargetType?.Name ?? "?";
 					var basedOn = style.BasedOn != null ? $", BasedOn: {style.BasedOn.TargetType?.Name}" : String.Empty;
-					return $"Style (@{targetType}{basedOn}, Setters: {style.Setters.Count})";
+					return $"Style (TargetType: {targetType}{basedOn}, Setters: {style.Setters.Count}, Triggers: {style.Triggers.Count})";
 				}
 
-				if (value is DataTemplate template) {
-					return $"DataTemplate (DataType: {template.DataType?.ToString() ?? "<null>"})";
+				if (value is DataTemplate dt) {
+					return $"DataTemplate (DataType: {dt.DataType?.ToString() ?? "<null>"}, Triggers: {dt.Triggers.Count})";
+				}
+				if (value is ControlTemplate ct) {
+					return $"ControlTemplate (TargetType: {ct.TargetType?.ToString() ?? "<null>"}, Triggers: {ct.Triggers.Count})";
 				}
 
 				if (value is double d) return d.ToString("F2");
@@ -384,6 +421,52 @@ sealed partial class OptionsWindow
 					writer.Write('\t');
 					writer.WriteLine(String.Join(", ", item.BaseTypes.Select(i => i.Classification)));
 				}
+			}
+		}
+
+		sealed class EditorOptionExporter : ExporterBase
+		{
+			public static readonly EditorOptionExporter Instance = new();
+			EditorOptionExporter() { }
+
+			public override int IconId => IconIds.Settings;
+			public override string Title => R.T_ExportGlobalEditorOptions;
+			public override string Description => R.T_ExportGlobalEditorOptionsTip;
+			protected override string DefaultFileName => "EditorOptions.txt";
+
+			protected override void ExportContent(StreamWriter writer) {
+				var options = ServicesHelper.Instance.EditorOptionsFactory.GlobalOptions;
+				writer.WriteLine("Name\tDefaultValue\tValue\tValueType");
+				foreach (var item in options.SupportedOptions) {
+					if (item is null) {
+						continue;
+					}
+					writer.Write(item.Name);
+					writer.Write('\t');
+					writer.Write(ExportObject(item.DefaultValue));
+					writer.Write('\t');
+					if (options.IsOptionDefined(item.Name, false)) {
+						writer.Write(ExportObject(options.GetOptionValue(item.Name)));
+					}
+					else {
+						writer.Write("<default>");
+					}
+					writer.Write('\t');
+					writer.WriteLine(item.ValueType.Name);
+				}
+			}
+
+			static string ExportObject(Object obj) {
+				if (obj is null) {
+					return "<null>";
+				}
+				if (obj is string s) {
+					return s.Replace("\r", "\\r").Replace("\n", "\\n");
+				}
+				if (obj.GetType().IsPrimitive) {
+					return obj.ToString();
+				}
+				return JsonConvert.SerializeObject(obj);
 			}
 		}
 	}

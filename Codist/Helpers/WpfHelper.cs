@@ -41,6 +41,9 @@ static partial class WpfHelper
 	internal static readonly Thickness MiddleBottomMargin = new(0, 0, 0, 6);
 	internal static readonly Thickness TinyBottomMargin = new(0, 0, 0, 1);
 	internal static readonly Thickness MenuItemMargin = new(6, 0, 6, 0);
+	internal static readonly CornerRadius TinyCorner = new(1);
+	internal static readonly CornerRadius SmallCorner = new(3);
+	internal static readonly CornerRadius MiddleCorner = new(6);
 
 	#region TextBlock and Run
 	public static TextBlock SetGlyph(this TextBlock block, int iconId) {
@@ -354,6 +357,13 @@ static partial class WpfHelper
 		element.Margin = element.Padding = element.BorderThickness = NoMargin;
 		return element;
 	}
+	public static TElement TinySpacing<TElement>(this TElement element)
+		where TElement : Control {
+		element.Margin = NoMargin;
+		element.Padding = TinyMargin;
+		element.MinHeight = 10;
+		return element;
+	}
 	public static TElement ClearMargin<TElement>(this TElement element)
 		where TElement : FrameworkElement {
 		element.Margin = NoMargin;
@@ -569,7 +579,7 @@ static partial class WpfHelper
 		}
 		return null;
 	}
-	public static void AddRange(this ItemCollection items, IEnumerable<object> objects) {
+	public static void AddRange(this ItemCollection items, params IEnumerable<object> objects) {
 		foreach (var item in objects) {
 			items.Add(item);
 		}
@@ -831,6 +841,24 @@ static partial class WpfHelper
 			s.ToolTipOpening -= ShowLazyToolTip;
 		}
 	}
+	public static TObject SetContentLazyToolTip<TObject>(this TObject item, Func<TObject, object> toolTipProvider)
+		where TObject : FrameworkContentElement {
+		item.ToolTip = __DummyToolTip;
+		item.ToolTipOpening += ShowLazyToolTip;
+		return item;
+
+		void ShowLazyToolTip(object sender, ToolTipEventArgs args) {
+			var s = args.Source as TObject;
+			var v = toolTipProvider(s);
+			if (v is string t) {
+				v = new TextBlock {
+					Text = t
+				}.LimitSize();
+			}
+			s.ToolTip = v;
+			s.ToolTipOpening -= ShowLazyToolTip;
+		}
+	}
 
 	public static ResourceDictionary Copy(this ResourceDictionary resources) {
 		if (resources == null) {
@@ -901,7 +929,6 @@ static partial class WpfHelper
 			ToolTip = String.Empty;
 			Highlight(sender, e);
 			MouseEnter += Highlight;
-			MouseLeave += Leave;
 
 			OnInitInteraction();
 		}
@@ -919,9 +946,9 @@ static partial class WpfHelper
 		}
 
 		protected void ReleaseHighlight() {
-			MouseLeave -= Leave;
-			MouseLeave += Leave;
-			Background = WpfBrushes.Transparent;
+			ClearValue(BackgroundProperty);
+			MouseEnter -= Highlight;
+			MouseEnter += Highlight;
 		}
 
 		protected override void OnToolTipOpening(ToolTipEventArgs e) {
@@ -932,19 +959,18 @@ static partial class WpfHelper
 		}
 
 		void Highlight(object sender, MouseEventArgs e) {
+			MouseEnter -= Highlight;
+			MouseLeave += Leave;
 			DoHighlight();
 		}
 
 		void Leave(object sender, MouseEventArgs e) {
-			Background = WpfBrushes.Transparent;
+			MouseLeave -= Leave;
+			MouseEnter += Highlight;
+			ClearValue(BackgroundProperty);
 		}
 
 		void Unload(object sender, RoutedEventArgs e) {
-			MouseEnter -= InitInteraction;
-			MouseEnter -= Highlight;
-			MouseLeave -= Leave;
-			Unloaded -= Unload;
-
 			OnUnload();
 		}
 	}

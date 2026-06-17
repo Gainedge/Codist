@@ -10,7 +10,6 @@ using CLR;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Utilities;
 
 namespace Codist
@@ -702,43 +701,44 @@ namespace Codist
 			}
 
 			string GetPropertyAccessors(IPropertySymbol p) {
-				using (var sbr = ReusableStringBuilder.AcquireDefault(30)) {
-					var sb = sbr.Resource;
-					var pp = p.Parameters;
-					if (pp.Length > 0) {
-						sb.Append('[');
-						bool s = false;
-						foreach (var item in pp) {
-							if (s) {
-								sb.Append(',');
-							}
-							else {
-								s = true;
-							}
-							sb.Append(item.Type.GetTypeName());
+				using var sbr = ReusableStringBuilder.AcquireDefault(30);
+				var sb = sbr.Resource;
+				var pp = p.Parameters;
+				if (pp.Length > 0) {
+					sb.Append('[');
+					bool s = false;
+					foreach (var item in pp) {
+						if (s) {
+							sb.Append(',');
 						}
-						sb.Append(']');
+						else {
+							s = true;
+						}
+						sb.Append(item.Type.GetTypeName());
 					}
-					sb.Append(" {");
-					var m = p.GetMethod;
-					if (m != null) {
-						if (m.DeclaredAccessibility != Accessibility.Public) {
-							sb.Append(m.GetAccessibility());
-						}
-						if (m.IsReadOnly()) {
-							sb.Append("readonly ");
-						}
-						sb.Append("get;");
-					}
-					m = p.SetMethod;
-					if (m != null) {
-						if (m.DeclaredAccessibility != Accessibility.Public) {
-							sb.Append(m.GetAccessibility());
-						}
-						sb.Append(m.IsInitOnly() ? "init;" : "set;");
-					}
-					return sb.Append('}').ToString();
+					sb.Append(']');
 				}
+				sb.Append(" {");
+				var m = p.GetMethod;
+				var pa = p.DeclaredAccessibility;
+				if (m != null) {
+					// only display accessibility only when diff from property
+					if (m.DeclaredAccessibility != pa) {
+						sb.Append(m.GetAccessibility());
+					}
+					if (m.IsReadOnly()) {
+						sb.Append("readonly ");
+					}
+					sb.Append("get;");
+				}
+				m = p.SetMethod;
+				if (m != null) {
+					if (m.DeclaredAccessibility != pa) {
+						sb.Append(m.GetAccessibility());
+					}
+					sb.Append(m.IsInitOnly() ? "init;" : "set;");
+				}
+				return sb.Append('}').ToString();
 			}
 			string GetMethodParameters(IMethodSymbol m, bool pn) {
 				if (m == null) {
@@ -747,14 +747,13 @@ namespace Codist
 				if (m.IsVararg) {
 					return "(__arglist)";
 				}
-				using (var sbr = ReusableStringBuilder.AcquireDefault(100)) {
-					var sb = sbr.Resource;
-					if (m.IsGenericMethod) {
-						BuildTypeParametersString(sb, m.TypeParameters);
-					}
-					BuildParametersString(sb, m.Parameters, pn);
-					return sb.ToString();
+				using var sbr = ReusableStringBuilder.AcquireDefault(100);
+				var sb = sbr.Resource;
+				if (m.IsGenericMethod) {
+					BuildTypeParametersString(sb, m.TypeParameters);
 				}
+				BuildParametersString(sb, m.Parameters, pn);
+				return sb.ToString();
 			}
 			void BuildTypeParametersString(StringBuilder sb, ImmutableArray<ITypeParameterSymbol> paramList) {
 				sb.Append('<');
@@ -804,24 +803,22 @@ namespace Codist
 			}
 			string GetTypeParameters(INamedTypeSymbol t, bool pn) {
 				if (t.TypeKind == TypeKind.Delegate) {
-					using (var sbr = ReusableStringBuilder.AcquireDefault(100)) {
-						var sb = sbr.Resource;
-						if (t.IsGenericType) {
-							BuildTypeParametersString(sb, t.TypeParameters);
-						}
-						BuildParametersString(sb, t.DelegateInvokeMethod.Parameters, pn);
-						return sb.ToString();
+					using var sbr = ReusableStringBuilder.AcquireDefault(100);
+					var sb = sbr.Resource;
+					if (t.IsGenericType) {
+						BuildTypeParametersString(sb, t.TypeParameters);
 					}
+					BuildParametersString(sb, t.DelegateInvokeMethod.Parameters, pn);
+					return sb.ToString();
 				}
 				else if (t.TypeKind == Extension) {
-					using (var sbr = ReusableStringBuilder.AcquireDefault(100)) {
-						var sb = sbr.Resource;
-						if (t.IsGenericType) {
-							BuildTypeParametersString(sb, t.TypeParameters);
-						}
-						BuildParametersString(sb, ImmutableArray.Create(t.GetExtensionParameter()), pn);
-						return sb.ToString();
+					using var sbr = ReusableStringBuilder.AcquireDefault(100);
+					var sb = sbr.Resource;
+					if (t.IsGenericType) {
+						BuildTypeParametersString(sb, t.TypeParameters);
 					}
+					BuildParametersString(sb, ImmutableArray.Create(t.GetExtensionParameter()), pn);
+					return sb.ToString();
 				}
 				return t.Arity > 0 ? $"<{new string (',', t.Arity - 1)}>" : String.Empty;
 			}
@@ -1016,136 +1013,53 @@ namespace Codist
 		}
 
 		public static string GetSymbolKindName(this ISymbol symbol) {
-			switch (symbol.Kind) {
-				case SymbolKind.Event: return "event";
-				case SymbolKind.Field: return "field";
-				case SymbolKind.Label: return "label";
-				case SymbolKind.Local: return "local";
-				case SymbolKind.Method: return GetMethodKindName((IMethodSymbol)symbol);
-				case SymbolKind.NamedType: return GetTypeKindName((ITypeSymbol)symbol);
-				case SymbolKind.Namespace: return "namespace";
-				case SymbolKind.Parameter: return "parameter";
-				case SymbolKind.Property: return "property";
-				case SymbolKind.TypeParameter: return "type parameter";
-				case FunctionPointerType: return "function pointer";
-				default: return symbol.Kind.ToString();
-			}
+			return symbol.Kind switch {
+				SymbolKind.Event => "event",
+				SymbolKind.Field => "field",
+				SymbolKind.Label => "label",
+				SymbolKind.Local => "local",
+				SymbolKind.Method => GetMethodKindName((IMethodSymbol)symbol),
+				SymbolKind.NamedType => GetTypeKindName((ITypeSymbol)symbol),
+				SymbolKind.Namespace => "namespace",
+				SymbolKind.Parameter => "parameter",
+				SymbolKind.Property => "property",
+				SymbolKind.TypeParameter => "type parameter",
+				FunctionPointerType => "function pointer",
+				_ => symbol.Kind.ToString(),
+			};
 		}
 
 		static string GetMethodKindName(IMethodSymbol method) {
 			if (method.IsExtensionMethod) {
 				return "extension";
 			}
-			switch (method.MethodKind) {
-				case MethodKind.StaticConstructor:
-				case MethodKind.Constructor: return "constructor";
-				case MethodKind.Destructor: return "destructor";
-				case MethodKind.PropertyGet: return "getter";
-				case MethodKind.PropertySet: return "setter";
-				case MethodKind.EventAdd: return "event add";
-				case MethodKind.EventRemove: return "event remove";
-				case MethodKind.LocalFunction: return "local function";
-				case MethodKind.LambdaMethod: return "lambda method";
-				default: return "method";
-			}
+			return method.MethodKind switch {
+				MethodKind.StaticConstructor
+				or MethodKind.Constructor => "constructor",
+				MethodKind.Destructor => "destructor",
+				MethodKind.PropertyGet => "getter",
+				MethodKind.PropertySet => "setter",
+				MethodKind.EventAdd => "event add",
+				MethodKind.EventRemove => "event remove",
+				MethodKind.LocalFunction => "local function",
+				MethodKind.LambdaMethod => "lambda method",
+				_ => "method",
+			};
 		}
 
 		static string GetTypeKindName(ITypeSymbol type) {
-			switch (type.TypeKind) {
-				case TypeKind.Array: return "array";
-				case TypeKind.Dynamic: return "dynamic";
-				case TypeKind.Class: return type.IsRecord() ? "record" : "class";
-				case TypeKind.Delegate: return "delegate";
-				case TypeKind.Enum: return "enum";
-				case TypeKind.Interface: return "interface";
-				case TypeKind.Struct: return type.IsRecord() ? "record struct" : "struct";
-				case TypeKind.TypeParameter: return "type parameter";
-				case Extension: return "extension";
-			}
-			return "type";
-		}
-
-		public static string GetDefinition(this INamedTypeSymbol type, SymbolDisplayFormat format) {
-			switch (type.TypeKind) {
-				case TypeKind.Dynamic:
-				case TypeKind.Enum:
-				case TypeKind.Interface:
-				case TypeKind.Struct:
-				case TypeKind.Class:
-					using (var sbr = ReusableStringBuilder.AcquireDefault(100)) {
-						GetTypeDefinition(sbr.Resource, type, format, 0);
-						return sbr.Resource.ToString();
-					}
-				default:
-					return type.ToDisplayString(format);
-			}
-
-			static void GetTypeDefinition(StringBuilder sb, INamedTypeSymbol t, SymbolDisplayFormat format, int indent) {
-				sb.Append('\t', indent);
-				if (t.TypeKind == TypeKind.Delegate) {
-					sb.Append(t.ToDisplayString(format))
-						.Append(';')
-						.AppendLine();
-					return;
-				}
-				if (t.ContainingType != null && t.DeclaredAccessibility != Accessibility.Private) {
-					sb.Append(t.GetAccessibility());
-				}
-				sb.Append(t.ToDisplayString(format));
-				GetBaseTypeList(sb, t, format);
-				sb.AppendLine(" {");
-				indent++;
-				foreach (var member in t.GetMembers()) {
-					if (member.IsCompilerGenerated()) {
-						continue;
-					}
-					if (!member.CanBeReferencedByName
-						&& member.GetExplicitInterfaceImplementations().Count == 0) {
-						continue;
-					}
-					if (member.Kind == SymbolKind.NamedType) {
-						GetTypeDefinition(sb, member as INamedTypeSymbol, format, indent);
-						continue;
-					}
-					sb.Append('\t', indent)
-						.Append(member.ToDisplayString(format));
-					if (member.Kind != SymbolKind.Property) {
-						sb.Append(';');
-					}
-					sb.AppendLine();
-				}
-				sb.Append('\t', indent - 1).Append('}').AppendLine().ToString();
-			}
-
-			static void GetBaseTypeList(StringBuilder sb, INamedTypeSymbol t, SymbolDisplayFormat format) {
-				INamedTypeSymbol baseType;
-				if (t.TypeKind == TypeKind.Enum) {
-					baseType = t.EnumUnderlyingType;
-				}
-				else {
-					baseType = t.BaseType;
-					if (baseType?.SpecialType == SpecialType.System_Object) {
-						baseType = null;
-					}
-				}
-				var interfaces = t.Interfaces;
-				if (baseType != null || interfaces.Length != 0) {
-					var typeFormat = format.WithKindOptions(SymbolDisplayKindOptions.None);
-					sb.Append(" : ");
-					if (baseType != null) {
-						sb.Append(baseType.ToDisplayString(typeFormat));
-						if (interfaces.Length != 0) {
-							sb.Append(", ");
-						}
-					}
-					for (int i = 0; i < interfaces.Length; i++) {
-						if (i != 0) {
-							sb.Append(", ");
-						}
-						sb.Append(interfaces[i].ToDisplayString(typeFormat));
-					}
-				}
-			}
+			return type.TypeKind switch {
+				TypeKind.Array => "array",
+				TypeKind.Dynamic => "dynamic",
+				TypeKind.Class => type.IsRecord() ? "record" : "class",
+				TypeKind.Delegate => "delegate",
+				TypeKind.Enum => "enum",
+				TypeKind.Interface => "interface",
+				TypeKind.Struct => type.IsRecord() ? "record struct" : "struct",
+				TypeKind.TypeParameter => "type parameter",
+				Extension => "extension",
+				_ => "type",
+			};
 		}
 
 		public static bool IsPublicConcreteInstance(this ISymbol symbol) {
@@ -1155,24 +1069,22 @@ namespace Codist
 		}
 
 		public static bool IsAccessor(this IMethodSymbol method) {
-			switch (method.MethodKind) {
-				case MethodKind.EventAdd:
-				case MethodKind.EventRemove:
-				case MethodKind.PropertyGet:
-				case MethodKind.PropertySet:
-					return true;
-			}
-			return false;
+			return method.MethodKind switch {
+				MethodKind.EventAdd
+				or MethodKind.EventRemove
+				or MethodKind.PropertyGet
+				or MethodKind.PropertySet => true,
+				_ => false,
+			};
 		}
 
 		public static bool IsTypeSpecialMethod(this IMethodSymbol method) {
-			switch (method.MethodKind) {
-				case MethodKind.Constructor:
-				case MethodKind.Destructor:
-				case MethodKind.StaticConstructor:
-					return true;
-			}
-			return false;
+			return method.MethodKind switch {
+				MethodKind.Constructor
+				or MethodKind.Destructor
+				or MethodKind.StaticConstructor => true,
+				_ => false,
+			};
 		}
 
 		public static bool IsBoundedGenericMethod(this IMethodSymbol method) {
@@ -1367,44 +1279,42 @@ namespace Codist
 		}
 
 		public static bool IsObsolete(this ISymbol symbol) {
-			switch (symbol.Kind) {
-				case SymbolKind.Property:
-				case SymbolKind.Method:
-				case SymbolKind.Field:
-				case SymbolKind.NamedType:
-				case SymbolKind.Event:
-					return symbol.GetAttributes()
-						.Any(a => a.AttributeClass.MatchTypeName(nameof(ObsoleteAttribute), "System"));
-			}
-			return false;
+			return symbol.Kind switch {
+				SymbolKind.Property
+				or SymbolKind.Method
+				or SymbolKind.Field
+				or SymbolKind.NamedType 
+				or SymbolKind.Event =>
+					symbol.GetAttributes()
+						.Any(a => a.AttributeClass.MatchTypeName(nameof(ObsoleteAttribute), "System")),
+				_ => false,
+			};
 		}
 
 		public static bool IsQualifiable(this ISymbol symbol) {
-			switch (symbol.Kind) {
-				case SymbolKind.ArrayType:
-				case SymbolKind.Event:
-				case SymbolKind.Field:
-				case SymbolKind.Method:
-				case SymbolKind.Property:
-				case SymbolKind.NamedType:
-				case SymbolKind.Namespace:
-				case SymbolKind.PointerType:
-				case FunctionPointerType:
-					return true;
-			}
-			return false;
+			return symbol.Kind switch {
+				SymbolKind.ArrayType
+				or SymbolKind.Event
+				or SymbolKind.Field
+				or SymbolKind.Method
+				or SymbolKind.Property
+				or SymbolKind.NamedType
+				or SymbolKind.Namespace
+				or SymbolKind.PointerType
+				or FunctionPointerType => true,
+				_ => false,
+			};
 		}
 
 		public static bool IsMemberOrType(this ISymbol symbol) {
-			switch (symbol.Kind) {
-				case SymbolKind.Event:
-				case SymbolKind.Field:
-				case SymbolKind.Method:
-				case SymbolKind.Property:
-				case SymbolKind.NamedType:
-					return true;
-			}
-			return false;
+			return symbol.Kind switch {
+				SymbolKind.Event
+				or SymbolKind.Field
+				or SymbolKind.Method
+				or SymbolKind.Property
+				or SymbolKind.NamedType => true,
+				_ => false,
+			};
 		}
 
 		static readonly string[] __CompilerServicesNamespace = new string[] { "CompilerServices", "Runtime", "System" };
@@ -1418,16 +1328,15 @@ namespace Codist
 		}
 
 		public static bool MayHaveDocumentation(this ISymbol symbol) {
-			switch (symbol.Kind) {
-				case SymbolKind.Event:
-				case SymbolKind.Field:
-				case SymbolKind.Method:
-				case SymbolKind.Property:
-				case SymbolKind.NamedType:
-				case SymbolKind.Namespace:
-					return true;
-			}
-			return false;
+			return symbol.Kind switch {
+				SymbolKind.Event
+				or SymbolKind.Field
+				or SymbolKind.Method
+				or SymbolKind.Property
+				or SymbolKind.NamedType
+				or SymbolKind.Namespace => true,
+				_ => false,
+			};
 		}
 
 		public static bool IsEmpty(this SymbolInfo symbolInfo) {

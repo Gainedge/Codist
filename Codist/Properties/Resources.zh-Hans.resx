@@ -310,7 +310,7 @@ Alt：在下一个匹配位置插入光标
     <value>标记...
 标记代码符号、断点或书签</value>
   </data>
-  <data name="CMD_Paste" xml:space="preserve">
+  <data name="CMD_PasteText" xml:space="preserve">
     <value>粘贴文本
 右键：粘贴覆盖整行
 Ctrl：粘贴并选中下一项
@@ -499,10 +499,10 @@ Shift：粘贴并选中下一项（整个单词）</value>
   <data name="T_Write" xml:space="preserve">
     <value>写入</value>
   </data>
-  <data name="CMD_GotoProjectReleasePage" xml:space="preserve">
+  <data name="CMDT_GotoProjectReleasePage" xml:space="preserve">
     <value>转到发布 Codist 项目的网页</value>
   </data>
-  <data name="CMD_GotoProjectWebSite" xml:space="preserve">
+  <data name="CMDT_GotoProjectWebSite" xml:space="preserve">
     <value>转到 Codist 项目的网站</value>
   </data>
   <data name="CMD_Load" xml:space="preserve">
@@ -511,10 +511,10 @@ Shift：粘贴并选中下一项（整个单词）</value>
   <data name="CMDT_OpenDonatePage" xml:space="preserve">
     <value>用浏览器打开捐赠 Codist 项目的网页</value>
   </data>
-  <data name="CMD_PostIssue" xml:space="preserve">
+  <data name="CMDT_PostIssue" xml:space="preserve">
     <value>发表建议或提交问题报告</value>
   </data>
-  <data name="CMD_Save" xml:space="preserve">
+  <data name="CMD_SaveAs" xml:space="preserve">
     <value>保存...</value>
   </data>
   <data name="OT_About" xml:space="preserve">
@@ -1353,7 +1353,7 @@ Ctrl+1, Ctrl+3: Codist.在当前项目查找声明</value>
     <value>保存 Codist 配置文件...</value>
   </data>
   <data name="CMD_OpenFolder" xml:space="preserve">
-    <value>打开文件夹</value>
+    <value>在系统资源管理器打开文件夹</value>
   </data>
   <data name="CMD_OpenOrExecuteFile" xml:space="preserve">
     <value>打开或执行文件</value>
@@ -2523,7 +2523,7 @@ Right click: 显示“线程”窗口</value>
     <value>延迟显示快速信息</value>
   </data>
   <data name="OT_DelayTime" xml:space="preserve">
-    <value>延迟毫秒数:</value>
+    <value>延迟:</value>
   </data>
   <data name="CMD_Export" xml:space="preserve">
     <value>导出...</value>
@@ -2635,7 +2635,7 @@ Right click: 显示“线程”窗口</value>
     <value>删除 Switch 条件</value>
   </data>
   <data name="CMD_SortLines" xml:space="preserve">
-    <value>Sort Lines</value>
+    <value>排序选中行</value>
   </data>
   <data name="T_FailedToSaveStyleFile" xml:space="preserve">
     <value>在保存语法样式配置文件时出错:</value>
@@ -2961,7 +2961,8 @@ Ctrl: 将下划线分隔的单词转换为首字母大写的单词</value>
   </data>
   <data name="CMDT_CopyDefinition" xml:space="preserve">
     <value>复制定义
-复制符号签名和成员定义</value>
+复制符号签名和成员定义
+Ctrl: 不包含 XML 代码文档</value>
   </data>
   <data name="CMDT_SelectCodeWithoutTrivia" xml:space="preserve">
     <value>仅代码
@@ -3177,5 +3178,215 @@ Shift: 匹配大小写</value>
   </data>
   <data name="OT_WrapTextTip" xml:space="preserve">
     <value>提供以各种文本内容环绕选定文本的功能</value>
+  </data>
+  <data name="T_FailedToOpenFolder" xml:space="preserve">
+    <value>无法打开文件夹</value>
+  </data>
+  <data name="T_File" xml:space="preserve">
+    <value>文件: </value>
+  </data>
+  <data name="T_FileSize" xml:space="preserve">
+    <value>大小: </value>
+  </data>
+  <data name="T_CreateTime" xml:space="preserve">
+    <value>创建时间: </value>
+  </data>
+  <data name="T_UpdateTime" xml:space="preserve">
+    <value>更改时间: </value>
+  </data>
+  <data name="CMDT_ViewCurrentFolder" xml:space="preserve">
+    <value>当前文件夹
+查看当前文件所在文件夹的内容</value>
+  </data>
+  <data name="CMD_GoToFolder" xml:space="preserve">
+    <value>转到文件夹</value>
+  </data>
+  <data name="T_EmptyFolder" xml:space="preserve">
+    <value>空文件夹: </value>
+  </data>
+  <data name="T_UnauthorizedFolder" xml:space="preserve">
+    <value>无访问权限文件夹: </value>
+  </data>
+  <data name="CMD_Cut" xml:space="preserve">
+    <value>剪切</value>
+  </data>
+  <data name="CMD_Copy" xml:space="preserve">
+    <value>复制</value>
+  </data>
+  <data name="CMD_Delete" xml:space="preserve">
+    <value>删除</value>
+  </data>
+  <data name="CMD_Paste" xml:space="preserve">
+    <value>粘贴</value>
+  </data>
+  <data name="CMD_CopyFileName" xml:space="preserve">
+    <value>复制文件名</value>
+  </data>
+  <data name="CMD_Rename" xml:space="preserve">
+    <value>重命名...</value>
+  </data>
+  <data name="CMD_Properties" xml:space="preserve">
+    <value>属性...</value>
+  </data>
+  <data name="T_FailedToRename" xml:space="preserve">
+    <value>重命名操作失败</value>
+  </data>
+  <data name="T_InvalidFileName" xml:space="preserve">
+    <value>文件名称无效</value>
+  </data>
+  <data name="CMD_BackToCurrentFile" xml:space="preserve">
+    <value>返回当前文件</value>
+  </data>
+  <data name="CMD_GoToSolutionFolder" xml:space="preserve">
+    <value>转到解决方案文件夹</value>
+  </data>
+  <data name="CMD_LocateInSolutionExplorer" xml:space="preserve">
+    <value>在解决方案资源管理器中定位</value>
+  </data>
+  <data name="CMD_GoToProjectFolder" xml:space="preserve">
+    <value>转到项目文件夹</value>
+  </data>
+  <data name="T_ErrorInexistentDirectory" xml:space="preserve">
+    <value>目录不存在:</value>
+  </data>
+  <data name="CMDT_ToggleMultiSelectionMode" xml:space="preserve">
+    <value>切换多选模式
+进入多选模式，点击列表项将切换其选中状态，便于选中多项。
+非多选模式下，按Ctrl或Shift键选择多项。</value>
+  </data>
+  <data name="T_FileBrowser" xml:space="preserve">
+    <value>文件浏览器</value>
+  </data>
+  <data name="CMDT_SyncActiveFile" xml:space="preserve">
+    <value>同步当前代码文件
+按下此按钮进入跟踪模式，让文件列表的内容总是跟随正在编辑的代码文件</value>
+  </data>
+  <data name="T_ConfirmLoadSolutionNote" xml:space="preserve">
+    <value>是否确认要加载解决方案 &lt;FILE&gt;？
+未保存的修改将在加载方案前被抛弃。</value>
+  </data>
+  <data name="CMD_ListProjectFolders" xml:space="preserve">
+    <value>列出解决方案各项目对应的文件夹</value>
+  </data>
+  <data name="T_UnloadedProject" xml:space="preserve">
+    <value>未加载的项目: </value>
+  </data>
+  <data name="T_Solution" xml:space="preserve">
+    <value>解决方案: </value>
+  </data>
+  <data name="CMD_ToggleMultiSelectionMode" xml:space="preserve">
+    <value>切换多重选择方式</value>
+  </data>
+  <data name="CMD_SelectNone" xml:space="preserve">
+    <value>取消选择</value>
+  </data>
+  <data name="CMD_InvertSelection" xml:space="preserve">
+    <value>反转选中内容</value>
+  </data>
+  <data name="CMDT_ListOpenDocuments" xml:space="preserve">
+    <value>列出已打开的文档
+列出当前打开的代码文档</value>
+  </data>
+  <data name="T_OpenedDocuments" xml:space="preserve">
+    <value>已打开的文档</value>
+  </data>
+  <data name="T_SolutionProjects" xml:space="preserve">
+    <value>解决方案及项目</value>
+  </data>
+  <data name="T_CurrentProjectFolder" xml:space="preserve">
+    <value>当前项目文件夹</value>
+  </data>
+  <data name="T_CurrentDocumentFolder" xml:space="preserve">
+    <value>当前文档文件夹</value>
+  </data>
+  <data name="T_SolutionFolder" xml:space="preserve">
+    <value>解决方案文件夹</value>
+  </data>
+  <data name="CMD_NavigateBackward" xml:space="preserve">
+    <value>向后导航</value>
+  </data>
+  <data name="T_FolderContent" xml:space="preserve">
+    <value>文件夹内容</value>
+  </data>
+  <data name="T_SelectionMenu" xml:space="preserve">
+    <value>打开选择项的菜单</value>
+  </data>
+  <data name="CMD_ViewFolderInFileBrowser" xml:space="preserve">
+    <value>在文件浏览器打开文件夹</value>
+  </data>
+  <data name="CMD_Save" xml:space="preserve">
+    <value>保存</value>
+  </data>
+  <data name="CMD_MultiLineOrPatterns" xml:space="preserve">
+    <value>将 &lt;or&gt; 模式换行</value>
+  </data>
+  <data name="CMD_CloseOtherSaved" xml:space="preserve">
+    <value>关闭其它已保存文档</value>
+  </data>
+  <data name="CMD_SaveAll" xml:space="preserve">
+    <value>全部保存</value>
+  </data>
+  <data name="OT_ShowLabels" xml:space="preserve">
+    <value>在按钮旁显示文本标签</value>
+  </data>
+  <data name="OT_ConfigFileBrowserNote" xml:space="preserve">
+    <value>要配置文件浏览器的按钮，打开一个代码窗口并切换下方的按钮以观察效果。</value>
+  </data>
+  <data name="OT_ShowSolutionProjects" xml:space="preserve">
+    <value>显示解决方案和项目列表按钮</value>
+  </data>
+  <data name="OT_ShowSolutionFolder" xml:space="preserve">
+    <value>显示解决方案文件夹按钮</value>
+  </data>
+  <data name="OT_ShowProjectFolder" xml:space="preserve">
+    <value>显示当前项目文件夹按钮</value>
+  </data>
+  <data name="OT_ShowDocumentFolder" xml:space="preserve">
+    <value>显示当前文档文件夹按钮</value>
+  </data>
+  <data name="OT_ShowOpenedDocuments" xml:space="preserve">
+    <value>显示已打开文档列表按钮</value>
+  </data>
+  <data name="OT_FileBrowser" xml:space="preserve">
+    <value>在代码窗口下方提供管理文件的快捷按钮</value>
+  </data>
+  <data name="T_Modified" xml:space="preserve">
+    <value>已更改</value>
+  </data>
+  <data name="T_Pinned" xml:space="preserve">
+    <value>已固定</value>
+  </data>
+  <data name="T_VirtualFile" xml:space="preserve">
+    <value>虚拟文件</value>
+  </data>
+  <data name="T_NewFile" xml:space="preserve">
+    <value>新建文件</value>
+  </data>
+  <data name="T_ExportGlobalEditorOptions" xml:space="preserve">
+    <value>导出全局编辑器选项</value>
+  </data>
+  <data name="OT_UseProvisionalWindow" xml:space="preserve">
+    <value>在临时窗口打开文件</value>
+  </data>
+  <data name="OT_PreferCodeWindow" xml:space="preserve">
+    <value>打开文件时，优先使用代码窗口而非设计窗口</value>
+  </data>
+  <data name="OT_DimNonSolutionItems" xml:space="preserve">
+    <value>用浅色显示不属于解决方案的文件</value>
+  </data>
+  <data name="T_RangeVariableType" xml:space="preserve">
+    <value>特定范围变量类型：</value>
+  </data>
+  <data name="T_NA" xml:space="preserve">
+    <value>数据无效</value>
+  </data>
+  <data name="OT_Milliseconds" xml:space="preserve">
+    <value>毫秒</value>
+  </data>
+  <data name="T_RecentlyClosed" xml:space="preserve">
+    <value>最近关闭</value>
+  </data>
+  <data name="OT_ListRecentlyClosedFiles" xml:space="preserve">
+    <value>在已打开的文档列表中列出最近关闭的文档: </value>
   </data>
 </root>

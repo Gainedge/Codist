@@ -268,17 +268,17 @@
 					<LocCanonicalName>.Codist.ReinsertLastWrapText</LocCanonicalName>
 				</Strings>
 			</Button>
-			<!--<Button guid="guidCodistPackageCmdSet" id="FavoriteWindowCommandId" priority="0x1000" type="Button">
-				<Parent guid="guidSHLMainMenu" id="IDG_VS_VIEW_BROWSER" />
-				<Icon guid="ImageCatalogGuid" id="Favorite" />
+			<Button guid="guidCodistPackageCmdSet" id="FileBrowserWindowCommandId" priority="0x0100" type="Button">
+				<Parent guid="guidSHLMainMenu" id="IDG_VS_VIEW_ORG_WINDOWS" />
+				<Icon guid="ImageCatalogGuid" id="FolderOpened" />
 				<CommandFlag>IconIsMoniker</CommandFlag>
 				<Strings>
-					<MenuText>Favorites Window...</MenuText>
-					<ButtonText>Favorites</ButtonText>
-					<ToolTipText>Displays Favorite Window...</ToolTipText>
-					<LocCanonicalName>.Codist.FavoriteWindow</LocCanonicalName>
+					<MenuText>File Browser</MenuText>
+					<ButtonText>File Browser</ButtonText>
+					<ToolTipText>Displays File Browser Window...</ToolTipText>
+					<LocCanonicalName>.Codist.FileBrowserWindow</LocCanonicalName>
 				</Strings>
-			</Button>-->
+			</Button>
 		</Buttons>
 	</Commands>
 </CommandTable>

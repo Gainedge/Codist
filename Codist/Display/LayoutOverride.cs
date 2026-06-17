@@ -102,7 +102,7 @@ namespace Codist.Display
 
 			t.Children.Insert(2, __Menu = new InteractiveControlContainer(menu) { Margin = new Thickness(0, 7, 5, 4) });
 
-			var sn = System.IO.Path.GetFileNameWithoutExtension(CodistPackage.DTE.Solution.FileName);
+			var sn = System.IO.Path.GetFileNameWithoutExtension(ServicesHelper.Instance.DTE.Solution.FileName);
 			var title = new TextBlock {
 				FontWeight = FontWeights.Bold,
 				Text = sn.Length > 0 ? sn + __RootSuffix : __DefaultTitle

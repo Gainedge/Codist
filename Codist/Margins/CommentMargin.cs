@@ -180,8 +180,9 @@ namespace Codist.Margins
 			Brush lastBrush = null;
 			var snapshot = _TextView.TextSnapshot;
 			var snapshotLength = snapshot.Length;
+			var buffer = snapshot.TextBuffer;
 			foreach (var tag in _Tags.Tags) {
-				if (tag.End >= snapshotLength) {
+				if (tag.End >= snapshotLength || buffer != tag.TrackingSpan.TextBuffer) {
 					continue;
 				}
 				//todo: customizable marker style

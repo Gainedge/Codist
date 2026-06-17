@@ -21,6 +21,7 @@ namespace Codist
 	sealed class ServicesHelper
 	{
 		// We initialize the SolutionDocumentEvents instance here since ServicesHelper is called by many places in Codist, usually sooner than CodistPackage.InitializeAsync
+		// NOTE: DO NOT REMOVE THIS FIELD
 		readonly SolutionDocumentEvents _DocumentEvents = new SolutionDocumentEvents();
 
 		private ServicesHelper() {
@@ -33,6 +34,8 @@ namespace Codist
 		}
 
 		public static ServicesHelper Instance { get; } = new ServicesHelper();
+
+		public EnvDTE80.DTE2 DTE { get; } = Package.GetGlobalService(typeof(Microsoft.VisualStudio.Shell.Interop.SDTE)) as EnvDTE80.DTE2;
 
 		[Import]
 		public IClassificationFormatMapService ClassificationFormatMap { get; private set; }

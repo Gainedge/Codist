@@ -13,7 +13,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.VisualStudio.PlatformUI;
-using Microsoft.VisualStudio.ProjectSystem.Properties;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
@@ -378,7 +377,7 @@ public sealed partial class CSharpBar : NaviBar
 		}
 		_ActiveItem = barItem;
 		barItem.IsHighlighted = true;
-		menu.ItemsControlMaxHeight = ViewOverlay.DisplayHeight / 2;
+		menu.MaxHeight = ViewOverlay.DisplayHeight * 0.75;
 		menu.RefreshItemsSource();
 		menu.ScrollToSelectedItem();
 		menu.PreviewKeyUp -= OnMenuKeyUp;

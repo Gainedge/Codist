@@ -118,7 +118,12 @@ sealed class QuickInfoBackgroundController : SingletonQuickInfoSource
 					else {
 						db = p.GetParent<Border>();
 						if (db != null) {
-							db.Background = bb;
+							if (CodistPackage.VsVersion.Minor < 6) {
+								db.Background = bb;
+							}
+							else {
+								db.GetFirstVisualChild<Border>()?.Background = bb;
+							}
 							db.GetParent<Grid>().GetFirstVisualChild((Border b) => b.Name == "DropShadowBorder")?.BorderBrush = __Border;
 						}
 					}
@@ -130,10 +135,7 @@ sealed class QuickInfoBackgroundController : SingletonQuickInfoSource
 					}
 				}
 			}
-			var b = this.GetParent<Border>();
-			if (b != null) {
-				b.Visibility = Visibility.Collapsed;
-			}
+			this.GetParent<Border>()?.Visibility = Visibility.Collapsed;
 		}
 	}
 }

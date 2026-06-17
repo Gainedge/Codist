@@ -134,13 +134,13 @@ class SymbolList : VirtualList, ISymbolFilterable, INotifyCollectionChanged
 				? items[0] as SymbolItem
 				: SelectedItem as SymbolItem;
 			if (item != null) {
-				GoToSource(item, this);
+				GoToSource(item);
 			}
 			e.Handled = true;
 		}
 
 		[SuppressMessage("Usage", Suppression.VSTHRD100, Justification = Suppression.EventHandler)]
-		async void GoToSource(SymbolItem i, SymbolList me) {
+		async void GoToSource(SymbolItem i) {
 			try {
 				await i.GoToSourceAsync();
 			}
@@ -509,25 +509,15 @@ class SymbolList : VirtualList, ISymbolFilterable, INotifyCollectionChanged
 	}
 
 	void ISymbolFilterable.Filter(string[] keywords, int filterFlags) {
-		switch (ContainerType) {
-			case SymbolListType.TypeList:
-				_Filter = FilterByTypeKinds(keywords, (MemberFilterTypes)filterFlags);
-				break;
-			case SymbolListType.Locations:
-				_Filter = FilterByLocations(keywords);
-				break;
-			case SymbolListType.SymbolReferrers:
-				_Filter = ((MemberFilterTypes)filterFlags).MatchFlags(MemberFilterTypes.AllUsages)
+		_Filter = ContainerType switch {
+			SymbolListType.TypeList => FilterByTypeKinds(keywords, (MemberFilterTypes)filterFlags),
+			SymbolListType.Locations => FilterByLocations(keywords),
+			SymbolListType.SymbolReferrers => ((MemberFilterTypes)filterFlags).MatchFlags(MemberFilterTypes.AllUsages)
 					? FilterByMemberTypes(keywords, (MemberFilterTypes)filterFlags)
-					: FilterByUsages(keywords, (MemberFilterTypes)filterFlags);
-				break;
-			case SymbolListType.NodeList:
-				_Filter = FilterByNodeTypes(keywords, (MemberFilterTypes)filterFlags);
-				break;
-			default:
-				_Filter = FilterByMemberTypes(keywords, (MemberFilterTypes)filterFlags);
-				break;
-		}
+					: FilterByUsages(keywords, (MemberFilterTypes)filterFlags),
+			SymbolListType.NodeList => FilterByNodeTypes(keywords, (MemberFilterTypes)filterFlags),
+			_ => FilterByMemberTypes(keywords, (MemberFilterTypes)filterFlags),
+		};
 		RefreshItemsSource();
 
 		Predicate<object> FilterByNodeTypes(string[] k, MemberFilterTypes memberFilter) {
@@ -539,7 +529,7 @@ class SymbolList : VirtualList, ISymbolFilterable, INotifyCollectionChanged
 				return o => SymbolFilterBox.FilterByImageId(memberFilter, ((SymbolItem)o).ImageId);
 			}
 			return o => SymbolFilterBox.FilterByImageId(memberFilter, ((SymbolItem)o).ImageId)
-					&& MatchKeywords(((SymbolItem)o).Content.GetText(), k);
+					&& ((SymbolItem)o).Content.GetText().ContainsWords(k);
 		}
 		Predicate<object> FilterByMemberTypes(string[] k, MemberFilterTypes memberFilter) {
 			var noKeyword = k.Length == 0;
@@ -552,7 +542,7 @@ class SymbolList : VirtualList, ISymbolFilterable, INotifyCollectionChanged
 			return o => {
 				var i = (SymbolItem)o;
 				return SymbolFilterBox.FilterBySymbol(memberFilter, i.Symbol)
-					&& MatchKeywords(i.Content.GetText(), k);
+					&& i.Content.GetText().ContainsWords(k);
 			};
 		}
 		Predicate<object> FilterByTypeKinds(string[] k, MemberFilterTypes typeFilter) {
@@ -570,7 +560,7 @@ class SymbolList : VirtualList, ISymbolFilterable, INotifyCollectionChanged
 				var i = (SymbolItem)o;
 				return i.Symbol != null
 					&& SymbolFilterBox.FilterBySymbolType(typeFilter, i.Symbol)
-					&& MatchKeywords(i.Content.GetText(), k);
+					&& i.Content.GetText().ContainsWords(k);
 			};
 		}
 		Predicate<object> FilterByLocations(string[] k) {
@@ -580,8 +570,8 @@ class SymbolList : VirtualList, ISymbolFilterable, INotifyCollectionChanged
 			return o => {
 				var i = (SymbolItem)o;
 				return i.Location != null
-					&& (MatchKeywords(((System.Windows.Documents.Run)i.Content.Inlines.FirstInline).Text, k)
-							|| MatchKeywords(i.Hint, k));
+					&& (((System.Windows.Documents.Run)i.Content.Inlines.FirstInline).Text.ContainsWords(k)
+							|| i.Hint.ContainsWords(k));
 			};
 		}
 		Predicate<object> FilterByUsages(string[] k, MemberFilterTypes filter) {
@@ -602,18 +592,8 @@ class SymbolList : VirtualList, ISymbolFilterable, INotifyCollectionChanged
 					&& (i.Symbol != null
 						? SymbolFilterBox.FilterBySymbol(filter, i.Symbol)
 						: SymbolFilterBox.FilterByImageId(filter, i.ImageId))
-					&& MatchKeywords(i.Content.GetText(), k);
+					&& i.Content.GetText().ContainsWords(k);
 			};
-		}
-		bool MatchKeywords(string text, string[] k) {
-			var c = Char.IsUpper(k[0][0]) ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-			var m = 0;
-			foreach (var item in k) {
-				if ((m = text.IndexOf(item, m, c)) == -1) {
-					return false;
-				}
-			}
-			return true;
 		}
 	}
 	#endregion

@@ -17,15 +17,17 @@
 		</Setter>
 	</Style>
 	<!--Outer menu items-->
+	<Style TargetType="{x:Type c:ThemedMenuItem}" BasedOn="{StaticResource {x:Type MenuItem}}"/>
 	<Style TargetType="{x:Type MenuItem}">
 		<Setter Property="Background" Value="{DynamicResource VsBrush.CommandBarMenuBackgroundGradient}"/>
-		<Setter Property="Foreground" Value="{DynamicResource VsBrush.CommandBarTextInactive}"/>
+		<Setter Property="Foreground" Value="{DynamicResource VsBrush.CommandBarTextActive}"/>
 		<Style.Triggers>
 			<Trigger Property="IsHighlighted" Value="True">
-				<Setter Property="Background" Value="{DynamicResource VsBrush.CommandBarMouseOverBackgroundGradient}"></Setter>
+				<Setter Property="Background" Value="{DynamicResource VsBrush.CommandBarMouseOverBackgroundGradient}"/>
 			</Trigger>
 			<Trigger Property="IsEnabled" Value="False">
-				<Setter Property="Foreground" Value="{DynamicResource VsBrush.GrayText}"></Setter>
+				<Setter Property="Foreground" Value="{DynamicResource SystemColors.GrayText}"/>
+				<Setter Property="Opacity" Value="0.5"/>
 			</Trigger>
 		</Style.Triggers>
 	</Style>
@@ -64,7 +66,7 @@
 	</Style>
 	<!-- SubmenuItem -->
 	<ControlTemplate x:Key="{x:Static MenuItem.SubmenuItemTemplateKey}" TargetType="{x:Type MenuItem}">
-		<Border Name="Border" BorderThickness="1" Background="{TemplateBinding Panel.Background}">
+		<Border Name="Border" BorderThickness="1" Background="{TemplateBinding Panel.Background}" Opacity="{TemplateBinding Opacity}">
 			<Grid>
 				<Grid.ColumnDefinitions>
 					<ColumnDefinition Width="Auto"/>
@@ -99,8 +101,9 @@
 				<Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource VsBrush.CommandBarHoverOverSelectedIconBorder}"/>
 				<Setter TargetName="SubCommands" Property="Visibility" Value="Visible"/>
 			</Trigger>
-			<Trigger Property="IsEnabled" Value="false">
-				<Setter Property="Foreground" Value="Gray"/>
+			<Trigger Property="IsEnabled" Value="False">
+				<Setter Property="Foreground" Value="{DynamicResource SystemColors.GrayText}"/>
+				<Setter Property="Opacity" Value="0.5"/>
 			</Trigger>
 		</ControlTemplate.Triggers>
 	</ControlTemplate>
@@ -138,8 +141,9 @@
 			<Trigger SourceName="Popup" Property="Popup.AllowsTransparency" Value="True">
 				<Setter TargetName="SubmenuBorder" Property="CornerRadius" Value="0,0,4,4"/>
 			</Trigger>
-			<Trigger Property="IsEnabled" Value="false">
-				<Setter Property="Foreground" Value="{DynamicResource VsBrush.CommandBarMenuBackgroundGradient}"/>
+			<Trigger Property="IsEnabled" Value="False">
+				<Setter Property="Foreground" Value="{DynamicResource SystemColors.GrayText}"/>
+				<Setter Property="Opacity" Value="0.5"/>
 			</Trigger>
 		</ControlTemplate.Triggers>
 	</ControlTemplate>

@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Input;
 using CLR;
 using Microsoft.CodeAnalysis;
+using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Language.Intellisense;
 using Microsoft.VisualStudio.PlatformUI;
 using Microsoft.VisualStudio.Shell;
@@ -30,7 +31,8 @@ namespace Codist;
 static class TextEditorHelper
 {
 	static /*readonly*/ Guid __IWpfTextViewHostGuid = new Guid("8C40265E-9FDB-4f54-A0FD-EBB72B7D0476"),
-		__ViewKindCodeGuid = new Guid(EnvDTE.Constants.vsViewKindCode);
+		__ViewKindCodeGuid = new Guid(EnvDTE.Constants.vsViewKindCode),
+		__ViewKindPrimaryGuid = new Guid(EnvDTE.Constants.vsViewKindPrimary);
 	static readonly HashSet<IWpfTextView> __WpfTextViews = new HashSet<IWpfTextView>();
 	static IWpfTextView __MouseOverDocumentView, __ActiveDocumentView, __ActiveInteractiveView;
 	static int __ActiveViewPosition;
@@ -401,7 +403,7 @@ static class TextEditorHelper
 		var target = before ? tSpan.Start : tSpan.End;
 		var sPath = sourceNode.SyntaxTree.FilePath;
 		var tPath = targetNode.SyntaxTree.FilePath;
-		if (String.Equals(sPath, tPath, StringComparison.OrdinalIgnoreCase)) {
+		if (FileHelper.AreFileNamesEqual(sPath, tPath)) {
 			using var edit = view.TextBuffer.CreateEdit();
 			edit.Insert(target, view.TextSnapshot.GetText(sSpan));
 			if (copy == false) {
@@ -412,7 +414,7 @@ static class TextEditorHelper
 				view.SelectSpan(sSpan.Start > tSpan.Start ? target : target - sSpan.Length, sSpan.Length, -1);
 			}
 		}
-		else if (String.Equals(sPath, view.TextBuffer.GetTextDocument()?.FilePath, StringComparison.OrdinalIgnoreCase)) {
+		else if (FileHelper.AreFileNamesEqual(sPath, view.TextBuffer.GetTextDocument()?.FilePath)) {
 			// drag & drop from current file to external file
 			if (copy == false) {
 				using var edit = view.TextBuffer.CreateEdit();
@@ -454,7 +456,7 @@ static class TextEditorHelper
 	public static bool IsCommandAvailable(string command) {
 		ThreadHelper.ThrowIfNotOnUIThread();
 		try {
-			return CodistPackage.DTE.Commands.Item(command).IsAvailable;
+			return ServicesHelper.Instance.DTE.Commands.Item(command).IsAvailable;
 		}
 		catch (ArgumentException) {
 			return false;
@@ -465,7 +467,7 @@ static class TextEditorHelper
 		ThreadHelper.ThrowIfNotOnUIThread();
 		try {
 			if (IsCommandAvailable(command)) {
-				CodistPackage.DTE.ExecuteCommand(command, args);
+				ServicesHelper.Instance.DTE.ExecuteCommand(command, args);
 			}
 		}
 		catch (System.Runtime.InteropServices.COMException ex) {
@@ -530,10 +532,10 @@ static class TextEditorHelper
 	public static void ForgetViewPosition() {
 		__ActiveViewPosition = -1;
 	}
-	public static void OpenFile(string file) {
-		OpenFile(file, (VsTextView _) => { });
+	public static void OpenFile(string file, bool newWindow = false, bool useDesigner = false) {
+		OpenFile(file, (VsTextView _) => { }, newWindow, useDesigner);
 	}
-	public static void OpenFile(string file, Action<VsTextView> action) {
+	public static void OpenFile(string file, Action<VsTextView> action, bool newWindow = false, bool useDesigner = false) {
 		ThreadHelper.ThrowIfNotOnUIThread();
 		if (String.IsNullOrEmpty(file)) {
 			return;
@@ -546,21 +548,52 @@ static class TextEditorHelper
 			MoveCaretToKeptViewPosition();
 		}
 
-		InternalOpenFile(file, action);
+		InternalOpenFile(file, action, newWindow, useDesigner);
 	}
 
 	[SuppressMessage("Usage", Suppression.VSTHRD010, Justification = Suppression.CheckedInCaller)]
-	static void InternalOpenFile(string file, Action<VsTextView> action) {
+	static void InternalOpenFile(string file, Action<VsTextView> action, bool newWindow = false, bool useDesigner = false) {
 		try {
-			using (new NewDocumentStateScope(UIHelper.IsShiftDown ? __VSNEWDOCUMENTSTATE.NDS_Unspecified : __VSNEWDOCUMENTSTATE.NDS_Provisional, Microsoft.VisualStudio.VSConstants.NewDocumentStateReason.Navigation)) {
-				VsShellUtilities.OpenDocument(ServiceProvider.GlobalProvider, file, __ViewKindCodeGuid, out var hierarchy, out var itemId, out var windowFrame, out var view);
-				action?.Invoke(view);
+			using (new NewDocumentStateScope(newWindow ^ UIHelper.IsShiftDown, VSConstants.NewDocumentStateReason.Navigation)) {
+				Guid editorType;
+				Guid logicalView;
+				if (!useDesigner) {
+					editorType = VSConstants.VsEditorFactoryGuid.TextEditor_guid;
+					logicalView = __ViewKindCodeGuid;
+				}
+				else {
+					Guid std = GetStandardEditorGuidForFile(file, __ViewKindPrimaryGuid);
+					editorType = (std != Guid.Empty) ? std : VSConstants.VsEditorFactoryGuid.TextEditor_guid;
+					logicalView = __ViewKindPrimaryGuid;
+				}
+				VsShellUtilities.OpenDocumentWithSpecificEditor(
+					ServiceProvider.GlobalProvider,
+					file,
+					editorType,
+					logicalView,
+					out var hierarchy,
+					out var itemId,
+					out var windowFrame);
+				windowFrame.Show();
+				var view = VsShellUtilities.GetTextView(windowFrame);
+				if (view != null) {
+					action?.Invoke(view);
+				}
 			}
 		}
 		catch (Exception ex) {
 			ex.Log();
 			/* ignore */
 		}
+	}
+
+	[SuppressMessage("Usage", Suppression.VSTHRD010, Justification = Suppression.CheckedInCaller)]
+	static Guid GetStandardEditorGuidForFile(string file, Guid logicalView) {
+		var vsUiOpenDoc = ServicesHelper.Get<IVsUIShellOpenDocument, SVsUIShellOpenDocument>();
+		Guid editorGuid = Guid.Empty;
+		return vsUiOpenDoc != null && ErrorHandler.Succeeded(vsUiOpenDoc.GetStandardEditorFactory(0, ref editorGuid, file, ref logicalView, out _, out _))
+			? editorGuid
+			: Guid.Empty;
 	}
 
 	static void MoveCaretToKeptViewPosition() {
@@ -580,7 +613,7 @@ static class TextEditorHelper
 	public static void OpenFile(string file, int caretPosition) {
 		var view = GetActiveWpfDocumentView();
 		if (view != null
-			&& String.Equals(view.TextBuffer.GetTextDocument()?.FilePath, file, StringComparison.OrdinalIgnoreCase)) {
+			&& FileHelper.AreFileNamesEqual(view.TextBuffer.GetTextDocument()?.FilePath, file)) {
 			MoveToActiveViewPosition(view, caretPosition);
 		}
 		else {
@@ -593,6 +626,25 @@ static class TextEditorHelper
 		view.DisplayTextLineContainingBufferPosition(view.Caret.Position.BufferPosition, view.ViewportHeight * 0.2, ViewRelativePosition.Top);
 		view.Caret.EnsureVisible();
 		view.VisualElement.Focus();
+	}
+
+	public static void CreateDocumentWindowWithContent(string initialText, string name, IContentType contentType) {
+		ThreadHelper.ThrowIfNotOnUIThread();
+		var w = ServicesHelper.Instance.DTE.ItemOperations.NewFile(Name: name);
+		var view = w.Document.GetActiveWpfDocumentView();
+		view.TextBuffer.ChangeContentType(contentType, null);
+		var options = view.Options;
+		var trackChange = DefaultTextViewHostOptions.ChangeTrackingId;
+		var c = options.GetOptionValue(trackChange);
+		if (c) {
+			options.SetOptionValue(trackChange, false); // turn off change tracking
+		}
+		w.Document.GetActiveDocumentView().GetBuffer(out var textLines);
+		textLines.InitializeContent(initialText, initialText.Length); // set initial text
+		textLines.SetStateFlags(0); // clear undo history
+		if (c) {
+			options.SetOptionValue(trackChange, true); // restore change tracking
+		}
 	}
 	#endregion
 
@@ -628,9 +680,14 @@ static class TextEditorHelper
 
 	#region TextView and editor
 	public static event EventHandler<TextViewCreatedEventArgs> ActiveTextViewChanged;
+	public static event EventHandler AllTextViewClosed;
 
 	public static string GetViewCategory(this ITextView view) {
 		return view.Options.GetOptionValue(DefaultWpfViewOptions.AppearanceCategory);
+	}
+
+	public static IEditorOperations GetEditorOperations(this ITextView view) {
+		return ServicesHelper.Instance.EditorOperationsFactory.GetEditorOperations(view);
 	}
 
 	/// <summary>Gets the floating point zoom factor <c>(<see cref="IWpfTextView.ZoomLevel"/> / 100)</c> from specific view</summary>
@@ -759,7 +816,7 @@ static class TextEditorHelper
 	}
 	public static IWpfTextView GetActiveWpfDocumentView(this IServiceProvider service) {
 		ThreadHelper.ThrowIfNotOnUIThread();
-		var doc = CodistPackage.DTE.ActiveDocument;
+		var doc = ServicesHelper.Instance.DTE.ActiveDocument;
 		if (doc == null) {
 			return null;
 		}
@@ -777,10 +834,11 @@ static class TextEditorHelper
 
 	public static IWpfTextView GetWpfTextView(this UIElement element) {
 		foreach (var item in __WpfTextViews) {
-			if (item.VisualElement.IsVisible == false) {
+			var e = item.VisualElement;
+			if (!e.IsVisible) {
 				continue;
 			}
-			if (item.VisualElement.Contains(element.TranslatePoint(new Point(0,0), item.VisualElement))) {
+			if (e.Contains(element.TranslatePoint(new Point(0,0), e))) {
 				return item;
 			}
 		}
@@ -913,6 +971,9 @@ static class TextEditorHelper
 						__ActiveDocumentView = null;
 					}
 					__WpfTextViews.Remove(v);
+					if (__WpfTextViews.Count == 0) {
+						AllTextViewClosed?.Invoke(v, EventArgs.Empty);
+					}
 				}
 				if (__ActiveInteractiveView == v) {
 					__ActiveInteractiveView = null;
@@ -939,6 +1000,10 @@ static class TextEditorHelper
 			if (Package.GetGlobalService(typeof(IVsUIShellOpenDocument)) is IVsUIShellOpenDocument3 doc) {
 				_Context = doc.SetNewDocumentState(state, ref reason);
 			}
+		}
+
+		public NewDocumentStateScope(bool newWindow, Guid reason)
+			: this((uint)(newWindow ? __VSNEWDOCUMENTSTATE.NDS_Unspecified : __VSNEWDOCUMENTSTATE.NDS_Provisional), reason) {
 		}
 
 		public NewDocumentStateScope(__VSNEWDOCUMENTSTATE state, Guid reason)

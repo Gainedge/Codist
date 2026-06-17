@@ -30,13 +30,13 @@ namespace Codist.Commands
 			Command.WindowInformer.Register(Execute, (s, args) => {
 				ThreadHelper.ThrowIfNotOnUIThread();
 				((OleMenuCommand)s).Visible = Config.Instance.DeveloperOptions.MatchFlags(DeveloperOptions.ShowWindowInformer)
-					&& CodistPackage.DTE.ActiveWindow != null;
+					&& ServicesHelper.Instance.DTE.ActiveWindow != null;
 			});
 		}
 
 		static void Execute(object sender, EventArgs e) {
 			ThreadHelper.ThrowIfNotOnUIThread();
-			var window = CodistPackage.DTE.ActiveWindow;
+			var window = ServicesHelper.Instance.DTE.ActiveWindow;
 			if (window == null) {
 				return;
 			}
@@ -198,7 +198,7 @@ namespace Codist.Commands
 
 		[SuppressMessage("Usage", Suppression.VSTHRD010, Justification = Suppression.CheckedInCaller)]
 		static void ShowDTESolutionSelectedItems(BlockCollection blocks) {
-			if (CodistPackage.DTE.ToolWindows.SolutionExplorer.SelectedItems is object[] items) {
+			if (ServicesHelper.Instance.DTE.ToolWindows.SolutionExplorer.SelectedItems is object[] items) {
 				foreach (UIHierarchyItem hi in items.OfType<UIHierarchyItem>()) {
 					var obj = hi.Object;
 					if (obj is ProjectItem pi) {
@@ -222,7 +222,7 @@ namespace Codist.Commands
 		[SuppressMessage("Usage", Suppression.VSTHRD010, Justification = Suppression.CheckedInCaller)]
 		static void ShowDTEOutputWindows(BlockCollection blocks) {
 			var s = NewSection(blocks, "OutputWindow", SubSectionFontSize);
-			var o = CodistPackage.DTE.ToolWindows.OutputWindow;
+			var o = ServicesHelper.Instance.DTE.ToolWindows.OutputWindow;
 			AppendNameValue(s, "ActivePane.Name", o.ActivePane?.Name);
 			var ss = NewIndentSection(s, "OutputWindowPanes");
 			foreach (var item in o.OutputWindowPanes.OfType<OutputWindowPane>()) {
@@ -392,7 +392,7 @@ namespace Codist.Commands
 		[SuppressMessage("Usage", Suppression.VSTHRD010, Justification = Suppression.CheckedInCaller)]
 		static void ShowDTEProperties(BlockCollection blocks) {
 			var s = NewSection(blocks, "DTE", SubSectionFontSize);
-			var dte = CodistPackage.DTE;
+			var dte = ServicesHelper.Instance.DTE;
 			AppendNameValue(s, "Edition", dte.Edition);
 			AppendNameValue(s, "DisplayMode", dte.DisplayMode);
 			AppendNameValue(s, "Mode", dte.Mode);

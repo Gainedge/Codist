@@ -9,7 +9,7 @@ namespace Codist.Commands
 			Command.ToggleAutoBuildVersion.Register(Execute, (s, args) => {
 				ThreadHelper.ThrowIfNotOnUIThread();
 				var c = (OleMenuCommand)s;
-				c.Visible = CodistPackage.DTE.Solution.Projects.Count > 0;
+				c.Visible = ServicesHelper.Instance.DTE.Solution.Projects.Count > 0;
 				c.Checked = Config.Instance.SuppressAutoBuildVersion == false;
 			});
 		}

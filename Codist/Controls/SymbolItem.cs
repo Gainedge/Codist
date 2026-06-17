@@ -8,253 +8,252 @@ using System.Windows.Controls;
 using Codist.SymbolCommands;
 using Microsoft.CodeAnalysis;
 
-namespace Codist.Controls
+namespace Codist.Controls;
+
+sealed class SymbolItem : INotifyPropertyChanged
 {
-	sealed class SymbolItem : INotifyPropertyChanged
-	{
-		UIElement _Icon;
-		int _ImageId;
-		TextBlock _Content;
-		string _Hint;
-		readonly bool _IncludeContainerType;
-		internal SyntaxNode SyntaxNode { get; private set; }
-		internal ISymbol Symbol { get; private set; }
-		internal SymbolList Container { get; private set; }
-		internal Location Location { get; set; }
-		internal byte IndentLevel { get; set; }
+	UIElement _Icon;
+	int _ImageId;
+	TextBlock _Content;
+	string _Hint;
+	readonly bool _IncludeContainerType;
+	internal SyntaxNode SyntaxNode { get; private set; }
+	internal ISymbol Symbol { get; private set; }
+	internal SymbolList Container { get; private set; }
+	internal Location Location { get; set; }
+	internal byte IndentLevel { get; set; }
 
-		#region WPF shared properties
-		// the following properties must be public since they are also used in WPF
-		public SymbolUsageKind Usage { get; set; }
+	#region WPF shared properties
+	// the following properties must be public since they are also used in WPF
+	public SymbolUsageKind Usage { get; set; }
 
-		public int ImageId => _ImageId != 0 ? _ImageId : (_ImageId = Symbol != null ? Symbol.GetImageId() : SyntaxNode != null ? SyntaxNode.GetImageId() : -1);
-		public UIElement Icon => _Icon ?? (_Icon = Container?.IconProvider?.Invoke(this) ?? VsImageHelper.GetImage(ImageId != -1 ? ImageId : 0));
-		public UIElement ExtIcon => Container?.ExtIconProvider?.Invoke(this);
-		public string Hint {
-			get => _Hint ?? (_Hint = Symbol != null && Container != null && Symbol.Kind == SymbolKind.Field ? GetSymbolConstantValue(Symbol, Container.ContainerType == SymbolListType.EnumFlags) : String.Empty);
-			set => _Hint = value;
-		}
-		public bool IsExternal => Usage == SymbolUsageKind.External
-			|| Container?.ContainerType == SymbolListType.None && Symbol?.ContainingAssembly.GetSourceType() == AssemblySource.Metadata;
-		public TextBlock Content {
-			get => _Content ?? (_Content = Symbol != null
-				? CreateContentForSymbol(Symbol, _IncludeContainerType, true)
-				: SyntaxNode != null
-					? new ThemedMenuText().Append(SyntaxNode.GetDeclarationSignature(), SymbolFormatter.Instance.GetBrush(SyntaxNode))
-					: new ThemedMenuText());
-			set => _Content = value;
-		}
-		#endregion
+	public int ImageId => _ImageId != 0 ? _ImageId : (_ImageId = Symbol != null ? Symbol.GetImageId() : SyntaxNode != null ? SyntaxNode.GetImageId() : -1);
+	public UIElement Icon => _Icon ?? (_Icon = Container?.IconProvider?.Invoke(this) ?? VsImageHelper.GetImage(ImageId != -1 ? ImageId : 0));
+	public UIElement ExtIcon => Container?.ExtIconProvider?.Invoke(this);
+	public string Hint {
+		get => _Hint ?? (_Hint = Symbol != null && Container != null && Symbol.Kind == SymbolKind.Field ? GetSymbolConstantValue(Symbol, Container.ContainerType == SymbolListType.EnumFlags) : String.Empty);
+		set => _Hint = value;
+	}
+	public bool IsExternal => Usage == SymbolUsageKind.External
+		|| Container?.ContainerType == SymbolListType.None && Symbol?.ContainingAssembly.GetSourceType() == AssemblySource.Metadata;
+	public TextBlock Content {
+		get => _Content ?? (_Content = Symbol != null
+			? CreateContentForSymbol(Symbol, _IncludeContainerType, true)
+			: SyntaxNode != null
+				? new ThemedMenuText().Append(SyntaxNode.GetDeclarationSignature(), SymbolFormatter.Instance.GetBrush(SyntaxNode))
+				: new ThemedMenuText());
+		set => _Content = value;
+	}
+	#endregion
 
-		public SymbolItem(SymbolList list) {
-			Container = list;
-			Content = new ThemedMenuText();
-			_ImageId = -1;
+	public SymbolItem(SymbolList list) {
+		Container = list;
+		Content = new ThemedMenuText();
+		_ImageId = -1;
+	}
+	public SymbolItem(Location location, SymbolList list) {
+		Container = list;
+		Location = location;
+		if (location.IsInSource) {
+			var filePath = location.SourceTree.FilePath;
+			_Content = new ThemedMenuText(Path.GetFileNameWithoutExtension(filePath)).Append(Path.GetExtension(filePath), ThemeCache.SystemGrayTextBrush);
+			_Hint = Path.GetFileName(Path.GetDirectoryName(filePath));
+			_ImageId = IconIds.FileEmpty;
 		}
-		public SymbolItem(Location location, SymbolList list) {
-			Container = list;
-			Location = location;
-			if (location.IsInSource) {
-				var filePath = location.SourceTree.FilePath;
-				_Content = new ThemedMenuText(Path.GetFileNameWithoutExtension(filePath)).Append(Path.GetExtension(filePath), ThemeCache.SystemGrayTextBrush);
-				_Hint = Path.GetFileName(Path.GetDirectoryName(filePath));
-				_ImageId = IconIds.FileEmpty;
-			}
-			else {
-				var m = location.MetadataModule;
-				Symbol = m;
-				_Content = new ThemedMenuText(Path.GetFileNameWithoutExtension(m.Name)).Append(Path.GetExtension(m.Name), ThemeCache.SystemGrayTextBrush);
-				_Hint = String.Empty;
-				_ImageId = IconIds.Module;
-			}
+		else {
+			var m = location.MetadataModule;
+			Symbol = m;
+			_Content = new ThemedMenuText(Path.GetFileNameWithoutExtension(m.Name)).Append(Path.GetExtension(m.Name), ThemeCache.SystemGrayTextBrush);
+			_Hint = String.Empty;
+			_ImageId = IconIds.Module;
 		}
-		public SymbolItem(ISymbol symbol, SymbolList list, ISymbol containerSymbol)
-			: this (symbol, list, false) {
-			_ImageId = containerSymbol.GetImageId();
-			_Content = CreateContentForSymbol(containerSymbol, false, true);
-		}
-		public SymbolItem(ISymbol symbol, SymbolList list, bool includeContainerType) {
-			Symbol = symbol;
-			Container = list;
-			_IncludeContainerType = includeContainerType;
-		}
+	}
+	public SymbolItem(ISymbol symbol, SymbolList list, ISymbol containerSymbol)
+		: this (symbol, list, false) {
+		_ImageId = containerSymbol.GetImageId();
+		_Content = CreateContentForSymbol(containerSymbol, false, true);
+	}
+	public SymbolItem(ISymbol symbol, SymbolList list, bool includeContainerType) {
+		Symbol = symbol;
+		Container = list;
+		_IncludeContainerType = includeContainerType;
+	}
 
-		public SymbolItem(SyntaxNode node, SymbolList list) {
-			SyntaxNode = node;
-			Container = list;
+	public SymbolItem(SyntaxNode node, SymbolList list) {
+		SyntaxNode = node;
+		Container = list;
+	}
+
+	public event PropertyChangedEventHandler PropertyChanged;
+
+	public async Task<bool> GoToSourceAsync(CancellationToken cancellationToken = default) {
+		await SyncHelper.SwitchToMainThreadAsync(cancellationToken);
+		if (Location?.IsInSource == true) {
+			GoToLocation();
+			return true;
 		}
+		if (SyntaxNode != null) {
+			await GoToNodeAsync(cancellationToken);
+			return true;
+		}
+		if (Symbol != null) {
+			return await GoToSymbolAsync(cancellationToken);
+		}
+		return false;
+	}
 
-		public event PropertyChangedEventHandler PropertyChanged;
+	void GoToLocation() {
+		var loc = Location;
+		CloseUnpinnedMenus();
+		loc.GoToSource();
+	}
 
-		public async Task<bool> GoToSourceAsync(CancellationToken cancellationToken = default) {
-			if (Location?.IsInSource == true) {
-				GoToLocation();
-				return true;
-			}
-			if (SyntaxNode != null) {
-				await GoToNodeAsync(cancellationToken);
-				return true;
-			}
-			if (Symbol != null) {
-				return await GoToSymbolAsync(cancellationToken);
-			}
+	async Task GoToNodeAsync(CancellationToken cancellationToken = default) {
+		await RefreshSyntaxNodeAsync(cancellationToken);
+		var node = SyntaxNode;
+		await SyncHelper.SwitchToMainThreadAsync(cancellationToken);
+		CloseUnpinnedMenus();
+		node.GetIdentifierToken().GetLocation().GoToSource();
+	}
+
+	async Task<bool> GoToSymbolAsync(CancellationToken cancellationToken = default) {
+		await RefreshSymbolAsync(cancellationToken);
+		if (Symbol.Kind == SymbolKind.Namespace) {
+			await SyncHelper.SwitchToMainThreadAsync(cancellationToken);
+			await new CommandFactory(Container.SemanticContext, Symbol).Create(CommandId.ListSymbolMembers).ExecuteAsync(cancellationToken);
 			return false;
 		}
-
-		void GoToLocation() {
-			var loc = Location;
-			CloseUnpinnedMenus();
-			loc.GoToSource();
-		}
-
-		async Task GoToNodeAsync(CancellationToken cancellationToken = default) {
-			await RefreshSyntaxNodeAsync(cancellationToken);
-			var node = SyntaxNode;
-			await SyncHelper.SwitchToMainThreadAsync(cancellationToken);
-			CloseUnpinnedMenus();
-			node.GetIdentifierToken().GetLocation().GoToSource();
-		}
-
-		async Task<bool> GoToSymbolAsync(CancellationToken cancellationToken = default) {
-			await RefreshSymbolAsync(cancellationToken);
-			if (Symbol.Kind == SymbolKind.Namespace) {
-				await SyncHelper.SwitchToMainThreadAsync(cancellationToken);
-				var item = _Content.GetParent<ListBoxItem>().NullIfMouseOver();
-				await new CommandFactory(Container.SemanticContext, Symbol).Create(CommandId.ListSymbolMembers).ExecuteAsync(cancellationToken);
-				return false;
-			}
-			var s = Symbol.GetSourceReferences();
-			await SyncHelper.SwitchToMainThreadAsync(cancellationToken);
-			switch (s.Length) {
-				case 0:
-					if (Container.SemanticContext.Document != null) {
-						var symbol = Symbol;
-						var proj = Container.SemanticContext.Document.Project;
-						CloseUnpinnedMenus();
-						if (symbol.Kind == SymbolKind.NetModule) {
-							var (folder, file) = Container.SemanticContext.SemanticModel.Compilation.GetReferencedAssemblyPath(((IModuleSymbol)symbol).ContainingAssembly);
-							if (String.IsNullOrEmpty(folder) == false) {
-								FileHelper.OpenInExplorer(folder, file);
+		var s = Symbol.GetSourceReferences();
+		await SyncHelper.SwitchToMainThreadAsync(cancellationToken);
+		switch (s.Length) {
+			case 0:
+				if (Container.SemanticContext.Document != null) {
+					var symbol = Symbol;
+					var proj = Container.SemanticContext.Document.Project;
+					CloseUnpinnedMenus();
+					if (symbol.Kind == SymbolKind.NetModule) {
+						var (folder, file) = Container.SemanticContext.SemanticModel.Compilation.GetReferencedAssemblyPath(((IModuleSymbol)symbol).ContainingAssembly);
+						if (String.IsNullOrEmpty(folder) == false) {
+							FileHelper.OpenInExplorer(folder, file);
+							return true;
+						}
+					}
+					else if (ServicesHelper.Instance.VisualStudioWorkspace.TryGoToDefinition(symbol, proj, default) == false) {
+						// Note: the symbol may come from other projects, which will fail the above call.
+						// In this case, we will try on related projects
+						foreach (var p in proj.GetRelatedProjects()) {
+							if (ServicesHelper.Instance.VisualStudioWorkspace.TryGoToDefinition(symbol, p, default)) {
 								return true;
 							}
 						}
-						else if (ServicesHelper.Instance.VisualStudioWorkspace.TryGoToDefinition(symbol, proj, default) == false) {
-							// Note: the symbol may come from other projects, which will fail the above call.
-							// In this case, we will try on related projects
-							foreach (var p in proj.GetRelatedProjects()) {
-								if (ServicesHelper.Instance.VisualStudioWorkspace.TryGoToDefinition(symbol, p, default)) {
-									return true;
-								}
-							}
-							VsShellHelper.Log($"TryGoToDefinition failed for {symbol}");
-							return false;
-						}
-						return true;
+						VsShellHelper.Log($"TryGoToDefinition failed for {symbol}");
+						return false;
 					}
-					VsShellHelper.Log($"SemanticContext.Document is null for {Symbol}");
-					return false;
-				case 1:
-					CloseUnpinnedMenus();
-					s[0].GoToSource();
 					return true;
-				default:
-					new SymbolCommands.ListSymbolLocationsCommand { Symbol = Symbol, Context = Container.SemanticContext }
-						.Show(s, _Content.GetParent<ListBoxItem>().NullIfMouseOver());
-					return false;
-			}
-		}
-
-		void CloseUnpinnedMenus() {
-			if (_Content.GetParent<ListBoxItem>()?.IsMouseOver == false
-				&& UIHelper.IsCtrlDown == false) {
-				TextViewOverlay.Get(Container.SemanticContext.View)?.ClearUnpinnedChildren();
-			}
-		}
-
-		public bool SelectIfContainsPosition(int position) {
-			if (IsExternal || SyntaxNode == null || SyntaxNode.FullSpan.Contains(position, true) == false) {
+				}
+				VsShellHelper.Log($"SemanticContext.Document is null for {Symbol}");
 				return false;
-			}
-			Container.SelectedValue = this;
-			return true;
+			case 1:
+				CloseUnpinnedMenus();
+				s[0].GoToSource();
+				return true;
+			default:
+				new SymbolCommands.ListSymbolLocationsCommand { Symbol = Symbol, Context = Container.SemanticContext }
+					.Show(s, _Content.GetParent<ListBoxItem>().NullIfMouseOver());
+				return false;
 		}
-		ThemedMenuText CreateContentForSymbol(ISymbol symbol, bool includeType, bool includeParameter) {
-			var t = new ThemedMenuText();
-			if (IndentLevel != 0) {
-				t.Margin = new Thickness(10 * IndentLevel, 0, 0, 0);
-			}
-			if (includeType && symbol.ContainingType != null) {
-				t.Append($"{symbol.ContainingType.Name}{symbol.ContainingType.GetParameterString()}.", ThemeCache.SystemGrayTextBrush.Alpha(0.5));
-			}
-			if (symbol.Kind == SymbolKind.Method) {
-				var m = symbol as IMethodSymbol;
-				var exp = m.GetSpecialMethodName();
-				if (exp != null) {
-					switch (m.MethodKind) {
-						case MethodKind.UserDefinedOperator:
-							t.Append(exp, SymbolFormatter.Instance.Method);
-							goto PARAMETER;
-						case MethodKind.Conversion:
-							t.Append(exp, SymbolFormatter.Instance.Keyword)
-								.Append(" ")
-								.AddSymbol(m.ReturnType, false, SymbolFormatter.Instance);
-							goto PARAMETER;
-					}
-				}
-			}
-			t.Append(symbol.GetOriginalName(), includeType, false, SymbolFormatter.Instance.GetBrush(symbol));
-			PARAMETER:
-			if (includeParameter) {
-				t.Append(symbol.GetParameterString(), SymbolFormatter.SemiTransparent.PlainText);
-			}
-			return t;
-		}
+	}
 
-		static string GetSymbolConstantValue(ISymbol symbol, bool useHexBin) {
-			var f = (IFieldSymbol)symbol;
-			if (f.HasConstantValue) {
-				return useHexBin && f.ConstantValue is IFormattable v ? "0x" + v.ToString("X4", System.Globalization.CultureInfo.InvariantCulture) : f.ConstantValue?.ToString();
-			}
-			return null;
+	void CloseUnpinnedMenus() {
+		if (_Content.GetParent<ListBoxItem>()?.IsMouseOver == false
+			&& UIHelper.IsCtrlDown == false) {
+			TextViewOverlay.Get(Container.SemanticContext.View)?.ClearUnpinnedChildren();
 		}
-		internal void SetSymbolToSyntaxNode() {
-			Symbol = SyncHelper.RunSync(() => Container.SemanticContext.GetSymbolAsync(SyntaxNode));
-		}
-		internal async Task SetSymbolToSyntaxNodeAsync(CancellationToken cancellationToken) {
-			Symbol = await Container.SemanticContext.GetSymbolAsync(SyntaxNode, cancellationToken);
-		}
-		internal async Task RefreshSyntaxNodeAsync(CancellationToken cancellationToken = default) {
-			var node = await Container.SemanticContext.RelocateDeclarationNodeAsync(SyntaxNode, cancellationToken);
-			if (node != null && node != SyntaxNode) {
-				SyntaxNode = node;
-			}
-		}
+	}
 
-		internal Task RefreshSymbolAsync(CancellationToken cancellationToken) {
-			return Symbol.ContainingAssembly.GetSourceType() == AssemblySource.Metadata
-				? Task.CompletedTask
-				: RefreshSymbolInternalAsync(this, cancellationToken);
-
-			async Task RefreshSymbolInternalAsync(SymbolItem me, CancellationToken ct) {
-				var oldSymbol = me.Symbol;
-				if (oldSymbol != null && oldSymbol.Kind != SymbolKind.ErrorType) {
-					var symbol = await me.Container?.SemanticContext?.RelocateSymbolAsync(oldSymbol, ct);
-					if (symbol != null && symbol != oldSymbol) {
-						me.Symbol = symbol;
-					}
+	public bool SelectIfContainsPosition(int position) {
+		if (IsExternal || SyntaxNode == null || SyntaxNode.FullSpan.Contains(position, true) == false) {
+			return false;
+		}
+		Container.SelectedValue = this;
+		return true;
+	}
+	ThemedMenuText CreateContentForSymbol(ISymbol symbol, bool includeType, bool includeParameter) {
+		var t = new ThemedMenuText();
+		if (IndentLevel != 0) {
+			t.Margin = new Thickness(10 * IndentLevel, 0, 0, 0);
+		}
+		if (includeType && symbol.ContainingType != null) {
+			t.Append($"{symbol.ContainingType.Name}{symbol.ContainingType.GetParameterString()}.", ThemeCache.SystemGrayTextBrush.Alpha(0.5));
+		}
+		if (symbol.Kind == SymbolKind.Method) {
+			var m = symbol as IMethodSymbol;
+			var exp = m.GetSpecialMethodName();
+			if (exp != null) {
+				switch (m.MethodKind) {
+					case MethodKind.UserDefinedOperator:
+						t.Append(exp, SymbolFormatter.Instance.Method);
+						goto PARAMETER;
+					case MethodKind.Conversion:
+						t.Append(exp, SymbolFormatter.Instance.Keyword)
+							.Append(" ")
+							.AddSymbol(m.ReturnType, false, SymbolFormatter.Instance);
+						goto PARAMETER;
 				}
 			}
 		}
-
-		public override string ToString() {
-			return Content.GetText();
+		t.Append(symbol.GetOriginalName(), includeType, false, SymbolFormatter.Instance.GetBrush(symbol));
+		PARAMETER:
+		if (includeParameter) {
+			t.Append(symbol.GetParameterString(), SymbolFormatter.SemiTransparent.PlainText);
 		}
+		return t;
+	}
 
-		internal void Release() {
-			Symbol = null;
-			Location = null;
-			SyntaxNode = null;
-			Container = null;
+	static string GetSymbolConstantValue(ISymbol symbol, bool useHexBin) {
+		var f = (IFieldSymbol)symbol;
+		if (f.HasConstantValue) {
+			return useHexBin && f.ConstantValue is IFormattable v ? "0x" + v.ToString("X4", System.Globalization.CultureInfo.InvariantCulture) : f.ConstantValue?.ToString();
 		}
+		return null;
+	}
+	internal void SetSymbolToSyntaxNode() {
+		Symbol = SyncHelper.RunSync(() => Container.SemanticContext.GetSymbolAsync(SyntaxNode));
+	}
+	internal async Task SetSymbolToSyntaxNodeAsync(CancellationToken cancellationToken) {
+		Symbol = await Container.SemanticContext.GetSymbolAsync(SyntaxNode, cancellationToken);
+	}
+	internal async Task RefreshSyntaxNodeAsync(CancellationToken cancellationToken = default) {
+		var node = await Container.SemanticContext.RelocateDeclarationNodeAsync(SyntaxNode, cancellationToken);
+		if (node != null && node != SyntaxNode) {
+			SyntaxNode = node;
+		}
+	}
+
+	internal Task RefreshSymbolAsync(CancellationToken cancellationToken) {
+		return Symbol.ContainingAssembly.GetSourceType() == AssemblySource.Metadata
+			? Task.CompletedTask
+			: RefreshSymbolInternalAsync(this, cancellationToken);
+
+		async Task RefreshSymbolInternalAsync(SymbolItem me, CancellationToken ct) {
+			var oldSymbol = me.Symbol;
+			if (oldSymbol != null && oldSymbol.Kind != SymbolKind.ErrorType) {
+				var symbol = await me.Container?.SemanticContext?.RelocateSymbolAsync(oldSymbol, ct);
+				if (symbol != null && symbol != oldSymbol) {
+					me.Symbol = symbol;
+				}
+			}
+		}
+	}
+
+	public override string ToString() {
+		return Content.GetText();
+	}
+
+	internal void Release() {
+		Symbol = null;
+		Location = null;
+		SyntaxNode = null;
+		Container = null;
 	}
 }

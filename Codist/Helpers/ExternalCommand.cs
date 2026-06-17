@@ -14,7 +14,7 @@ namespace Codist
 					url = url.Replace("%s", System.Net.WebUtility.UrlEncode(text));
 				}
 				if (UIHelper.IsCtrlDown) {
-					CodistPackage.DTE.ItemOperations.Navigate(url);
+					ServicesHelper.Instance.DTE.ItemOperations.Navigate(url);
 				}
 				else if (String.IsNullOrEmpty(Config.Instance.BrowserPath) == false) {
 					Process.Start(Config.Instance.BrowserPath, String.IsNullOrEmpty(Config.Instance.BrowserParameter) ? url : Config.Instance.BrowserParameter.Replace("%u", url));

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows;
+using System.Windows.Controls.Primitives;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.OLE.Interop;
 using Microsoft.VisualStudio.Shell;
@@ -33,6 +34,14 @@ namespace Codist.Controls
 			window.Activated += thief.WindowActivate;
 			window.Deactivated += thief.WindowDeactivate;
 			window.Closed += thief.Release;
+		}
+
+		public static void Bind(Popup popup) {
+			ThreadHelper.ThrowIfNotOnUIThread();
+			var thief = new KeystrokeThief();
+			popup.Opened += thief.WindowActivate;
+			popup.Closed += thief.WindowDeactivate;
+			popup.Unloaded += thief.Release;
 		}
 
 		void RegisterDummyComponent() {

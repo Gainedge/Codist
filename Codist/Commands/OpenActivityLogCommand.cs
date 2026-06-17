@@ -21,7 +21,7 @@ namespace Codist.Commands
 
 		static void Execute(object sender, EventArgs e) {
 			ThreadHelper.ThrowIfNotOnUIThread();
-			var root = CodistPackage.DTE.RegistryRoot;
+			var root = ServicesHelper.Instance.DTE.RegistryRoot;
 			int i;
 			string verDir;
 			if (String.IsNullOrEmpty(root)

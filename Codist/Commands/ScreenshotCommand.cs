@@ -17,7 +17,7 @@ namespace Codist.Commands
 
 		static void Execute(object sender, EventArgs e) {
 			ThreadHelper.ThrowIfNotOnUIThread();
-			var doc = CodistPackage.DTE.ActiveDocument;
+			var doc = ServicesHelper.Instance.DTE.ActiveDocument;
 			if (doc == null) {
 				return;
 			}

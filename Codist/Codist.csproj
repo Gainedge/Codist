@@ -96,20 +96,32 @@
     <Compile Include="Commands\ShowSupportedFileTypesCommand.cs" />
     <Compile Include="Commands\TransformDocumentWindow.cs" />
     <Compile Include="Controls\HelpMessageButton.cs" />
+    <Compile Include="Controls\IntegerBox.xaml.cs" />
     <Compile Include="Controls\ThemedListBox.cs" />
     <Compile Include="Controls\ThemedRichTextBox.cs" />
     <Compile Include="Controls\ThemedHyperlink.cs" />
+    <Compile Include="ExternalInit.cs" />
     <Compile Include="Commands\CancelRepeatingActionCommand.cs" />
+    <Compile Include="FileBrowser\FileItemType.cs" />
+    <Compile Include="FileBrowser\FileList.Commands.cs" />
+    <Compile Include="FileBrowser\FileList.FileItemToTooltipConverter.cs" />
+    <Compile Include="FileBrowser\FileListLocationType.cs" />
+    <Compile Include="FileBrowser\FileItem.cs" />
+    <Compile Include="FileBrowser\FileState.cs" />
+    <Compile Include="FileBrowser\RecentlyClosedFileCollection.cs" />
     <Compile Include="Helpers\ClassificationStyleHelper.cs" />
     <Compile Include="Helpers\EditCommands.cs" />
     <Compile Include="Helpers\SpanHelper.cs" />
     <Compile Include="Helpers\ValueHelper.cs" />
     <Compile Include="Helpers\VsImageHelper.cs" />
     <Compile Include="Helpers\ThemeHelper.cs" />
+    <Compile Include="FileBrowser\FileList.cs" />
+    <Compile Include="Margins\FileBrowserMargin.cs" />
     <Compile Include="Margins\MatchMargin.cs" />
     <Compile Include="Options\OptionsWindow.cs" />
     <Compile Include="Options\OptionsWindow.DisplayPage.cs" />
     <Compile Include="Options\OptionsWindow.AutoPunctuationPage.cs" />
+    <Compile Include="Options\OptionsWindow.FileBrowserPage.cs" />
     <Compile Include="Options\OptionsWindow.WrapTextPage.cs" />
     <Compile Include="Options\OptionsWindow.WebSearchPage.cs" />
     <Compile Include="Options\OptionsWindow.GeneralOptionPage.cs" />
@@ -177,9 +189,6 @@
     <Compile Include="Helpers\ExternalCommand.cs" />
     <Compile Include="Controls\ExtIconProvider.cs" />
     <Compile Include="Controls\IContextMenuHost.cs" />
-    <Compile Include="Controls\IntegerBox.xaml.cs">
-      <DependentUpon>IntegerBox.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Controls\MenuItemFilter.cs" />
     <Compile Include="Controls\MessageWindow.cs" />
     <Compile Include="Controls\SearchScopeBox.cs" />
@@ -301,11 +310,8 @@
     <Compile Include="NaviBar\CSharpBar.cs" />
     <Compile Include="CodistPackage.cs" />
     <Compile Include="Commands\ScreenshotCommand.cs" />
-    <Compile Include="Commands\SymbolFinderWindow.cs" />
-    <Compile Include="Commands\SymbolFinderWindowCommand.cs" />
-    <Compile Include="Commands\SymbolFinderWindowControl.xaml.cs">
-      <DependentUpon>SymbolFinderWindowControl.xaml</DependentUpon>
-    </Compile>
+    <Compile Include="Commands\FileBrowserWindow.cs" />
+    <Compile Include="Commands\FileBrowserWindowCommand.cs" />
     <Compile Include="Config.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="Controls\ThemedButton.cs" />
@@ -468,17 +474,9 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <Page Include="Commands\SymbolFinderWindowControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
     <Page Include="Controls\ColorSelector.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Controls\IntegerBox.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Controls\SliderResources.xaml">
       <Generator>MSBuild:Compile</Generator>

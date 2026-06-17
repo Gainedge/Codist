@@ -28,7 +28,7 @@ namespace Codist
 			return textBuffer.GetWorkspace().GetDocument(textBuffer);
 		}
 		public static Document GetDocument(this Project project, string filePath) {
-			return project.Documents.FirstOrDefault(d => String.Equals(d.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+			return project.Documents.FirstOrDefault(d => FileHelper.AreFileNamesEqual(d.FilePath, filePath));
 		}
 
 		/// <summary>Gets all <see cref="Document"/>s from a given <see cref="Project"/> and referencing/referenced projects.</summary>

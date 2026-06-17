@@ -66,7 +66,7 @@ namespace Codist
 				WriteBuildText(DateTime.Now.ToLongTimeString() + " " + R.T_BuildStarted + Environment.NewLine);
 			}
 			if (Config.Instance.BuildOptions.MatchFlags(BuildOptions.PrintSolutionProjectProperties)) {
-				PrintProperties(CodistPackage.DTE.Solution.Properties, "Solution " + CodistPackage.DTE.Solution.FileName);
+				PrintProperties(ServicesHelper.Instance.DTE.Solution.Properties, "Solution " + ServicesHelper.Instance.DTE.Solution.FileName);
 			}
 
 			return VSConstants.S_OK;
@@ -159,7 +159,7 @@ namespace Codist
 			var projItems = project.ProjectItems;
 			for (int i = projItems.Count; i > 0; i--) {
 				var item = projItems.Item(i);
-				if (item.Name.EndsWith(".vsixmanifest", StringComparison.OrdinalIgnoreCase)) {
+				if (FileHelper.HasExtension(item.Name, "vsixmanifest")) {
 					if (item.IsOpen && item.IsDirty) {
 						item.Document.NewWindow().Activate();
 						MessageWindow.Error($"{item.Name} is open and modified. Auto increment VSIX version number failed. Please save the file first.");

@@ -65,7 +65,6 @@ public sealed partial class CSharpBar
 				Container = Bar.ViewOverlay,
 				ContainerType = SymbolListType.TypeList,
 				ExtIconProvider = ExtIconProvider.Default.GetExtIcons,
-				EnableVirtualMode = true,
 				Owner = this
 			};
 			Controls.DragDropHelper.SetScrollOnDragDrop(_Menu, true);

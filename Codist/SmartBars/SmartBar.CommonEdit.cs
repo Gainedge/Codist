@@ -139,8 +139,8 @@ partial class SmartBar
 
 			if (ctx.ModifierKeys.MatchFlags(ModifierKeys.Shift)) {
 				TextEditorHelper.ExecuteEditorCommand("Edit.Cut");
-			}
-			else {
+				}
+				else {
 				ctx.View.CopySelectionWithoutIndentation();
 				TextEditorHelper.ExecuteEditorCommand("Edit.Delete");
 			}
@@ -178,7 +178,7 @@ partial class SmartBar
 				ctx.View.ExpandSelectionToLine();
 			}
 			ctx.KeepToolBar(true);
-			TextEditorHelper.ExecuteEditorCommand("Edit.Duplicate");
+			((IEditorOperations3)ctx.View.GetEditorOperations()).DuplicateSelection();
 		});
 	}
 
@@ -261,7 +261,7 @@ partial class SmartBar
 
 	void AddPasteCommand() {
 		if (Clipboard.ContainsText()) {
-			AddCommand(ToolBar, IconIds.Paste, R.CMD_Paste, ctx => ExecuteAndFind(ctx, "Edit.Paste", ctx.View.GetFirstSelectionText(), true));
+			AddCommand(ToolBar, IconIds.Paste, R.CMD_PasteText, ctx => ExecuteAndFind(ctx, "Edit.Paste", ctx.View.GetFirstSelectionText(), true));
 		}
 	}
 
@@ -416,7 +416,7 @@ partial class SmartBar
 			}
 		}
 		if (arg.HasMultiLineSelection) {
-			r.Add(new CommandItem(IconIds.DeleteEmptyLines, R.CMD_DeleteEmptyLines, ctx => ctx.View.DeleteEmptyLinesInSelection()) { QuickAccessCondition = CommandItem.EditableAndMultiline });
+			r.Add(new CommandItem(IconIds.DeleteEmptyLines, R.CMD_DeleteEmptyLines, ctx => ctx.View.GetEditorOperations().DeleteBlankLines()) { QuickAccessCondition = CommandItem.EditableAndMultiline });
 		}
 		r.Add(new CommandItem(IconIds.TrimTrailingSpaces, R.CMD_TrimTrailingSpaces, ctx => ctx.View.TrimTrailingSpaces()) { QuickAccessCondition = CommandItem.HasEditableSelection });
 		r.AddRange(__WebCommands);
@@ -452,7 +452,7 @@ partial class SmartBar
 	}
 
 	void AddDebuggerCommands() {
-		if (CodistPackage.DebuggerStatus != DebuggerStatus.Design) {
+		if (_IsPrimaryDocument && CodistPackage.DebuggerStatus != DebuggerStatus.Design) {
 			AddCommand(ToolBar2, IconIds.RunToCursor, R.CMD_RunToCursor, ctx => {
 				TextEditorHelper.ExecuteEditorCommand(
 					ctx.ModifierKeys.MatchFlags(ModifierKeys.Control) ? "Debug.RunFlaggedThreadsToCursor"
@@ -477,16 +477,16 @@ partial class SmartBar
 						});}, true);
 				}
 				else {
-					TextEditorHelper.ExecuteEditorCommand("Edit.Capitalize");
+				ctx.View.GetEditorOperations().Capitalize();
 				}
 			}) { ToolTip = R.CMDT_Capitalize, QuickAccessCondition = CommandItem.HasEditableSelection },
 			new CommandItem(IconIds.Uppercase, R.CMD_Uppercase, ctx => {
 				ctx.KeepToolBarOnClick = true;
-				TextEditorHelper.ExecuteEditorCommand("Edit.MakeUppercase");
+				ctx.View.GetEditorOperations().MakeUppercase();
 			}) { QuickAccessCondition = CommandItem.HasEditableSelection },
 			new CommandItem(IconIds.Lowercase, R.CMD_Lowercase, ctx => {
 				ctx.KeepToolBarOnClick = true;
-				TextEditorHelper.ExecuteEditorCommand("Edit.MakeLowercase");
+				ctx.View.GetEditorOperations().MakeLowercase();
 			}) { QuickAccessCondition = CommandItem.HasEditableSelection },
 		};
 	}
@@ -632,7 +632,6 @@ partial class SmartBar
 		}
 		catch (NullReferenceException) { }
 		catch (ArgumentException) { }
-		var w = CodistPackage.DTE.ItemOperations.NewFile("General\\Text File", name);
 		using var sbr = ReusableStringBuilder.AcquireDefault(1000);
 		var sb = sbr.Resource;
 		var option = FindOptions.OrdinalComparison | FindOptions.SingleLine;
@@ -649,11 +648,7 @@ partial class SmartBar
 			p = line.EndIncludingLineBreak;
 			sb.Append(line.GetTextIncludingLineBreak());
 		}
-		var newView = w.Document.GetActiveWpfDocumentView();
-		newView.TextBuffer.ChangeContentType(ctx.View.TextBuffer.ContentType, null);
-		w.Document.GetActiveDocumentView().GetBuffer(out var textLines);
-		textLines.InitializeContent(sb.ToString(), sb.Length);
-		textLines.SetStateFlags(0);
+		TextEditorHelper.CreateDocumentWindowWithContent(sb.ToString(), name, ctx.View.TextBuffer.ContentType);
 	}
 
 	static CommandItem[] GetSurroundingCommands() {

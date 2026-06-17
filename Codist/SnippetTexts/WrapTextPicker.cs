@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
 using Codist.Controls;
 using Microsoft.VisualStudio.PlatformUI;
 using Microsoft.VisualStudio.Text.Editor;
@@ -70,9 +71,10 @@ sealed class WrapTextPicker : UserControl
 		};
 		Content = new ToolBarTray {
 			IsLocked = true,
+			Background = Brushes.Transparent,
 			ToolBars = {
 				 new ToolBar {
-					Margin = new Thickness(-120, 0, 0, 0),
+					Margin = new Thickness(-80, 0, 0, 0),
 					BorderThickness = WpfHelper.TinyMargin,
 					Padding = WpfHelper.SmallMargin,
 					IsOverflowOpen = false,
@@ -81,7 +83,7 @@ sealed class WrapTextPicker : UserControl
 							Text = R.OT_WrapText,
 							VerticalAlignment = VerticalAlignment.Center,
 							Margin = WpfHelper.SmallHorizontalMargin,
-							Width = 120
+							Width = 80
 						},
 						_SearchBox,
 						new Button { Content = VsImageHelper.GetImage(IconIds.Settings) }

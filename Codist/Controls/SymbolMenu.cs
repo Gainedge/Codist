@@ -82,7 +82,7 @@ namespace Codist.Controls
 				EnableVirtualMode = true;
 			}
 			_ExternalAdornment.Add(this);
-			ItemsControlMaxHeight = _ExternalAdornment.DisplayHeight / 2;
+			MaxHeight = _ExternalAdornment.DisplayHeight * 0.6;
 			RefreshItemsSource();
 			this.ScrollToSelectedItem();
 			PreviewKeyUp -= OnMenuKeyUp;

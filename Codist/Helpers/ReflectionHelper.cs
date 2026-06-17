@@ -73,6 +73,18 @@ namespace Codist
 			}
 			return null;
 		}
+		public static Func<object, TParam, TOut> CreateMethodInvoker<TParam, TOut>(object instance, string methodName) {
+			var type = instance.GetType();
+			var method = type.GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, [typeof(TParam)], null);
+			var m = new DynamicMethod(methodName, typeof(TOut), new[] { typeof(object), typeof(TParam) }, true);
+			var il = m.GetILGenerator();
+			il.Emit(OpCodes.Ldarg_0);
+			il.Emit(OpCodes.Castclass, method.DeclaringType);
+			il.Emit(OpCodes.Ldarg_1);
+			il.Emit(OpCodes.Callvirt, method);
+			il.Emit(OpCodes.Ret);
+			return m.CreateDelegate<Func<object, TParam, TOut>>();
+		}
 		public static Func<TIn, TOut> CallStaticFunc<TIn, TOut>(MethodInfo method) {
 			if (method != null) {
 				var m = new DynamicMethod("Call" + method.Name, typeof(TOut), new[] { typeof(TIn) }, true);

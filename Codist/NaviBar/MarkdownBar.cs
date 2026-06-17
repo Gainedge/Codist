@@ -234,7 +234,7 @@ public sealed class MarkdownBar : NaviBar
 			titles[i] = new LocationItem(tags[i]);
 		}
 		var menu = new MarkdownList(this, titles) {
-			ItemsControlMaxHeight = View.ViewportHeight / 2,
+			MaxHeight = View.ViewportHeight * 0.75,
 		};
 		menu.ScrollToSelectedItem();
 		menu.MouseLeftButtonUp += MenuItemSelect;

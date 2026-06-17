@@ -625,7 +625,7 @@ sealed class SyntaxHighlightCustomizationWindow : Window
 					CheckFileExists = true,
 					Filter = R.F_Config
 				};
-				var p = CodistPackage.DTE.ActiveDocument.Path;
+				var p = ServicesHelper.Instance.DTE.ActiveDocument.Path;
 				if (String.IsNullOrEmpty(p) == false) {
 					try {
 						d.InitialDirectory = System.IO.Path.GetDirectoryName(p);

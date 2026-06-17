@@ -17,7 +17,7 @@ namespace Codist
 {
 	sealed class Config
 	{
-		internal const string CurrentVersion = "8.2.0";
+		internal const string CurrentVersion = "9.0.0";
 		const string ThemePrefix = "res:";
 		const int DefaultIconSize = 20;
 		internal const string LightTheme = ThemePrefix + "Light",
@@ -46,6 +46,9 @@ namespace Codist
 
 		[DefaultValue(DisplayOptimizations.None)]
 		public DisplayOptimizations DisplayOptimizations { get; set; } = DisplayOptimizations.None;
+
+		[DefaultValue(FileBrowserOptions.Default)]
+		public FileBrowserOptions FileBrowserOptions { get; set; } = FileBrowserOptions.Default;
 
 		[DefaultValue(SpecialHighlightOptions.Default)]
 		public SpecialHighlightOptions SpecialHighlightOptions { get; set; } = SpecialHighlightOptions.Default;
@@ -101,19 +104,20 @@ namespace Codist
 		public bool SuppressAutoBuildVersion { get; set; }
 		[DefaultValue(DefaultIconSize)]
 		public int SmartBarButtonSize { get; set; } = DefaultIconSize;
-		public List<CommentLabel> Labels { get; } = new List<CommentLabel>();
-		public QuickInfoConfig QuickInfo { get; } = new QuickInfoConfig();
-		public MarkerConfig ScrollbarMarker { get; } = new MarkerConfig();
-		public List<Color> CustomColors { get; } = new List<Color>();
+		public List<CommentLabel> Labels { get; } = [];
+		public QuickInfoConfig QuickInfo { get; } = new();
+		public MarkerConfig ScrollbarMarker { get; } = new();
+		public FileBrowserConfig FileBrowser { get; } = new();
+		public List<Color> CustomColors { get; } = [];
 
 		#region Deprecated style containers
-		public List<CommentStyle> CommentStyles { get; } = new List<CommentStyle>();
-		public List<XmlCodeStyle> XmlCodeStyles { get; } = new List<XmlCodeStyle>();
-		public List<CSharpStyle> CodeStyles { get; } = new List<CSharpStyle>();
-		public List<CppStyle> CppStyles { get; } = new List<CppStyle>();
-		public List<MarkdownStyle> MarkdownStyles { get; } = new List<MarkdownStyle>();
-		public List<CodeStyle> GeneralStyles { get; } = new List<CodeStyle>();
-		public List<SymbolMarkerStyle> SymbolMarkerStyles { get; } = new List<SymbolMarkerStyle>();
+		public List<CommentStyle> CommentStyles { get; } = [];
+		public List<XmlCodeStyle> XmlCodeStyles { get; } = [];
+		public List<CSharpStyle> CodeStyles { get; } = [];
+		public List<CppStyle> CppStyles { get; } = [];
+		public List<MarkdownStyle> MarkdownStyles { get; } = [];
+		public List<CodeStyle> GeneralStyles { get; } = [];
+		public List<SymbolMarkerStyle> SymbolMarkerStyles { get; } = [];
 		public bool ShouldSerializeCommentStyles() => false;
 		public bool ShouldSerializeXmlCodeStyles() => false;
 		public bool ShouldSerializeCodeStyles() => false;
@@ -124,9 +128,9 @@ namespace Codist
 		#endregion
 
 		public List<SyntaxStyle> Styles { get; set; } // for serialization only
-		public List<MarkerStyle> MarkerSettings { get; } = new List<MarkerStyle>();
-		public List<SearchEngine> SearchEngines { get; } = new List<SearchEngine>();
-		public List<WrapText> WrapTexts { get; } = new List<WrapText>();
+		public List<MarkerStyle> MarkerSettings { get; } = [];
+		public List<SearchEngine> SearchEngines { get; } = [];
+		public List<WrapText> WrapTexts { get; } = [];
 		public SymbolReferenceMarkerStyle SymbolReferenceMarkerSettings { get; } = new SymbolReferenceMarkerStyle();
 		public string BrowserPath { get; set; }
 		public string BrowserParameter { get; set; }
@@ -216,6 +220,14 @@ namespace Codist
 				config.PunctuationOptions = config.PunctuationOptions.SetFlags(PunctuationOptions.MethodParentheses | PunctuationOptions.ShowParameterInfo, true);
 				__Updated?.Invoke(new ConfigUpdatedEventArgs(config, Features.AutoSurround));
 			}
+			if (oldVersion < new Version(8, 2) && !config.Features.MatchFlags(Features.WrapText)) {
+				config.Features |= Features.WrapText;
+				__Updated?.Invoke(new ConfigUpdatedEventArgs(config, Features.WrapText));
+			}
+			if (oldVersion < new Version(9, 0) && !config.Features.MatchFlags(Features.FileBrowser)) {
+				config.Features |= Features.FileBrowser;
+				__Updated?.Invoke(new ConfigUpdatedEventArgs(config, Features.FileBrowser));
+			}
 		}
 
 		public static void LoadConfig(string configPath, StyleFilters styleFilter = StyleFilters.None) {
@@ -257,7 +269,7 @@ namespace Codist
 				config.SearchEngines.RemoveAll(i => String.IsNullOrWhiteSpace(i.Name) || String.IsNullOrWhiteSpace(i.Pattern));
 				config.WrapTexts.RemoveAll(i => String.IsNullOrWhiteSpace(i.Pattern));
 			}
-			var removeFontNames = System.Windows.Forms.Control.ModifierKeys == System.Windows.Forms.Keys.Control;
+			var removeFontNames = UIHelper.IsCtrlDown;
 			LoadStyleEntries<CodeStyle, CodeStyleTypes>(config.GeneralStyles, removeFontNames);
 			LoadStyleEntries<CommentStyle, CommentStyleTypes>(config.CommentStyles, removeFontNames);
 			LoadStyleEntries<CppStyle, CppStyleTypes>(config.CppStyles, removeFontNames);
@@ -313,14 +325,14 @@ namespace Codist
 		}
 		public static void ResetSearchEngines(List<SearchEngine> engines) {
 			engines.Clear();
-			engines.AddRange(new[] {
-				new SearchEngine("Bing", "https://www.bing.com/search?q=%s"),
-				new SearchEngine("Google", "https://www.google.com/search?q=%s"),
-				new SearchEngine("StackOverflow", "https://stackoverflow.com/search?q=%s"),
-				new SearchEngine("GitHub", "https://github.com/search?q=%s"),
-				new SearchEngine(".NET Core Source", "https://source.dot.net/#q=%s"),
-				new SearchEngine(".NET Framework Source", "https://referencesource.microsoft.com/#q=%s"),
-			});
+			engines.AddRange([
+				new("Bing", "https://www.bing.com/search?q=%s"),
+				new("Google", "https://www.google.com/search?q=%s"),
+				new("StackOverflow", "https://stackoverflow.com/search?q=%s"),
+				new("GitHub", "https://github.com/search?q=%s"),
+				new(".NET Core Source", "https://source.dot.net/#q=%s"),
+				new(".NET Framework Source", "https://referencesource.microsoft.com/#q=%s"),
+			]);
 		}
 
 		public void ResetWrapTexts() {
@@ -328,19 +340,19 @@ namespace Codist
 		}
 		public static void ResetWrapTexts(List<WrapText> wrapTexts) {
 			wrapTexts.Clear();
-			wrapTexts.AddRange(new[] {
-				new WrapText("\"$\"", "\"\""),
-				new WrapText("($)", "()"),
-				new WrapText("'$'", "''"),
-				new WrapText("[$]", "[]"),
-				new WrapText("{$}", "{}"),
-				new WrapText("<$>", "<>"),
-				new WrapText("%$%", "%%"),
-			});
+			wrapTexts.AddRange([
+				new("\"$\"", "\"\""),
+				new("($)", "()"),
+				new("'$'", "''"),
+				new("[$]", "[]"),
+				new("{$}", "{}"),
+				new("<$>", "<>"),
+				new("%$%", "%%"),
+			]);
 		}
 
 		public void SaveConfig(string path, bool stylesOnly = false, bool allStyles = false) {
-			path = path ?? ConfigPath;
+			path ??= ConfigPath;
 			try {
 				var d = Path.GetDirectoryName(path);
 				if (Directory.Exists(d) == false) {
@@ -441,6 +453,9 @@ namespace Codist
 		internal void Set(DisplayOptimizations options, bool set) {
 			DisplayOptimizations = DisplayOptimizations.SetFlags(options, set);
 		}
+		internal void Set(FileBrowserOptions options, bool set) {
+			FileBrowserOptions = FileBrowserOptions.SetFlags(options, set);
+		}
 		internal void Set(QuickInfoOptions options, bool set) {
 			QuickInfoOptions = QuickInfoOptions.SetFlags(options, set);
 		}
@@ -509,25 +524,25 @@ namespace Codist
 		}
 
 		static void InitDefaultLabels(List<CommentLabel> labels) {
-			labels.AddRange (new CommentLabel[] {
-				new CommentLabel("!", CommentStyleTypes.Emphasis),
-				new CommentLabel("#", CommentStyleTypes.Emphasis),
-				new CommentLabel("?", CommentStyleTypes.Question),
-				new CommentLabel("!?", CommentStyleTypes.Exclamation),
-				new CommentLabel("x", CommentStyleTypes.Deletion, true),
-				new CommentLabel("+++", CommentStyleTypes.Heading1),
-				new CommentLabel("!!", CommentStyleTypes.Heading1),
-				new CommentLabel("++", CommentStyleTypes.Heading2),
-				new CommentLabel("+", CommentStyleTypes.Heading3),
-				new CommentLabel("-", CommentStyleTypes.Heading4),
-				new CommentLabel("--", CommentStyleTypes.Heading5),
-				new CommentLabel("---", CommentStyleTypes.Heading6),
-				new CommentLabel("TODO", CommentStyleTypes.ToDo, true) { AllowPunctuationDelimiter = true },
-				new CommentLabel("TO-DO", CommentStyleTypes.ToDo, true) { AllowPunctuationDelimiter = true },
-				new CommentLabel("undone", CommentStyleTypes.Undone, true) { AllowPunctuationDelimiter = true },
-				new CommentLabel("NOTE", CommentStyleTypes.Note, true) { AllowPunctuationDelimiter = true },
-				new CommentLabel("HACK", CommentStyleTypes.Hack, true) { AllowPunctuationDelimiter = true },
-			});
+			labels.AddRange ([
+				new("!", CommentStyleTypes.Emphasis),
+				new("#", CommentStyleTypes.Emphasis),
+				new("?", CommentStyleTypes.Question),
+				new("!?", CommentStyleTypes.Exclamation),
+				new("x", CommentStyleTypes.Deletion, true),
+				new("+++", CommentStyleTypes.Heading1),
+				new("!!", CommentStyleTypes.Heading1),
+				new("++", CommentStyleTypes.Heading2),
+				new("+", CommentStyleTypes.Heading3),
+				new("-", CommentStyleTypes.Heading4),
+				new("--", CommentStyleTypes.Heading5),
+				new("---", CommentStyleTypes.Heading6),
+				new("TODO", CommentStyleTypes.ToDo, true) { AllowPunctuationDelimiter = true },
+				new("TO-DO", CommentStyleTypes.ToDo, true) { AllowPunctuationDelimiter = true },
+				new("undone", CommentStyleTypes.Undone, true) { AllowPunctuationDelimiter = true },
+				new("NOTE", CommentStyleTypes.Note, true) { AllowPunctuationDelimiter = true },
+				new("HACK", CommentStyleTypes.Hack, true) { AllowPunctuationDelimiter = true },
+			]);
 		}
 		static void MergeDefaultCodeStyles<TStyle, TStyleType> (List<TStyle> styles)
 			where TStyle : StyleBase<TStyleType>, new()
@@ -554,37 +569,37 @@ namespace Codist
 			}
 		}
 		internal static CommentStyle[] GetDefaultCommentStyles() {
-			return new CommentStyle[] {
-				new CommentStyle(CommentStyleTypes.Emphasis, Constants.CommentColor) { Bold = true, FontSize = 10 },
-				new CommentStyle(CommentStyleTypes.Exclamation, Constants.ExclamationColor),
-				new CommentStyle(CommentStyleTypes.Question, Constants.QuestionColor),
-				new CommentStyle(CommentStyleTypes.Deletion, Constants.DeletionColor) { Strikethrough = true },
-				new CommentStyle(CommentStyleTypes.ToDo, Colors.White) { BackColor = Constants.ToDoColor, ScrollBarMarkerStyle = ScrollbarMarkerStyle.Square },
-				new CommentStyle(CommentStyleTypes.Note, Colors.White) { BackColor = Constants.NoteColor, ScrollBarMarkerStyle = ScrollbarMarkerStyle.Square },
-				new CommentStyle(CommentStyleTypes.Hack, Colors.LightGreen) { BackColor = Constants.HackColor, ScrollBarMarkerStyle = ScrollbarMarkerStyle.Square },
-				new CommentStyle(CommentStyleTypes.Undone, Color.FromRgb(164, 175, 209)) { BackColor = Constants.UndoneColor, ScrollBarMarkerStyle = ScrollbarMarkerStyle.Square },
-				new CommentStyle(CommentStyleTypes.Heading1) { FontSize = 12 },
-				new CommentStyle(CommentStyleTypes.Heading2) { FontSize = 8 },
-				new CommentStyle(CommentStyleTypes.Heading3) { FontSize = 4 },
-				new CommentStyle(CommentStyleTypes.Heading4) { FontSize = -1 },
-				new CommentStyle(CommentStyleTypes.Heading5) { FontSize = -2 },
-				new CommentStyle(CommentStyleTypes.Heading6) { FontSize = -3 },
-				new CommentStyle(CommentStyleTypes.Task1) { ScrollBarMarkerStyle = ScrollbarMarkerStyle.Number1 },
-				new CommentStyle(CommentStyleTypes.Task2) { ScrollBarMarkerStyle = ScrollbarMarkerStyle.Number2 },
-				new CommentStyle(CommentStyleTypes.Task3) { ScrollBarMarkerStyle = ScrollbarMarkerStyle.Number3 },
-				new CommentStyle(CommentStyleTypes.Task4) { ScrollBarMarkerStyle = ScrollbarMarkerStyle.Number4 },
-				new CommentStyle(CommentStyleTypes.Task5) { ScrollBarMarkerStyle = ScrollbarMarkerStyle.Number5 },
-				new CommentStyle(CommentStyleTypes.Task6) { ScrollBarMarkerStyle = ScrollbarMarkerStyle.Number6 },
-				new CommentStyle(CommentStyleTypes.Task7) { ScrollBarMarkerStyle = ScrollbarMarkerStyle.Number7 },
-				new CommentStyle(CommentStyleTypes.Task8) { ScrollBarMarkerStyle = ScrollbarMarkerStyle.Number8 },
-				new CommentStyle(CommentStyleTypes.Task9) { ScrollBarMarkerStyle = ScrollbarMarkerStyle.Number9 },
-			};
+			return [
+				new(CommentStyleTypes.Emphasis, Constants.CommentColor) { Bold = true, FontSize = 10 },
+				new(CommentStyleTypes.Exclamation, Constants.ExclamationColor),
+				new(CommentStyleTypes.Question, Constants.QuestionColor),
+				new(CommentStyleTypes.Deletion, Constants.DeletionColor) { Strikethrough = true },
+				new(CommentStyleTypes.ToDo, Colors.White) { BackColor = Constants.ToDoColor, ScrollBarMarkerStyle = ScrollbarMarkerStyle.Square },
+				new(CommentStyleTypes.Note, Colors.White) { BackColor = Constants.NoteColor, ScrollBarMarkerStyle = ScrollbarMarkerStyle.Square },
+				new(CommentStyleTypes.Hack, Colors.LightGreen) { BackColor = Constants.HackColor, ScrollBarMarkerStyle = ScrollbarMarkerStyle.Square },
+				new(CommentStyleTypes.Undone, Color.FromRgb(164, 175, 209)) { BackColor = Constants.UndoneColor, ScrollBarMarkerStyle = ScrollbarMarkerStyle.Square },
+				new(CommentStyleTypes.Heading1) { FontSize = 12 },
+				new(CommentStyleTypes.Heading2) { FontSize = 8 },
+				new(CommentStyleTypes.Heading3) { FontSize = 4 },
+				new(CommentStyleTypes.Heading4) { FontSize = -1 },
+				new(CommentStyleTypes.Heading5) { FontSize = -2 },
+				new(CommentStyleTypes.Heading6) { FontSize = -3 },
+				new(CommentStyleTypes.Task1) { ScrollBarMarkerStyle = ScrollbarMarkerStyle.Number1 },
+				new(CommentStyleTypes.Task2) { ScrollBarMarkerStyle = ScrollbarMarkerStyle.Number2 },
+				new(CommentStyleTypes.Task3) { ScrollBarMarkerStyle = ScrollbarMarkerStyle.Number3 },
+				new(CommentStyleTypes.Task4) { ScrollBarMarkerStyle = ScrollbarMarkerStyle.Number4 },
+				new(CommentStyleTypes.Task5) { ScrollBarMarkerStyle = ScrollbarMarkerStyle.Number5 },
+				new(CommentStyleTypes.Task6) { ScrollBarMarkerStyle = ScrollbarMarkerStyle.Number6 },
+				new(CommentStyleTypes.Task7) { ScrollBarMarkerStyle = ScrollbarMarkerStyle.Number7 },
+				new(CommentStyleTypes.Task8) { ScrollBarMarkerStyle = ScrollbarMarkerStyle.Number8 },
+				new(CommentStyleTypes.Task9) { ScrollBarMarkerStyle = ScrollbarMarkerStyle.Number9 },
+			];
 		}
 
 		sealed class StyleConfig
 		{
 			public bool? IsDark { get; set; }
-			public List<SyntaxStyle> Styles { get; } = new List<SyntaxStyle>();
+			public List<SyntaxStyle> Styles { get; } = [];
 
 			public StyleConfig() {}
 
@@ -717,6 +732,20 @@ namespace Codist
 		}
 	}
 
+	sealed class FileBrowserConfig
+	{
+		internal const int DefaultRecentClosedFilesCount = 4,
+			MaxRecentClosedFilesCount = 16;
+
+		int _ListRecentClosedFiles = DefaultRecentClosedFilesCount;
+
+		[DefaultValue(DefaultRecentClosedFilesCount)]
+		public int ListRecentClosedFiles {
+			get => _ListRecentClosedFiles;
+			set => _ListRecentClosedFiles = value.Clamp(0, MaxRecentClosedFilesCount);
+		}
+	}
+
 	sealed class SearchEngine
 	{
 		public SearchEngine() {}
@@ -732,14 +761,10 @@ namespace Codist
 		}
 	}
 
-	sealed class ConfigUpdatedEventArgs : EventArgs
+	sealed class ConfigUpdatedEventArgs(Config config, Features updatedFeature) : EventArgs
 	{
-		public ConfigUpdatedEventArgs(Config config, Features updatedFeature) {
-			Config = config;
-			UpdatedFeature = updatedFeature;
-		}
-		public Config Config { get; }
-		public Features UpdatedFeature { get; }
+		public Config Config { get; } = config;
+		public Features UpdatedFeature { get; } = updatedFeature;
 		public object Parameter { get; set; }
 	}
 
@@ -781,7 +806,8 @@ namespace Codist
 		WrapText = 1 << 6,
 		JumpList = 1 << 7,
 		AutoSurround = 1 << 8,
-		Default = SyntaxHighlight | ScrollbarMarkers | SuperQuickInfo | SmartBar | NaviBar | WebSearch | WrapText,
+		FileBrowser = 1 << 9,
+		Default = SyntaxHighlight | ScrollbarMarkers | SuperQuickInfo | SmartBar | NaviBar | WebSearch | WrapText | FileBrowser,
 		All = Default | AutoSurround
 	}
 
@@ -802,6 +828,23 @@ namespace Codist
 		ShowDrive = 1 << 12,
 		ShowNetwork = 1	<< 13,
 		ResourceMonitors = ShowCpu | ShowMemory | ShowDrive | ShowNetwork
+	}
+
+	[Flags]
+	public enum FileBrowserOptions
+	{
+		None,
+		ShowLabels = 1,
+		ShowSolutionProjects = 1 << 1,
+		ShowSolutionFolder = 1 << 2,
+		ShowCurrentProjectFolder = 1 << 3,
+		ShowCurrentDocumentFolder = 1 << 4,
+		ShowOpenedDocuments = 1 << 5,
+		AllButtons = ShowSolutionProjects | ShowSolutionFolder | ShowCurrentProjectFolder | ShowCurrentDocumentFolder | ShowOpenedDocuments,
+		UseProvisional = 1 << 6,
+		UseCodeWindow = 1 << 7,
+		DimNonSolutionItems = 1 << 8,
+		Default = ShowLabels | AllButtons | UseProvisional | DimNonSolutionItems
 	}
 
 	[Flags]
@@ -905,8 +948,8 @@ namespace Codist
 		UseTypeStyleOnVarKeyword = 1 << 14,
 		SearchResult = 1 << 20,
 		Default = SpecialComment,
-		AllParentheses = ParameterBrace | CastBrace | BranchBrace | LoopBrace | ResourceBrace,
-		AllBraces = DeclarationBrace | ParameterBrace | CastBrace | BranchBrace | LoopBrace | ResourceBrace | BoldSemanticPunctuation
+		AllParentheses = SemanticPunctuation,
+		AllBraces = SemanticPunctuation | BoldSemanticPunctuation
 	}
 
 	[Flags]

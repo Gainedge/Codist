@@ -128,6 +128,9 @@ namespace Codist.Margins
 			};
 			var sp = searchSpan.Start.Position;
 			var ts = _TextView.TextSnapshot;
+			if (ctx.Span.Snapshot != ts) {
+				goto QUIT;
+			}
 			var sl = ts.Length;
 			var options = ctx.Options;
 			var w = !options.MatchFlags(FindOptions.WholeWord);
