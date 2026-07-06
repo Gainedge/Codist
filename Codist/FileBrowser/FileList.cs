@@ -452,7 +452,7 @@ sealed partial class FileList : VirtualList
 		}
 		var doc = ServicesHelper.Instance.DTE.ActiveDocument;
 		_ActiveFilePath = doc.FullName;
-		UpdateProjectStatus(doc.ProjectItem.ContainingProject);
+		UpdateProjectStatus(doc.ProjectItem?.ContainingProject);
 	}
 
 	public void ListSolutionAndProjects() {
