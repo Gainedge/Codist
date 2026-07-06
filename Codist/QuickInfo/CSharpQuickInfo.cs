@@ -293,7 +293,7 @@ namespace Codist.QuickInfo
 			if (kind.CeqAny(SyntaxKind.BaseExpression, SyntaxKind.DefaultLiteralExpression, SyntaxKind.ImplicitStackAllocArrayCreationExpression)) {
 				return semanticModel.GetTypeInfo(node, cancellationToken).ConvertedType;
 			}
-			if (kind.CeqAny(SyntaxKind.ThisExpression, CodeAnalysisHelper.VarPattern, SyntaxKind.ImplicitArrayCreationExpression)) {
+			if (kind.CeqAny(SyntaxKind.ThisExpression, CodeAnalysisHelper.VarPattern, SyntaxKind.ImplicitArrayCreationExpression, SyntaxKind.ArrayCreationExpression)) {
 				return semanticModel.GetTypeInfo(node, cancellationToken).Type;
 			}
 			if (kind.CeqAny(SyntaxKind.TupleElement, SyntaxKind.ForEachStatement, SyntaxKind.FromClause, SyntaxKind.QueryContinuation, SyntaxKind.VariableDeclarator, SyntaxKind.CatchDeclaration)) {
