@@ -231,52 +231,33 @@ sealed partial class FileList : VirtualList
 
 	#region Event handlers
 	protected override void OnContextMenuOpening(ContextMenuEventArgs e) {
-		if (ContextMenu is null
+		var m = ContextMenu;
+		if (m is null
 			|| (e.OriginalSource as UIElement).GetParent<ListBoxItem>() is null) {
 			e.Handled = true;
 			return;
 		}
 		base.OnContextMenuOpening(e);
-		if (!ContextMenu.HasItems) {
-			if (ContextMenu == _FileMenu) {
-				_FileMenu.Items.AddRange(
-					new ListItemContextMenuItem(IconIds.OpenWithVisualStudio, R.CMD_OpenWithVS, ActivationCondition.HasFile, OpenFilesWithVisualStudio),
-					new ListItemContextMenuItem(IconIds.LocateInSolutionExplorer, R.CMD_LocateInSolutionExplorer, ActivationCondition.HasSingleSolutionItem, LocateInSolutionExplorer),
-					new ListItemContextMenuItem(IconIds.Open, R.CMD_OpenOrExecuteFile, ActivationCondition.HasFile | ActivationCondition.HasSingleItem, OpenOrExecuteFile),
-					new Separator(),
-					new ListItemContextMenuItem(IconIds.Cut, R.CMD_Cut, ActivationCondition.HasFileOrFolder, CutFiles),
-					new ListItemContextMenuItem(IconIds.Copy, R.CMD_Copy, ActivationCondition.HasFileOrFolder, CopyFiles),
-					new ListItemContextMenuItem(IconIds.Paste, R.CMD_Paste, ActivationCondition.HasClipboardFile, PasteFiles),
-					new Separator(),
-					new ListItemContextMenuItem(IconIds.Delete, R.CMD_Delete, ActivationCondition.HasFileOrFolder, DeleteFiles),
-					new Separator(),
-					new ListItemContextMenuItem(IconIds.Rename, R.CMD_Rename, ActivationCondition.HasSingleItem, StartRename),
-					new ListItemContextMenuItem(IconIds.Properties, R.CMD_Properties, ActivationCondition.HasFileOrFolder, ShowProperties)
-				);
+		if (!m.HasItems) {
+			if (m == _FileMenu) {
+				CreateFileContextMenu();
 			}
-			else if (ContextMenu == _DocumentMenu) {
-				_DocumentMenu.Items.AddRange(
-					new ListItemContextMenuItem(IconIds.OpenFolder, R.CMD_OpenFolder, ActivationCondition.HasFile, OpenInExplorer),
-					new ListItemContextMenuItem(IconIds.Folder, R.CMD_ViewFolderInFileBrowser, ActivationCondition.HasFile, LocateInFileBrowser),
-					new ListItemContextMenuItem(IconIds.LocateInSolutionExplorer, R.CMD_LocateInSolutionExplorer, ActivationCondition.HasSingleSolutionItem, LocateInSolutionExplorer),
-					new ListItemContextMenuItem(IconIds.Open, R.CMD_OpenOrExecuteFile, ActivationCondition.HasFile | ActivationCondition.HasSingleItem, OpenOrExecuteFile),
-					// note: disabled due to a problem when saving untitled document
-					//new ListItemContextMenuItem(IconIds.Save, R.CMD_Save, ActivationCondition.HasFile, SaveDocument),
-					new ListItemContextMenuItem(IconIds.Close, R.CMD_Close, ActivationCondition.HasFile, CloseDocument),
-					new Separator(),
-					//new ListItemContextMenuItem(IconIds.SaveAll, R.CMD_SaveAll, ActivationCondition.HasFile, SaveAllDocuments),
-					new ListItemContextMenuItem(IconIds.CloseAll, R.CMD_CloseOtherSaved, ActivationCondition.HasFile, CloseOtherSavedDocuments)
-				);
+			else if (m == _DocumentMenu) {
+				CreateDocumentContextMenu();
 			}
 		}
 		ActivationCondition condition = default;
 		if (SelectedItem != null) {
 			var selected = SelectedItems;
+			FileItem item;
 			if (((FileItem)selected[0]).IsFolder) {
 				condition |= ActivationCondition.HasFolder;
 			}
-			if (((FileItem)selected[selected.Count - 1]).IsFile) {
+			if ((item = (FileItem)selected[selected.Count - 1]).IsFile) {
 				condition |= ActivationCondition.HasFile;
+				if (!item.FileState.MatchFlags(FileState.RecentlyClosed)) {
+					condition |= ActivationCondition.HasActualFile;
+				}
 			}
 			if (selected.Count == 1
 				&& ((FileItem)SelectedItem).Type != FileItemType.InaccessibleFolder) {
@@ -291,11 +272,43 @@ sealed partial class FileList : VirtualList
 		if (Clipboard.ContainsFileDropList()) {
 			condition |= ActivationCondition.HasClipboardFile;
 		}
-		foreach (var item in ContextMenu.Items) {
+		foreach (var item in m.Items) {
 			if (item is ListItemContextMenuItem menuItem) {
 				menuItem.IsEnabled = menuItem.Condition.HasAnyFlag(condition);
 			}
 		}
+	}
+
+	void CreateDocumentContextMenu() {
+		_DocumentMenu.Items.AddRange(
+			new ListItemContextMenuItem(IconIds.OpenFolder, R.CMD_OpenFolder, ActivationCondition.HasFile, OpenInExplorer),
+			new ListItemContextMenuItem(IconIds.Folder, R.CMD_ViewFolderInFileBrowser, ActivationCondition.HasFile, LocateInFileBrowser),
+			new ListItemContextMenuItem(IconIds.LocateInSolutionExplorer, R.CMD_LocateInSolutionExplorer, ActivationCondition.HasSingleSolutionItem, LocateInSolutionExplorer),
+			new ListItemContextMenuItem(IconIds.Open, R.CMD_OpenOrExecuteFile, ActivationCondition.HasFile | ActivationCondition.HasSingleItem, OpenOrExecuteFile),
+			// note: disabled due to a problem when saving untitled document
+			//new ListItemContextMenuItem(IconIds.Save, R.CMD_Save, ActivationCondition.HasFile, SaveDocument),
+			new ListItemContextMenuItem(IconIds.Close, R.CMD_Close, ActivationCondition.HasActualFile, CloseDocument),
+			new Separator(),
+			//new ListItemContextMenuItem(IconIds.SaveAll, R.CMD_SaveAll, ActivationCondition.HasActualFile, SaveAllDocuments),
+			new ListItemContextMenuItem(IconIds.CloseAll, R.CMD_CloseOtherSaved, ActivationCondition.HasActualFile, CloseOtherSavedDocuments)
+		);
+	}
+
+	void CreateFileContextMenu() {
+		_FileMenu.Items.AddRange(
+			new ListItemContextMenuItem(IconIds.OpenWithVisualStudio, R.CMD_OpenWithVS, ActivationCondition.HasFile, OpenFilesWithVisualStudio),
+			new ListItemContextMenuItem(IconIds.LocateInSolutionExplorer, R.CMD_LocateInSolutionExplorer, ActivationCondition.HasSingleSolutionItem, LocateInSolutionExplorer),
+			new ListItemContextMenuItem(IconIds.Open, R.CMD_OpenOrExecuteFile, ActivationCondition.HasFile | ActivationCondition.HasSingleItem, OpenOrExecuteFile),
+			new Separator(),
+			new ListItemContextMenuItem(IconIds.Cut, R.CMD_Cut, ActivationCondition.HasFileOrFolder, CutFiles),
+			new ListItemContextMenuItem(IconIds.Copy, R.CMD_Copy, ActivationCondition.HasFileOrFolder, CopyFiles),
+			new ListItemContextMenuItem(IconIds.Paste, R.CMD_Paste, ActivationCondition.HasClipboardFile, PasteFiles),
+			new Separator(),
+			new ListItemContextMenuItem(IconIds.Delete, R.CMD_Delete, ActivationCondition.HasFileOrFolder, DeleteFiles),
+			new Separator(),
+			new ListItemContextMenuItem(IconIds.Rename, R.CMD_Rename, ActivationCondition.HasSingleItem, StartRename),
+			new ListItemContextMenuItem(IconIds.Properties, R.CMD_Properties, ActivationCondition.HasFileOrFolder, ShowProperties)
+		);
 	}
 
 	void HandleFolderFileFilterChange(object sender, RoutedEventArgs e) {
@@ -389,7 +402,8 @@ sealed partial class FileList : VirtualList
 	void ShowFolderMenu(ContextMenu menu) {
 		menu.Placement = PlacementMode.Bottom;
 		menu.Items.AddRange(
-			new ThemedMenuItem(IconIds.OpenFolder, R.CMD_OpenFolder, OpenInExplorer)
+			new ThemedMenuItem(IconIds.OpenFolder, R.CMD_OpenFolder, OpenInExplorer),
+			new ThemedMenuItem(IconIds.OpenWithCmd, R.CMD_OpenFolderWithCmd, OpenFolderInCmd)
 		);
 		if (!_InWindowPane) {
 			menu.Items.AddRange(
@@ -438,7 +452,7 @@ sealed partial class FileList : VirtualList
 		}
 		var doc = ServicesHelper.Instance.DTE.ActiveDocument;
 		_ActiveFilePath = doc.FullName;
-		UpdateProjectStatus(doc.ProjectItem.ContainingProject);
+		UpdateProjectStatus(doc.ProjectItem?.ContainingProject);
 	}
 
 	public void ListSolutionAndProjects() {
@@ -474,7 +488,7 @@ sealed partial class FileList : VirtualList
 		var currentFrame = VsShellHelper.GetCurrentWindowFrame();
 		RunningDocumentTable t = new();
 		List<FileItem> items = [];
-		HashSet<string> openedFiles = RecentlyClosedFileCollection.ShouldTrackFileClose && RecentlyClosedFileCollection.HasItem ? new() : null;
+		HashSet<string> openedFiles = RecentlyClosedFileCollection.HasItem ? new() : null;
 		foreach (var frame in VsShellHelper.GetDocumentWindows()) {
 			if (!frame.TryGetProperty(__VSFPROPID.VSFPROPID_pszMkDocument, out string fullPath)) {
 				continue;
@@ -506,10 +520,11 @@ sealed partial class FileList : VirtualList
 		if (openedFiles != null) {
 			items.InsertRange(0,
 				RecentlyClosedFileCollection.Items
-					.SkipWhile(openedFiles.Contains)
+					.Where(i => !openedFiles.Contains(i))
+					.Take(Config.Instance.FileBrowser.ListRecentClosedFiles)
 					.Select(i => new FileItem(new FileInfo(i), FileItemType.File, false) {
 						FileState = FileState.RecentlyClosed,
-						Note = VsImageHelper.GetImage(IconIds.FileClosed, 14).UseGrayscaleIcon(true)
+						Note = VsImageHelper.GetImage(IconIds.FileClosed, 14)
 					})
 				);
 		}
@@ -701,7 +716,12 @@ sealed partial class FileList : VirtualList
 		}
 		switch (item.Type) {
 			case FileItemType.File:
-				TextEditorHelper.OpenFile(item.FullPath, !Config.Instance.FileBrowserOptions.MatchFlags(FileBrowserOptions.UseProvisional), !Config.Instance.FileBrowserOptions.MatchFlags(FileBrowserOptions.UseCodeWindow));
+				if (item.FileState == FileState.RecentlyClosed) {
+					RecentlyClosedFileCollection.Reopen(item.FullPath);
+				}
+				else {
+					TextEditorHelper.OpenFile(item.FullPath, !Config.Instance.FileBrowserOptions.MatchFlags(FileBrowserOptions.UseProvisional), !Config.Instance.FileBrowserOptions.MatchFlags(FileBrowserOptions.UseCodeWindow));
+				}
 				FileActivated?.Invoke(this, new(item));
 				break;
 			case FileItemType.Folder:
@@ -1086,6 +1106,7 @@ sealed partial class FileList : VirtualList
 		HasClipboardFile = 1 << 2,
 		HasSingleItem = 1 << 3,
 		HasSingleSolutionItem = 1 << 4,
+		HasActualFile = 1 << 5,
 	}
 
 	enum ViewMode

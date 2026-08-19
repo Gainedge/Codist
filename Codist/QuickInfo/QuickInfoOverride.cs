@@ -569,14 +569,23 @@ namespace Codist.QuickInfo {
         }
         foreach (var tag in tagger.GetTags(span)) {
           var content = tag.Tag.ToolTipContent;
-          if (content is ContainerElement ce) {
-            foreach (var item in ce.Elements) {
-              if (item is ClassifiedTextElement cte) {
+          if(content is ContainerElement ce)
+          {
+            foreach(var item in ce.Elements)
+            {
+              if(item is ClassifiedTextElement cte)
+              {
                 var firstRun = cte.Runs.First();
-                if (firstRun != null) {
+                if(firstRun != null)
+                {
                   _TagHolder[firstRun.Text] = tag.Tag.ErrorType;
                 }
               }
+            }
+          } else if (content is TextBlock tb) {
+            var firstinline = tb.Inlines.FirstInline;
+            if (firstinline is Hyperlink link && link.Inlines.FirstInline is Run r) {
+              _TagHolder[r.Text] = tag.Tag.ErrorType;
             }
           } else if (content is string t) {
             _TagHolder[t] = tag.Tag.ErrorType;
